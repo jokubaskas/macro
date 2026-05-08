@@ -4,52 +4,30 @@ import Login from "./Login";
 import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
 
-const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL;
+const ADMIN_EMAILS = (process.env.REACT_APP_ADMIN_EMAILS || "").split(",").map(e => e.trim());
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Gauk esamą sesiją
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) loadProfile(session.user);
-      else setLoading(false);
+      setLoading(false);
     });
-
-    // Klausyk sesijos pakeitimų
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) loadProfile(session.user);
-      else { setProfile(null); setLoading(false); }
+      setLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
-
-  async function loadProfile(user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    setProfile(data);
-    setLoading(false);
-  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
   }
 
   if (loading) return (
-    <div style={{
-      minHeight: "100vh", display: "flex",
-      alignItems: "center", justifyContent: "center",
-      background: "#FFF0F5",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FFF0F5", fontFamily: "-apple-system, sans-serif" }}>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>💗</div>
         <p style={{ color: "#F48FB1", fontSize: 14 }}>Kraunama...</p>
@@ -59,10 +37,8 @@ export default function App() {
 
   if (!session) return <Login />;
 
-  // Admin patikrinimas – pagal el. paštą
-  const isAdmin = session.user.email === ADMIN_EMAIL;
+  const isAdmin = ADMIN_EMAILS.includes(session.user.email);
 
   if (isAdmin) return <AdminPanel user={session.user} onLogout={handleLogout} />;
-
   return <ClientView user={session.user} onLogout={handleLogout} />;
 }
