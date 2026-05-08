@@ -1,0 +1,14 @@
+{
+  "short_name": "Makro",
+  "name": "Mitybos skaičiuoklė",
+  "description": "Dienos makronutrientų planas pagal tavo duomenis",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF0F5",
+  "theme_color": "#AD1457"
+}
