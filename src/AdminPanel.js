@@ -2,6 +2,40 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const SERVICE_KEY  = process.env.REACT_APP_SERVICE_ROLE_KEY;
+
+async function adminCreateUser(email, password, name) {
+  const res = await fetch(SUPABASE_URL + "/auth/v1/admin/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SERVICE_KEY,
+      "Authorization": "Bearer " + SERVICE_KEY,
+    },
+    body: JSON.stringify({
+      email, password,
+      email_confirm: true,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.msg || "Klaida kuriant vartotoja");
+  return data;
+}
+
+async function adminConfirmUser(userId) {
+  const res = await fetch(SUPABASE_URL + "/auth/v1/admin/users/" + userId, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SERVICE_KEY,
+      "Authorization": "Bearer " + SERVICE_KEY,
+    },
+    body: JSON.stringify({ email_confirm: true }),
+  });
+  return res.ok;
+}
+
 function Card({ children, style }) {
   return (
     <div style={{
@@ -42,7 +76,111 @@ function Field({ label, value, onChange, type = "number", placeholder }) {
   );
 }
 
-function ClientForm({ client, onSave, onCancel }) {
+function NewClientForm({ onSave, onCancel }) {
+  const [form, setForm] = useState({
+    name: "", email: "", password: "",
+    gender: "f", age: "", weight: "", height: "",
+    act: 3, goal: "lose",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+  const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
+
+  const btnBase = { border: "2px solid " + PK.blush, borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit" };
+  const active   = { borderColor: PK.mid, background: PK.light, color: PK.dark };
+  const inactive = { background: "#fff", color: PK.rose };
+
+  async function handleSave() {
+    if (!form.name || !form.email || !form.password) { setError("Vardas, el. pastas ir slaptazodis butini."); return; }
+    if (form.password.length < 6) { setError("Slaptazodis min. 6 simboliai."); return; }
+    setSaving(true); setError("");
+    try {
+      const user = await adminCreateUser(form.email, form.password, form.name);
+      await supabase.from("profiles").upsert({
+        id: user.id, email: form.email, name: form.name, role: "client",
+        gender: form.gender,
+        age:    form.age    ? parseInt(form.age)      : null,
+        weight: form.weight ? parseFloat(form.weight) : null,
+        height: form.height ? parseFloat(form.height) : null,
+        act: form.act, goal: form.goal,
+      });
+      onSave();
+    } catch(e) { setError(e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card>
+        <SectionLabel>Prisijungimo duomenys</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <Field label="Vardas Pavarde" value={form.name}     onChange={set("name")}     type="text"     placeholder="Emilija Serksnaite" />
+          <Field label="El. pastas"     value={form.email}    onChange={set("email")}    type="email"    placeholder="emilija@gmail.com" />
+          <Field label="Slaptazodis"    value={form.password} onChange={set("password")} type="password" placeholder="min. 6 simboliai" />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionLabel>Lytis</SectionLabel>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[{ id: "f", l: "Moteris" }, { id: "m", l: "Vyras" }].map(g => (
+            <button key={g.id} onClick={() => set("gender")(g.id)}
+              style={{ ...btnBase, flex: 1, padding: "10px 0", ...(form.gender === g.id ? active : inactive) }}>
+              {g.l}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionLabel>Kuno duomenys (neprivaloma)</SectionLabel>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 10px" }}>
+          <Field label="Amzius"     value={form.age}    onChange={set("age")}    placeholder="28" />
+          <Field label="Svoris (kg)" value={form.weight} onChange={set("weight")} placeholder="70" />
+          <Field label="Ugis (cm)"   value={form.height} onChange={set("height")} placeholder="168" />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionLabel>Aktyvumo lygis</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {ACTIVITY.map(a => (
+            <button key={a.id} onClick={() => set("act")(a.id)}
+              style={{ ...btnBase, padding: "9px 12px", textAlign: "left", display: "flex", justifyContent: "space-between", ...(form.act === a.id ? active : inactive) }}>
+              <span>{a.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 400, color: PK.rose }}>{a.desc}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionLabel>Tikslas</SectionLabel>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {GOALS.map(g => (
+            <button key={g.id} onClick={() => set("goal")(g.id)}
+              style={{ ...btnBase, padding: "11px 6px", textAlign: "center", lineHeight: 1.4, ...(form.goal === g.id ? active : inactive) }}>
+              {g.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {error && <div style={{ background: "#FFF0F5", border: "1px solid " + PK.coral, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: PK.mid }}>{error}</div>}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onCancel} style={{ flex: 1, padding: "13px 0", borderRadius: 14, border: "2px solid " + PK.blush, background: "#fff", color: PK.rose, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          Atsaukti
+        </button>
+        <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "13px 0", borderRadius: 14, background: "linear-gradient(135deg," + PK.dark + "," + PK.mid + ")", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+          {saving ? "Kuriama..." : "Sukurti klienta"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EditClientForm({ client, onSave, onCancel }) {
   const [form, setForm] = useState({
     name:   client?.name   ?? "",
     gender: client?.gender ?? "f",
@@ -66,8 +204,10 @@ function ClientForm({ client, onSave, onCancel }) {
     try {
       const { error } = await supabase.from("profiles").update({
         name: form.name, gender: form.gender,
-        age: parseInt(form.age), weight: parseFloat(form.weight),
-        height: parseFloat(form.height), act: form.act, goal: form.goal,
+        age:    form.age    ? parseInt(form.age)      : null,
+        weight: form.weight ? parseFloat(form.weight) : null,
+        height: form.height ? parseFloat(form.height) : null,
+        act: form.act, goal: form.goal,
       }).eq("id", client.id);
       if (error) throw error;
       onSave();
@@ -95,7 +235,7 @@ function ClientForm({ client, onSave, onCancel }) {
       <Card>
         <SectionLabel>Kuno duomenys</SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 10px" }}>
-          <Field label="Amzius" value={form.age}    onChange={set("age")}    placeholder="28" />
+          <Field label="Amzius"      value={form.age}    onChange={set("age")}    placeholder="28" />
           <Field label="Svoris (kg)" value={form.weight} onChange={set("weight")} placeholder="70" />
           <Field label="Ugis (cm)"   value={form.height} onChange={set("height")} placeholder="168" />
         </div>
@@ -142,8 +282,8 @@ function MacroResult({ profile }) {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
         {[
-          { l: "Kalorijos", v: res.target, u: "kcal", c: PK.dark },
-          { l: "Baltymai",  v: res.prot.g, u: "g",    c: PK.mid  },
+          { l: "Kalorijos", v: res.target, u: "kcal", c: PK.dark   },
+          { l: "Baltymai",  v: res.prot.g, u: "g",    c: PK.mid    },
           { l: "Riebalai",  v: res.fat.g,  u: "g",    c: PK.bright },
           { l: "Angliavandeniai", v: res.carb.g, u: "g", c: PK.rose },
         ].map(item => (
@@ -159,7 +299,6 @@ function MacroResult({ profile }) {
 }
 
 function ClientCard({ client, onEdit, onDelete, onConfirm, expanded, onToggle }) {
-  const isConfirmed = !!client.email_confirmed_at;
   return (
     <Card style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -169,26 +308,14 @@ function ClientCard({ client, onEdit, onDelete, onConfirm, expanded, onToggle })
           </div>
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: PK.dark, marginBottom: 2 }}>{client.name || client.email}</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <p style={{ fontSize: 11, color: PK.rose }}>{client.email}</p>
-              {!isConfirmed && (
-                <span style={{ fontSize: 9, background: "#FFF3CD", color: "#856404", borderRadius: 6, padding: "2px 6px", fontWeight: 700 }}>
-                  Nepatvirtintas
-                </span>
-              )}
-            </div>
+            <p style={{ fontSize: 11, color: PK.rose }}>{client.email}</p>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {!isConfirmed && (
-            <button onClick={onConfirm} style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid #9AE6B4", background: "#F0FFF4", color: "#276749", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              Patvirtinti
-            </button>
-          )}
           <button onClick={onToggle} style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid " + PK.blush, background: expanded ? PK.light : "#fff", color: PK.mid, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {expanded ? "Uzdaryti" : "Makro"}
           </button>
-          <button onClick={onEdit} style={{ padding: "6px 8px", borderRadius: 10, border: "1px solid " + PK.blush, background: "#fff", color: PK.mid, fontSize: 12, cursor: "pointer" }}>✏️</button>
+          <button onClick={onEdit}   style={{ padding: "6px 8px", borderRadius: 10, border: "1px solid " + PK.blush, background: "#fff", color: PK.mid,  fontSize: 12, cursor: "pointer" }}>✏️</button>
           <button onClick={onDelete} style={{ padding: "6px 8px", borderRadius: 10, border: "1px solid " + PK.blush, background: "#fff", color: PK.rose, fontSize: 12, cursor: "pointer" }}>🗑️</button>
         </div>
       </div>
@@ -217,43 +344,49 @@ export default function AdminPanel({ user, onLogout }) {
   async function loadClients() {
     setLoading(true);
     const { data } = await supabase.from("profiles").select("*").eq("role", "client").order("name");
-    if (!data) { setClients([]); setLoading(false); return; }
-
-    // Gauk email_confirmed_at iš auth.users per RPC arba tiesiog rodykim profiles
-    setClients(data);
+    setClients(data || []);
     setLoading(false);
   }
 
-  async function handleConfirm(client) {
-    setMsg("");
-    const { error } = await supabase.rpc("confirm_user_email", { user_id: client.id });
-    if (error) {
-      // Jei RPC nera, bandome tiesiogiai
-      setMsg("Vykdyk SQL: update auth.users set email_confirmed_at = now() where id = '" + client.id + "';");
-    } else {
-      setMsg(client.name + " patvirtintas!");
-      setTimeout(() => setMsg(""), 3000);
-    }
+  async function handleDelete(client) {
+    if (!window.confirm("Istrinti " + (client.name || client.email) + "?")) return;
+    await supabase.from("profiles").delete().eq("id", client.id);
+    await fetch(SUPABASE_URL + "/auth/v1/admin/users/" + client.id, {
+      method: "DELETE",
+      headers: { "apikey": SERVICE_KEY, "Authorization": "Bearer " + SERVICE_KEY },
+    });
     loadClients();
   }
 
-  async function handleDelete(client) {
-    if (!window.confirm("Istrinti " + client.name + "?")) return;
-    await supabase.from("profiles").delete().eq("id", client.id);
-    loadClients();
+  const headerStyle = {
+    background: "linear-gradient(135deg," + PK.dark + "," + PK.mid + ")",
+    padding: "16px 20px",
+    display: "flex", alignItems: "center", gap: 12,
+  };
+
+  if (view === "new") {
+    return (
+      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg," + PK.pale + " 0%,#fff 55%," + PK.light + " 100%)", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom: 48 }}>
+        <div style={headerStyle}>
+          <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
+          <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Naujas klientas</h1>
+        </div>
+        <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px" }}>
+          <NewClientForm onSave={() => { setView("list"); loadClients(); }} onCancel={() => setView("list")} />
+        </div>
+      </div>
+    );
   }
 
   if (view === "edit") {
     return (
       <div style={{ minHeight: "100vh", background: "linear-gradient(160deg," + PK.pale + " 0%,#fff 55%," + PK.light + " 100%)", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom: 48 }}>
-        <div style={{ background: "linear-gradient(135deg," + PK.dark + "," + PK.mid + ")", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => { setView("list"); setEditClient(null); }} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer" }}>
-            Atgal
-          </button>
+        <div style={headerStyle}>
+          <button onClick={() => { setView("list"); setEditClient(null); }} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
           <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Redaguoti: {editClient?.name}</h1>
         </div>
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px" }}>
-          <ClientForm client={editClient} onSave={() => { setView("list"); setEditClient(null); loadClients(); }} onCancel={() => { setView("list"); setEditClient(null); }} />
+          <EditClientForm client={editClient} onSave={() => { setView("list"); setEditClient(null); loadClients(); }} onCancel={() => { setView("list"); setEditClient(null); }} />
         </div>
       </div>
     );
@@ -277,9 +410,8 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px" }}>
-
         {msg && (
-          <div style={{ background: msg.includes("SQL") ? "#FFF3CD" : "#F0FFF4", border: "1px solid " + (msg.includes("SQL") ? "#FFC107" : "#9AE6B4"), borderRadius: 12, padding: "12px 14px", marginBottom: 14, fontSize: 12, color: msg.includes("SQL") ? "#856404" : "#276749" }}>
+          <div style={{ background: "#F0FFF4", border: "1px solid #9AE6B4", borderRadius: 12, padding: "12px 14px", marginBottom: 14, fontSize: 13, color: "#276749" }}>
             {msg}
           </div>
         )}
@@ -295,6 +427,10 @@ export default function AdminPanel({ user, onLogout }) {
           </div>
         </div>
 
+        <button onClick={() => setView("new")} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg," + PK.dark + "," + PK.mid + ")", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          + Naujas klientas
+        </button>
+
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: PK.mid, marginBottom: 10 }}>Klientai</p>
 
         {loading ? (
@@ -303,7 +439,7 @@ export default function AdminPanel({ user, onLogout }) {
           <div style={{ background: PK.pale, borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed " + PK.blush }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>🌸</div>
             <p style={{ color: PK.rose, fontSize: 14 }}>Dar nera klientu</p>
-            <p style={{ color: PK.blush, fontSize: 12 }}>Klientai atsiras kai registruosis</p>
+            <p style={{ color: PK.blush, fontSize: 12 }}>Spausk "+ Naujas klientas"</p>
           </div>
         ) : (
           clients.map(client => (
@@ -314,7 +450,6 @@ export default function AdminPanel({ user, onLogout }) {
               onToggle={() => setExpanded(expanded === client.id ? null : client.id)}
               onEdit={() => { setEditClient(client); setView("edit"); }}
               onDelete={() => handleDelete(client)}
-              onConfirm={() => handleConfirm(client)}
             />
           ))
         )}
