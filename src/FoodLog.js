@@ -29,22 +29,79 @@ function getNutrients(food, grams) {
 }
 
 function BarcodeScanner({ onResult, onClose }) {
-  const fileRef = useRef(null);
-  const [msg, setMsg] = useState("Paruosta");
+  const scannerRef = useRef(null);
+  const html5QrRef = useRef(null);
+  const [msg,       setMsg]       = useState("Paleidžiama kamera...");
+  const [scanning,  setScanning]  = useState(false);
+  const [manual,    setManual]    = useState("");
   const [searching, setSearching] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [manual, setManual] = useState("");
+
+  useEffect(() => {
+    let scanner = null;
+
+    async function startScanner() {
+      if (!window.Html5Qrcode) {
+        setMsg("Kraunama biblioteka...");
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+
+      try {
+        scanner = new window.Html5Qrcode("qr-reader");
+        html5QrRef.current = scanner;
+        setMsg("Nukreipk kamerą į barkodą");
+        setScanning(true);
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 280, height: 120 },
+            aspectRatio: 1.5,
+            formatsToSupport: [
+              window.Html5QrcodeSupportedFormats?.EAN_13,
+              window.Html5QrcodeSupportedFormats?.EAN_8,
+              window.Html5QrcodeSupportedFormats?.UPC_A,
+              window.Html5QrcodeSupportedFormats?.UPC_E,
+              window.Html5QrcodeSupportedFormats?.CODE_128,
+            ].filter(Boolean),
+          },
+          async (decodedText) => {
+            await scanner.stop();
+            setScanning(false);
+            await lookupBarcode(decodedText);
+          },
+          () => {} // klaidos ignoruojamos (nerasta šiame kadre)
+        );
+      } catch(e) {
+        setMsg("Nepavyko pasiekti kameros. Patikrink ar leista prieiga.");
+        setScanning(false);
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      if (html5QrRef.current) {
+        html5QrRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
 
   async function lookupBarcode(code) {
     setSearching(true);
-    setMsg("Ieskoma: " + code + "...");
+    setMsg("Rastas barkodas: " + code + " – ieškoma...");
     try {
-      const res = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
+      const res  = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
         const n = p.nutriments || {};
-        const name = p.product_name_lt || p.product_name || p.product_name_en || "Nezinomas produktas";
+        const name = p.product_name_lt || p.product_name || p.product_name_en || "Nežinomas produktas";
         onResult({
           name, brand: p.brands || "", amount: 100,
           kcal:    Math.round(n["energy-kcal_100g"] || 0),
@@ -53,84 +110,77 @@ function BarcodeScanner({ onResult, onClose }) {
           carbs:   Math.round((n["carbohydrates_100g"] || 0) * 10) / 10,
         });
       } else {
-        setMsg("Produktas nerastas (" + code + "). Bandyk dar karta arba iveskite rankiniu budu.");
+        setMsg("Produktas nerastas (" + code + "). Bandyk dar kartą.");
         setSearching(false);
+        // Paleidžiam skenerį iš naujo
+        if (html5QrRef.current && !scanning) {
+          try {
+            await html5QrRef.current.start(
+              { facingMode: "environment" },
+              { fps:10, qrbox:{ width:280, height:120 }, aspectRatio:1.5 },
+              async (decodedText) => {
+                await html5QrRef.current.stop();
+                await lookupBarcode(decodedText);
+              },
+              () => {}
+            );
+            setScanning(true);
+            setMsg("Nukreipk kamerą į barkodą");
+          } catch(e) {}
+        }
       }
-    } catch(e) { setMsg("Klaida. Patikrink interneta."); setSearching(false); }
+    } catch(e) {
+      setMsg("Klaida. Patikrink internetą.");
+      setSearching(false);
+    }
   }
 
-  async function handlePhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPreview(URL.createObjectURL(file));
-    setMsg("Analizuojama...");
-    setSearching(true);
-    if ("BarcodeDetector" in window) {
-      try {
-        const detector = new window.BarcodeDetector({ formats:["ean_13","ean_8","upc_a","upc_e","code_128","qr_code"] });
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        await new Promise(r => { img.onload = r; });
-        const codes = await detector.detect(img);
-        if (codes.length > 0) { await lookupBarcode(codes[0].rawValue); return; }
-      } catch(e) {}
+  async function handleManual() {
+    if (!manual || manual.length < 8) return;
+    if (html5QrRef.current) {
+      try { await html5QrRef.current.stop(); } catch(e) {}
     }
-    try {
-      if (!window.ZXing) {
-        setMsg("Kraunama biblioteka...");
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://unpkg.com/@zxing/library@latest/umd/index.min.js";
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
-      }
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await new Promise(r => { img.onload = r; });
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-      canvas.getContext("2d").drawImage(img, 0, 0);
-      const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-      const lum = new window.ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
-      const bin = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lum));
-      const result = new window.ZXing.MultiFormatReader().decode(bin);
-      if (result) { await lookupBarcode(result.getText()); return; }
-    } catch(e) {}
-    setMsg("Nepavyko aptikti barkodo. Bandyk nufotografuoti aisCiau arba iveskite rankiniu budu.");
-    setSearching(false);
+    setScanning(false);
+    await lookupBarcode(manual);
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:300, display:"flex", flexDirection:"column" }}>
-      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>Barkodo skenavimas</h3>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>X</button>
+    <div style={{ position:"fixed", inset:0, background:"#000", zIndex:300, display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+        <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20, gap:14 }}>
-        {preview ? (
-          <img src={preview} alt="scan" style={{ width:"100%", maxWidth:360, borderRadius:16, border:"3px solid "+PK.rose }} />
-        ) : (
-          <div style={{ width:"100%", maxWidth:360, height:180, borderRadius:16, border:"3px dashed "+PK.rose, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
-            <span style={{ fontSize:44 }}>Nufotografuok barkoda</span>
+
+      {/* Kameros rodinys */}
+      <div style={{ flex:1, position:"relative", display:"flex", flexDirection:"column" }}>
+        <div id="qr-reader" ref={scannerRef} style={{ width:"100%", flex:1 }} />
+
+        {/* Statusas */}
+        <div style={{ position:"absolute", bottom:100, left:0, right:0, display:"flex", justifyContent:"center", padding:"0 20px" }}>
+          <div style={{ background:"rgba(0,0,0,0.7)", borderRadius:12, padding:"10px 20px", textAlign:"center", maxWidth:360 }}>
+            <p style={{ color:searching ? PK.coral : PK.blush, fontSize:13, margin:0 }}>
+              {searching ? "⏳ " : scanning ? "🟢 " : "⚪ "}{msg}
+            </p>
           </div>
-        )}
-        <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 20px", width:"100%", maxWidth:360, textAlign:"center" }}>
-          <p style={{ color:searching?PK.coral:PK.blush, fontSize:13, margin:0 }}>{msg}</p>
         </div>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display:"none" }} />
-        <button onClick={() => { setPreview(null); setMsg("Paruosta"); fileRef.current?.click(); }} disabled={searching}
-          style={{ width:"100%", maxWidth:360, padding:"14px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:14, fontSize:15, fontWeight:700, cursor:"pointer", opacity:searching?0.6:1, fontFamily:"inherit" }}>
-          Fotografuoti barkoda
-        </button>
-        <div style={{ width:"100%", maxWidth:360 }}>
-          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:11, textAlign:"center", marginBottom:8 }}>arba iveskite rankiniu budu</p>
+
+        {/* Rankinis įvedimas */}
+        <div style={{ background:"rgba(0,0,0,0.85)", padding:"16px 20px", flexShrink:0 }}>
+          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:11, textAlign:"center", marginBottom:10 }}>
+            arba įvesk barkodą rankiniu būdu
+          </p>
           <div style={{ display:"flex", gap:8 }}>
-            <input type="number" value={manual} onChange={e => setManual(e.target.value)} placeholder="pvz. 4008400175478"
-              style={{ flex:1, padding:"11px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.95)", outline:"none", fontFamily:"inherit" }} />
-            <button onClick={() => { if(manual.length >= 8) lookupBarcode(manual); }} disabled={searching}
+            <input
+              type="number"
+              value={manual}
+              onChange={e => setManual(e.target.value)}
+              placeholder="pvz. 4008400175478"
+              style={{ flex:1, padding:"11px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.95)", outline:"none", fontFamily:"inherit" }}
+            />
+            <button onClick={handleManual} disabled={searching}
               style={{ padding:"11px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-              Ieskoti
+              Ieškoti
             </button>
           </div>
         </div>
@@ -138,6 +188,7 @@ function BarcodeScanner({ onResult, onClose }) {
     </div>
   );
 }
+
 
 function FoodSearch({ onAdd, onClose }) {
   const [query,       setQuery]       = useState("");
