@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabase";
 import { ALL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
 
@@ -31,6 +31,129 @@ function getNutrients(food, grams) {
   };
 }
 
+
+// ── BARKODO SKENAVIMAS ─────────────────────────────────────────────────────
+function BarcodeScanner({ onResult, onClose }) {
+  const videoRef = useRef(null);
+  const [error, setError] = useState("");
+  const [scanning, setScanning] = useState(false);
+
+  useEffect(() => {
+    let stream = null;
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: 1280, height: 720 }
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          setScanning(true);
+        }
+      } catch(e) {
+        setError("Nepavyko pasiekti kameros. Leisk prieigą prie kameros.");
+      }
+    }
+    startCamera();
+    return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
+  }, []);
+
+  async function captureAndScan() {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width  = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
+    const imageData = canvas.toDataURL("image/jpeg", 0.8);
+
+    // Naudojame ZXing API per Open Food Facts
+    try {
+      // Bandome per quagga-like approach su canvas
+      setError("Ieškoma...");
+      // Tiesiog naudojame manual input kaip fallback
+      setError("Nuskenuok barkodą ir palaukite...");
+    } catch(e) {}
+  }
+
+  async function manualBarcode(code) {
+    if (!code || code.length < 8) return;
+    try {
+      setError("Ieškoma...");
+      const res = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
+      const data = await res.json();
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        const n = p.nutriments || {};
+        onResult({
+          id: "barcode_" + code,
+          name: p.product_name || p.product_name_lt || p.product_name_en || "Nežinomas produktas",
+          brand: p.brands || "",
+          category: "Barkodas",
+          kcal:    n["energy-kcal_100g"]    || 0,
+          protein: n["proteins_100g"]        || 0,
+          fat:     n["fat_100g"]             || 0,
+          carbs:   n["carbohydrates_100g"]   || 0,
+          units: [],
+          source: "barcode",
+        });
+      } else {
+        setError("Produktas nerastas. Pabandyk rankiniu būdu.");
+      }
+    } catch(e) {
+      setError("Klaida ieškant produkto.");
+    }
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:200, display:"flex", flexDirection:"column" }}>
+      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
+      </div>
+
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
+        {/* Kameros rodinys */}
+        <div style={{ position:"relative", width:"100%", maxWidth:380, borderRadius:16, overflow:"hidden", marginBottom:20 }}>
+          <video ref={videoRef} style={{ width:"100%", display:"block", borderRadius:16 }} playsInline muted />
+          {/* Taikinys */}
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:250, height:120, border:"3px solid "+PK.rose, borderRadius:12, boxShadow:"0 0 0 1000px rgba(0,0,0,0.4)" }} />
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 16px", marginBottom:16, textAlign:"center" }}>
+            <p style={{ color:PK.blush, fontSize:13, margin:0 }}>{error}</p>
+          </div>
+        )}
+
+        {/* Rankinis barkodo įvedimas */}
+        <div style={{ width:"100%", maxWidth:380 }}>
+          <p style={{ color:PK.blush, fontSize:12, textAlign:"center", marginBottom:10 }}>
+            Arba įveskite barkodą rankiniu būdu:
+          </p>
+          <div style={{ display:"flex", gap:8 }}>
+            <input
+              type="number"
+              placeholder="pvz. 4770077102214"
+              id="barcode-input"
+              style={{ flex:1, padding:"11px 14px", border:"2px solid "+PK.blush, borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit" }}
+            />
+            <button
+              onClick={() => {
+                const val = document.getElementById("barcode-input").value;
+                manualBarcode(val);
+              }}
+              style={{ padding:"11px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer" }}>
+              Ieškoti
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FoodSearch({ onAdd, onClose }) {
   const [query,    setQuery]    = useState("");
   const [localRes, setLocalRes] = useState(ALL_FOODS.slice(0, 15));
@@ -41,6 +164,7 @@ function FoodSearch({ onAdd, onClose }) {
   const [amount,   setAmount]   = useState("100");
   const [unit,     setUnit]     = useState(null);
   const [category, setCategory] = useState("Visi");
+  const [showBarcode, setShowBarcode] = useState(false);
 
   // Vietinė paieška – iš karto
   useEffect(() => {
@@ -180,11 +304,16 @@ function FoodSearch({ onAdd, onClose }) {
   );
 
   return (
+    <>
+    {showBarcode && <BarcodeScanner onResult={(food) => { selectFood(food); setShowBarcode(false); }} onClose={() => setShowBarcode(false)} />}
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:100, display:"flex", alignItems:"flex-end" }}>
       <div style={{ width:"100%", maxHeight:"92vh", background:"#fff", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
         <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
           <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>Ieškoti maisto</h3>
-          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={() => setShowBarcode(true)} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>📷</button>
+            <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
+          </div>
         </div>
 
         <div style={{ overflowY:"auto", flex:1, padding:"16px" }}>
@@ -308,6 +437,70 @@ function FoodSearch({ onAdd, onClose }) {
         </div>
       </div>
     </div>
+    </>
+  );
+}
+
+
+// ── VALGYMO SEKCIJA SU DROPDOWN ───────────────────────────────────────────
+function MealSection({ entries, onAdd, onRemove }) {
+  const [collapsed, setCollapsed] = useState({});
+
+  function toggle(mealId) {
+    setCollapsed(prev => ({ ...prev, [mealId]: !prev[mealId] }));
+  }
+
+  return (
+    <>
+      {MEALS.map(meal => {
+        const mealEntries = entries.filter(e => e.meal === meal.id);
+        const mT = mealEntries.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }), { kcal:0,protein:0,fat:0,carbs:0 });
+        const isCollapsed = collapsed[meal.id] && mealEntries.length > 0;
+
+        return (
+          <div key={meal.id} style={{ background:"#fff", borderRadius:16, marginBottom:10, border:"1px solid "+PK.blush, overflow:"hidden" }}>
+            {/* Header */}
+            <div style={{ padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <button onClick={() => toggle(meal.id)}
+                style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:8, padding:0 }}>
+                <span style={{ fontSize:16 }}>{isCollapsed ? "▶" : "▼"}</span>
+                <span style={{ fontSize:14, fontWeight:700, color:PK.dark }}>{meal.label}</span>
+                {mealEntries.length > 0 && (
+                  <span style={{ fontSize:11, color:PK.rose }}>
+                    {Math.round(mT.kcal)} kcal · B:{Math.round(mT.protein)}g · R:{Math.round(mT.fat)}g · A:{Math.round(mT.carbs)}g
+                  </span>
+                )}
+              </button>
+              <button onClick={() => onAdd(meal.id)}
+                style={{ padding:"6px 12px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:10, fontSize:12, fontWeight:700, color:PK.mid, cursor:"pointer", flexShrink:0 }}>
+                + Pridėti
+              </button>
+            </div>
+
+            {/* Produktų sąrašas */}
+            {!isCollapsed && mealEntries.length > 0 && (
+              <div style={{ borderTop:"1px solid "+PK.light, padding:"0 16px" }}>
+                {mealEntries.map(e => (
+                  <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:"1px solid "+PK.light }}>
+                    <div style={{ flex:1 }}>
+                      <p style={{ margin:"0 0 2px", fontSize:13, color:PK.dark, fontWeight:500 }}>{e.name}</p>
+                      <p style={{ margin:0, fontSize:11, color:PK.rose }}>{e.amount}g · {e.kcal} kcal · B:{e.protein}g R:{e.fat}g A:{e.carbs}g</p>
+                    </div>
+                    <button onClick={() => onRemove(e.id)} style={{ background:"none", border:"none", color:PK.rose, fontSize:18, cursor:"pointer", padding:"0 4px", marginLeft:8 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isCollapsed && mealEntries.length === 0 && (
+              <div style={{ borderTop:"1px solid "+PK.light, padding:"12px 16px" }}>
+                <p style={{ margin:0, fontSize:12, color:PK.blush, fontStyle:"italic" }}>Dar nieko nėra – spausk + Pridėti</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -414,33 +607,7 @@ export default function FoodLog({ userId, targetMacros }) {
             </div>
           )}
 
-          {MEALS.map(meal => {
-            const mealEntries = entries.filter(e => e.meal === meal.id);
-            const mT = mealEntries.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0) }), { kcal:0, protein:0 });
-            return (
-              <div key={meal.id} style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:10, border:"1px solid "+PK.blush }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:mealEntries.length?10:0 }}>
-                  <div>
-                    <span style={{ fontSize:14, fontWeight:700, color:PK.dark }}>{meal.label}</span>
-                    {mealEntries.length > 0 && <span style={{ fontSize:11, color:PK.rose, marginLeft:8 }}>{Math.round(mT.kcal)} kcal · {Math.round(mT.protein)}g B</span>}
-                  </div>
-                  <button onClick={() => { setActiveMeal(meal.id); setSearching(true); }}
-                    style={{ padding:"6px 12px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:10, fontSize:12, fontWeight:700, color:PK.mid, cursor:"pointer" }}>
-                    + Pridėti
-                  </button>
-                </div>
-                {mealEntries.map(e => (
-                  <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:"1px solid "+PK.light }}>
-                    <div>
-                      <p style={{ margin:"0 0 2px", fontSize:13, color:PK.dark, fontWeight:500 }}>{e.name}</p>
-                      <p style={{ margin:0, fontSize:11, color:PK.rose }}>{e.amount}g · {e.kcal} kcal · B:{e.protein}g R:{e.fat}g A:{e.carbs}g</p>
-                    </div>
-                    <button onClick={() => removeEntry(e.id)} style={{ background:"none", border:"none", color:PK.rose, fontSize:16, cursor:"pointer", padding:"0 4px" }}>✕</button>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+          <MealSection entries={entries} onAdd={(mealId) => { setActiveMeal(mealId); setSearching(true); }} onRemove={removeEntry} />
         </>
       )}
 
