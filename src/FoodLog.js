@@ -71,7 +71,7 @@ function BarcodeScanner({ onResult, onClose }) {
             ].filter(Boolean),
           },
           async (decodedText) => {
-            await scanner.stop();
+            try { await scanner.stop(); } catch(e) {}
             setScanning(false);
             await lookupBarcode(decodedText);
           },
@@ -190,7 +190,7 @@ function BarcodeScanner({ onResult, onClose }) {
 }
 
 
-function FoodSearch({ onAdd, onClose }) {
+function FoodSearch({ onAdd, onClose, onBarcode, barcodeFood, clearBarcodeFood }) {
   const [query,       setQuery]       = useState("");
   const [localRes,    setLocalRes]    = useState(ALL_FOODS.slice(0, 15));
   const [onlineRes,   setOnlineRes]   = useState([]);
@@ -200,7 +200,7 @@ function FoodSearch({ onAdd, onClose }) {
   const [amount,      setAmount]      = useState("100");
   const [unit,        setUnit]        = useState(null);
   const [category,    setCategory]    = useState("Visi");
-  const [showBarcode, setShowBarcode] = useState(false);
+  // barkodas valdomas iš FoodLog lygio
 
   useEffect(() => {
     if (!query) {
@@ -209,6 +209,16 @@ function FoodSearch({ onAdd, onClose }) {
       setLocalRes(searchLocalFoods(query));
     }
   }, [query, category]);
+
+  // Kai gaunamas barkodo rezultatas iš viršaus
+  useEffect(() => {
+    if (barcodeFood) {
+      setSelected({ id:"bc_"+Date.now(), ...barcodeFood, units:[] });
+      setUnit(null);
+      setAmount("100");
+      clearBarcodeFood();
+    }
+  }, [barcodeFood]);
 
   useEffect(() => {
     if (!query || query.length < 2) { setOnlineRes([]); setUsdaRes([]); return; }
@@ -267,18 +277,13 @@ function FoodSearch({ onAdd, onClose }) {
 
   return (
     <>
-      {showBarcode && (
-        <BarcodeScanner
-          onResult={food => { setSelected({ ...food, id:"bc", units:[], category:"Barkodas" }); setUnit(null); setAmount(String(food.amount||100)); setShowBarcode(false); }}
-          onClose={() => setShowBarcode(false)}
-        />
-      )}
+
       <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:200, display:"flex", alignItems:"flex-end" }}>
         <div style={{ width:"100%", maxHeight:"92vh", background:"#fff", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
           <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, borderRadius:"20px 20px 0 0" }}>
             <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>Ieskoti maisto</h3>
             <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => setShowBarcode(true)} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:16 }}>📷</button>
+              <button onClick={onBarcode} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:16 }}>📷</button>
               <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
             </div>
           </div>
@@ -411,6 +416,8 @@ export default function FoodLog({ userId, targetMacros }) {
   const [searching,  setSearching]  = useState(false);
   const [loading,    setLoading]    = useState(true);
   const [tab,        setTab]        = useState("today");
+  const [showBarcode,setShowBarcode]= useState(false);
+  const [barcodeFood,setBarcodeFood]= useState(null);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -467,10 +474,22 @@ export default function FoodLog({ userId, targetMacros }) {
 
   return (
     <div style={{ paddingBottom:24 }}>
+      {showBarcode && (
+        <BarcodeScanner
+          onResult={food => {
+            setShowBarcode(false);
+            setBarcodeFood(food);
+          }}
+          onClose={() => setShowBarcode(false)}
+        />
+      )}
       {searching && (
         <FoodSearch
           onAdd={food => addEntry(activeMeal, food)}
           onClose={() => { setSearching(false); setActiveMeal(null); }}
+          onBarcode={() => setShowBarcode(true)}
+          barcodeFood={barcodeFood}
+          clearBarcodeFood={() => setBarcodeFood(null)}
         />
       )}
       <div style={{ display:"flex", gap:8, marginBottom:16 }}>
