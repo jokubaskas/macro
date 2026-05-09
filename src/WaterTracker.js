@@ -30,9 +30,10 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
         .select("ml, goal")
         .eq("user_id", userId)
         .eq("date", todayStr())
-        .maybeSingle(); // nenumeta klaidos kai nera iraso
+        .maybeSingle();
       if (data) {
         setDrunk(data.ml || 0);
+        // Goal visada iš DB jei yra, kitaip iš prop
         setGoal(data.goal || defaultGoal);
       } else {
         setDrunk(0);
@@ -41,7 +42,8 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
       setLoaded(true);
     }
     load();
-  }, [userId, defaultGoal]);
+  // eslint-disable-next-line
+  }, [userId]); // Krauname tik kai userId pasikeičia, ne defaultGoal
 
   async function save(newDrunk) {
     if (!userId) return;
