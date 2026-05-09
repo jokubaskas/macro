@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
+import WaterTracker from "./WaterTracker";
 import FoodLog from "./FoodLog";
 
 export default function ClientView({ user, onLogout }) {
@@ -191,13 +192,7 @@ export default function ClientView({ user, onLogout }) {
                 )}
 
                 {/* Vanduo */}
-                <div style={{ background:"#fff", borderRadius:20, padding:"16px 18px", border:"1px solid "+PK.blush, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div>
-                    <p style={{ fontSize:15, fontWeight:700, color:PK.dark, marginBottom:3 }}>💧 Vanduo per dieną</p>
-                    <p style={{ fontSize:11, color:PK.rose }}>0.033 l × {profile.weight} kg</p>
-                  </div>
-                  <span style={{ fontSize:32, fontWeight:700, color:PK.water }}>{res.water}l</span>
-                </div>
+                <WaterTracker goal={Math.round(parseFloat(profile.weight) * 33)} userId={user.id} />
               </>
             )}
           </>
