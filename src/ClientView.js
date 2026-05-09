@@ -217,46 +217,78 @@ export default function ClientView({ user, onLogout }) {
                 })}
               </div>
 
-              {/* Valgymai – dropdown */}
+              {/* Valgymai */}
               <div style={{ borderTop:"1px solid "+PK.light, paddingTop:12 }}>
+
+                {/* Pridėti mygtukas */}
+                {!showMeals ? (
+                  <button onClick={() => setShowMeals(true)} style={{
+                    width:"100%", padding:"11px 0",
+                    background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+                    color:"#fff", border:"none", borderRadius:12,
+                    fontSize:13, fontWeight:700, cursor:"pointer",
+                    fontFamily:"inherit", marginBottom:8,
+                  }}>
+                    + Pridėti maisto
+                  </button>
+                ) : (
+                  <div style={{ marginBottom:8 }}>
+                    {/* Valgymų pasirinkimas */}
+                    <div style={{
+                      background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+                      borderRadius:14, padding:12,
+                    }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                        <span style={{ color:"#fff", fontSize:13, fontWeight:700 }}>Pasirink valgymą:</span>
+                        <button onClick={() => setShowMeals(false)} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"4px 8px", color:"#fff", fontSize:12, cursor:"pointer" }}>✕</button>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        {MEALS.map(meal => (
+                          <button key={meal.id}
+                            onClick={() => { setActiveMeal(meal.id); setSearching(true); setShowMeals(false); }}
+                            style={{
+                              padding:"10px 8px", background:"rgba(255,255,255,0.15)",
+                              border:"1px solid rgba(255,255,255,0.2)", borderRadius:10,
+                              color:"#fff", fontSize:13, fontWeight:700,
+                              cursor:"pointer", fontFamily:"inherit",
+                            }}>
+                            {meal.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Kiekvienas valgymų blokas */}
                 {MEALS.map(meal => {
                   const me = entries.filter(e => e.meal === meal.id);
+                  if (me.length === 0) return null;
                   const mT = me.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0) }), { kcal:0, protein:0 });
                   const isOpen = !collapsed[meal.id];
                   return (
-                    <div key={meal.id} style={{ marginBottom:8, border:"1px solid "+PK.blush, borderRadius:14, overflow:"hidden" }}>
-                      {/* Meal header */}
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px" }}>
+                    <div key={meal.id} style={{ marginBottom:8, border:"1px solid "+PK.blush, borderRadius:12, overflow:"hidden" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 12px" }}>
                         <button onClick={() => toggleMeal(meal.id)}
-                          style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:8, padding:0, flex:1, fontFamily:"inherit" }}>
-                          <span style={{ fontSize:11, color:PK.rose }}>{isOpen?"▼":"▶"}</span>
-                          <span style={{ fontSize:13, fontWeight:700, color:PK.dark }}>{meal.label}</span>
-                          {me.length > 0 && (
-                            <span style={{ fontSize:11, color:PK.rose }}>
-                              {Math.round(mT.kcal)} kcal · B:{Math.round(mT.protein)}g
-                            </span>
-                          )}
+                          style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:6, padding:0, flex:1, fontFamily:"inherit" }}>
+                          <span style={{ fontSize:10, color:PK.rose }}>{isOpen?"▼":"▶"}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:PK.dark }}>{meal.label}</span>
+                          <span style={{ fontSize:10, color:PK.rose }}>{Math.round(mT.kcal)} kcal · B:{Math.round(mT.protein)}g</span>
                         </button>
-                        <button
-                          onClick={() => { setActiveMeal(meal.id); setSearching(true); }}
-                          style={{ padding:"5px 10px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:8, fontSize:11, fontWeight:700, color:PK.mid, cursor:"pointer", flexShrink:0, fontFamily:"inherit" }}>
+                        <button onClick={() => { setActiveMeal(meal.id); setSearching(true); }}
+                          style={{ padding:"4px 8px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:7, fontSize:10, fontWeight:700, color:PK.mid, cursor:"pointer", fontFamily:"inherit" }}>
                           + Pridėti
                         </button>
                       </div>
-
-                      {/* Meal entries */}
                       {isOpen && (
                         <div style={{ borderTop:"1px solid "+PK.light }}>
-                          {me.length === 0 ? (
-                            <p style={{ margin:0, padding:"8px 14px", fontSize:11, color:PK.blush, fontStyle:"italic" }}>Dar nieko nėra</p>
-                          ) : me.map(e => (
-                            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", borderBottom:"1px solid "+PK.light }}>
+                          {me.map(e => (
+                            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 12px", borderBottom:"1px solid "+PK.light }}>
                               <div style={{ flex:1 }}>
                                 <p style={{ margin:"0 0 1px", fontSize:12, color:PK.dark, fontWeight:500 }}>{e.name}</p>
                                 <p style={{ margin:0, fontSize:10, color:PK.rose }}>{e.amount}g · {e.kcal} kcal · B:{e.protein}g R:{e.fat}g A:{e.carbs}g</p>
                               </div>
-                              <button onClick={() => removeEntry(e.id)}
-                                style={{ background:"none", border:"none", color:PK.rose, fontSize:16, cursor:"pointer", padding:"0 0 0 8px" }}>✕</button>
+                              <button onClick={() => removeEntry(e.id)} style={{ background:"none", border:"none", color:PK.rose, fontSize:16, cursor:"pointer", padding:"0 0 0 8px" }}>✕</button>
                             </div>
                           ))}
                         </div>
