@@ -3,6 +3,40 @@ import Quagga from "@ericblade/quagga2";
 import { supabase } from "./supabase";
 import { ALL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
 
+
+// ── VERTIMAS Į LIETUVIŲ KALBĄ ──────────────────────────────────────────────
+const translateCache = {};
+
+async function translateToLT(text) {
+  if (!text || text.length < 2) return text;
+
+  // Tikriname ar jau išversta
+  if (translateCache[text]) return translateCache[text];
+
+  // Jei tekstas jau lietuviškas arba labai trumpas - neverčiame
+  const ltPattern = /[ąčęėįšųūž]/i;
+  if (ltPattern.test(text)) return text;
+
+  // Jei tik skaičiai/simboliai - neverčiame
+  if (/^[0-9\s\-\.,\%\+]+$/.test(text)) return text;
+
+  try {
+    const res = await fetch(
+      "https://api.mymemory.translated.net/get?q=" +
+      encodeURIComponent(text.substring(0, 200)) +
+      "&langpair=en|lt"
+    );
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText;
+    if (translated && translated !== text && !translated.includes("MYMEMORY")) {
+      translateCache[text] = translated;
+      return translated;
+    }
+  } catch(e) {}
+
+  return text; // Nepavyko - grąžiname originalą
+}
+
 const PK = {
   dark:"#6D1B3B", mid:"#AD1457", bright:"#E91E8C",
   rose:"#F48FB1", blush:"#F8BBD9", light:"#FCE4EC",
@@ -119,10 +153,11 @@ function BarcodeScanner({ onResult, onClose }) {
       if (data.status === 1 && data.product) {
         const p = data.product;
         const n = p.nutriments || {};
+        // Pavadinimas: pirma lietuviškas, jei nėra - verčiame
+        let name = p.product_name_lt || p.product_name || p.product_name_en || "Nežinomas produktas";
+        name = await translateToLT(name);
         onResult({
-          name:    p.product_name_lt || p.product_name || p.product_name_en || "Nežinomas produktas",
-          brand:   p.brands || "",
-          amount:  100,
+          name, brand: p.brands || "", amount: 100,
           kcal:    Math.round(n["energy-kcal_100g"] || 0),
           protein: Math.round((n["proteins_100g"]      || 0) * 10) / 10,
           fat:     Math.round((n["fat_100g"]           || 0) * 10) / 10,
@@ -130,7 +165,6 @@ function BarcodeScanner({ onResult, onClose }) {
         });
         return;
       }
-      // Produktas nerastas – paleidžiam skenerį iš naujo
       detectedRef.current = false;
       setMsg("Produktas nerastas (" + code + "). Bandyk dar kartą.");
       setSearching(false);
@@ -250,21 +284,33 @@ function FoodSearch({ onAdd, onClose, onBarcode, barcodeFood, clearBarcodeFood }
       try {
         const res = await fetch("https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(query)+"&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,brands,code");
         const data = await res.json();
-        setOnlineRes((data.products||[]).filter(p => p.product_name && p.nutriments?.["energy-kcal_100g"]).map(p => ({
-          id:"off_"+p.code, name:p.product_name, brand:p.brands||"", category:"Supakuoti",
+        const offProducts = (data.products||[]).filter(p => p.product_name && p.nutriments?.["energy-kcal_100g"]);
+        const offMapped = await Promise.all(offProducts.map(async p => ({
+          id:"off_"+p.code,
+          name: await translateToLT(p.product_name_lt || p.product_name || p.product_name_en || p.product_name),
+          brand:p.brands||"", category:"Supakuoti",
           kcal:p.nutriments["energy-kcal_100g"]||0, protein:p.nutriments["proteins_100g"]||0,
           fat:p.nutriments["fat_100g"]||0, carbs:p.nutriments["carbohydrates_100g"]||0, units:[], source:"off",
         })));
+        setOnlineRes(offMapped);
       } catch(e) { setOnlineRes([]); }
       try {
         const KEY = process.env.REACT_APP_USDA_KEY;
         const res = await fetch("https://api.nal.usda.gov/fdc/v1/foods/search?api_key="+KEY+"&query="+encodeURIComponent(query)+"&pageSize=6&dataType=SR%20Legacy,Foundation,Branded");
         const data = await res.json();
-        setUsdaRes((data.foods||[]).map(f => {
+        const usdaItems = data.foods || [];
+        const usdaMapped = await Promise.all(usdaItems.map(async f => {
           const get = name => { const n=(f.foodNutrients||[]).find(x=>x.nutrientName===name||x.nutrientName?.startsWith(name)); return Math.round((n?.value||0)*10)/10; };
-          return { id:"usda_"+f.fdcId, name:f.description, brand:f.brandOwner||"", category:"USDA",
-            kcal:get("Energy"), protein:get("Protein"), fat:get("Total lipid"), carbs:get("Carbohydrate"), units:[], source:"usda" };
+          return {
+            id:"usda_"+f.fdcId,
+            name: await translateToLT(f.description),
+            brand: f.brandOwner || "",
+            category:"USDA",
+            kcal:get("Energy"), protein:get("Protein"), fat:get("Total lipid"), carbs:get("Carbohydrate"),
+            units:[], source:"usda"
+          };
         }));
+        setUsdaRes(usdaMapped);
       } catch(e) { setUsdaRes([]); }
       setLoading(false);
     }, 700);
