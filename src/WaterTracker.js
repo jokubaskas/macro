@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
 const PK = {
-  dark:"#6D1B3B", mid:"#AD1457", bright:"#E91E8C",
-  rose:"#F48FB1", blush:"#F8BBD9", light:"#FCE4EC",
-  pale:"#FFF0F5", water:"#378ADD", waterLight:"#B5D4F4",
+  dark:"#6D1B3B", mid:"#AD1457",
+  blush:"#F8BBD9", light:"#FCE4EC", pale:"#FFF0F5",
+  water:"#378ADD", waterLight:"rgba(255,255,255,0.25)",
 };
 
 const ML = 250;
-
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
@@ -16,6 +15,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
   const [goal,   setGoal]   = useState(defaultGoal);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const scrollRef = useRef(null);
 
   const totalGlasses = Math.ceil(goal / ML);
   const filled = Math.floor(drunk / ML);
@@ -26,211 +26,145 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
     if (!userId) return;
     async function load() {
       const { data } = await supabase
-        .from("water_log")
-        .select("ml, goal")
-        .eq("user_id", userId)
-        .eq("date", todayStr())
+        .from("water_log").select("ml, goal")
+        .eq("user_id", userId).eq("date", todayStr())
         .maybeSingle();
-      if (data) {
-        setDrunk(data.ml || 0);
-        // Goal visada iš DB jei yra, kitaip iš prop
-        setGoal(data.goal || defaultGoal);
-      } else {
-        setDrunk(0);
-        setGoal(defaultGoal);
-      }
+      if (data) { setDrunk(data.ml || 0); setGoal(data.goal || defaultGoal); }
+      else       { setDrunk(0); setGoal(defaultGoal); }
       setLoaded(true);
     }
     load();
   // eslint-disable-next-line
-  }, [userId]); // Krauname tik kai userId pasikeičia, ne defaultGoal
+  }, [userId]);
 
   async function save(newDrunk) {
     if (!userId) return;
     setSaving(true);
-    const today = todayStr();
     const { error } = await supabase.rpc("upsert_water_log", {
-      p_user_id: userId,
-      p_date:    today,
-      p_ml:      newDrunk,
-      p_goal:    goal,
+      p_user_id: userId, p_date: todayStr(), p_ml: newDrunk, p_goal: goal,
     });
-    if (error) console.error("Water save error:", error);
+    if (error) console.error(error);
     setSaving(false);
   }
 
   function clickGlass(index) {
-    const isLastFilled = index === filled - 1; // paskutinė užpildyta
-    const isEmpty      = index >= filled;       // tuščia
-
-    if (isEmpty) {
-      // Pilti – galima bet kurią tuščią (pildo iš eilės)
-      const newDrunk = (index + 1) * ML;
-      setDrunk(newDrunk);
-      save(newDrunk);
-    } else if (isLastFilled) {
-      // Nuimti – tik paskutinę užpildytą
-      const newDrunk = index * ML;
-      setDrunk(newDrunk);
-      save(newDrunk);
+    const isFilled     = index < filled;
+    const isLastFilled = index === filled - 1;
+    if (isFilled && !isLastFilled) return; // tik paskutinę galima nuimti
+    const newDrunk = isFilled ? index * ML : (index + 1) * ML;
+    setDrunk(newDrunk);
+    save(newDrunk);
+    // Scroll į dešinę kai pridedama nauja stiklinė
+    if (!isFilled && scrollRef.current) {
+      setTimeout(() => {
+        scrollRef.current.scrollTo({ left: scrollRef.current.scrollWidth, behavior:"smooth" });
+      }, 100);
     }
-    // Kitų pilnų stiklinių spaudinėjimas – nieko nedaro
   }
 
   function addGlass() {
     const newDrunk = drunk + ML;
     setDrunk(newDrunk);
     save(newDrunk);
+    setTimeout(() => {
+      if (scrollRef.current) scrollRef.current.scrollTo({ left: scrollRef.current.scrollWidth, behavior:"smooth" });
+    }, 100);
   }
 
-  if (!loaded) return (
-    <div style={{ background:"#fff", borderRadius:20, padding:"18px 16px", border:"1px solid "+PK.blush, textAlign:"center" }}>
-      <p style={{ color:PK.rose, fontSize:13, margin:0 }}>Kraunama...</p>
-    </div>
-  );
+  if (!loaded) return null;
+
+  const GlassSVG = ({ index }) => {
+    const isFilled     = index < filled;
+    const isLastFilled = index === filled - 1;
+    const isNext       = index === filled && !done;
+    const clickable    = isLastFilled || index >= filled;
+
+    return (
+      <div onClick={() => clickable && clickGlass(index)}
+        style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+          cursor:clickable?"pointer":"default", flexShrink:0, width:52 }}>
+        <svg viewBox="0 0 48 60" width="42" height="52">
+          <defs>
+            <clipPath id={"wcp"+index}>
+              <path d="M6,6 L10,56 L38,56 L42,6 Z"/>
+            </clipPath>
+          </defs>
+          {/* Vandens užpildas */}
+          <rect x="6" y="34" width="36" height="22"
+            fill={isFilled ? "rgba(255,255,255,0.6)" : isNext ? "rgba(255,255,255,0.2)" : "transparent"}
+            clipPath={"url(#wcp"+index+")"}
+            style={{ transition:"all 0.3s" }} />
+          {/* Stiklinės kontūras */}
+          <path d="M6,6 L10,56 L38,56 L42,6 Z" fill="none"
+            stroke={isFilled ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)"}
+            strokeWidth={isFilled?"2":"1.5"} strokeLinejoin="round"/>
+          <line x1="6" y1="6" x2="42" y2="6"
+            stroke={isFilled?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.35)"}
+            strokeWidth={isFilled?"2":"1.5"} strokeLinecap="round"/>
+          {/* Ikonos */}
+          {isLastFilled && <text x="24" y="27" textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.9)" fontWeight="700">−</text>}
+          {!isLastFilled && isFilled && <text x="24" y="27" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.7)" fontWeight="700">✓</text>}
+          {isNext && <text x="24" y="27" textAnchor="middle" fontSize="18" fill="rgba(255,255,255,0.8)" fontWeight="400">+</text>}
+        </svg>
+        <span style={{ fontSize:9, color:"rgba(255,255,255,0.6)", fontWeight:isFilled?"700":"400" }}>
+          250ml
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div style={{
-      background:"#fff", borderRadius:20, padding:"18px 16px",
-      border:"1px solid "+PK.blush,
-      boxShadow:"0 2px 12px rgba(173,20,87,0.07)",
+      background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+      borderRadius:20, padding:"16px 16px",
+      boxShadow:"0 6px 24px rgba(173,20,87,0.3)",
     }}>
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
-        <div>
-          <p style={{ margin:"0 0 2px", fontSize:12, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em" }}>
-            💧 Vanduo šiandien
-          </p>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-            <span style={{ fontSize:28, fontWeight:700, color:done?"#1D9E75":PK.water }}>
-              {drunk}
-            </span>
-            <span style={{ fontSize:13, color:PK.rose }}>ml</span>
-            {saving && <span style={{ fontSize:10, color:PK.blush, marginLeft:4 }}>●</span>}
-          </div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)" }}>💧 Vanduo</span>
+          <span style={{ fontSize:22, fontWeight:700, color:done?"#7FFFB0":"#fff" }}>{drunk}</span>
+          <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)" }}>/ {goal}ml</span>
+          {saving && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>●</span>}
         </div>
         <div style={{ textAlign:"right" }}>
-          <span style={{ fontSize:10, color:PK.rose }}>Dienos tikslas</span>
-          <p style={{ margin:"2px 0 0", fontSize:13, fontWeight:700, color:PK.dark }}>
-            {(goal/1000).toFixed(1)}l
-          </p>
+          <span style={{ fontSize:11, color:done?"#7FFFB0":"rgba(255,255,255,0.6)", fontWeight:done?700:400 }}>
+            {done ? "✅ Tikslas pasiektas!" : "Liko "+(goal-drunk)+"ml"}
+          </span>
         </div>
       </div>
 
       {/* Progreso juosta */}
-      <div style={{ background:PK.light, borderRadius:99, height:8, marginBottom:16, overflow:"hidden" }}>
+      <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:99, height:5, marginBottom:14 }}>
         <div style={{
-          width: pct+"%", height:"100%", borderRadius:99,
-          background: done ? "#1D9E75" : "linear-gradient(90deg,"+PK.water+",#5BB8D4)",
+          width:pct+"%", height:"100%", borderRadius:99,
+          background:done?"#7FFFB0":"rgba(255,255,255,0.85)",
           transition:"width 0.4s cubic-bezier(.23,1,.32,1)",
-        }} />
+        }}/>
       </div>
 
-      {/* Stiklinės */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat("+Math.min(totalGlasses,4)+", 1fr)",
-        gap:10, marginBottom:14, justifyItems:"center",
+      {/* Stiklinės – horizontalus slaidėris */}
+      <div ref={scrollRef} style={{
+        display:"flex", gap:6, overflowX:"auto", paddingBottom:4,
+        scrollbarWidth:"none", msOverflowStyle:"none",
+        WebkitOverflowScrolling:"touch",
       }}>
-        {Array.from({ length: totalGlasses }, (_, i) => {
-          const isFilled     = i < filled;
-          const isLastFilled = i === filled - 1;
-          const isNext       = i === filled && !done;
-          // Kursorą keičiame tik veikiančioms stiklinėms
-          const clickable    = isLastFilled || i >= filled;
-
-          return (
-            <div
-              key={i}
-              onClick={() => clickGlass(i)}
-              style={{
-                display:"flex", flexDirection:"column", alignItems:"center", gap:4,
-                cursor: clickable ? "pointer" : "default",
-                opacity: isFilled && !isLastFilled ? 0.85 : 1,
-              }}
-              title={
-                isLastFilled ? "Paspausti norint nuimti šią stiklinę" :
-                i >= filled   ? "Paspausti norint pridėti" : ""
-              }
-            >
-              <svg viewBox="0 0 48 64" width="44" height="58" style={{ display:"block" }}>
-                <defs>
-                  <clipPath id={"cp"+i}>
-                    <path d="M6,8 L10,60 L38,60 L42,8 Z" />
-                  </clipPath>
-                </defs>
-
-                {/* Vandens užpildas */}
-                <rect x="6" y="38" width="36" height="22"
-                  fill={isFilled ? PK.water : isNext ? PK.waterLight : "transparent"}
-                  clipPath={"url(#cp"+i+")"}
-                  style={{ transition:"all 0.3s" }} />
-                {isFilled && (
-                  <rect x="6" y="36" width="36" height="5"
-                    fill={PK.water} opacity="0.3"
-                    clipPath={"url(#cp"+i+")"} />
-                )}
-
-                {/* Stiklinės kontūras */}
-                <path d="M6,8 L10,60 L38,60 L42,8 Z" fill="none"
-                  stroke={isFilled ? PK.mid : PK.blush}
-                  strokeWidth={isFilled ? "2" : "1.5"}
-                  strokeLinejoin="round" />
-                <line x1="6" y1="8" x2="42" y2="8"
-                  stroke={isFilled ? PK.mid : PK.blush}
-                  strokeWidth={isFilled ? "2" : "1.5"}
-                  strokeLinecap="round" />
-
-                {/* Ikonos viduje */}
-                {isLastFilled && (
-                  <text x="24" y="30" textAnchor="middle" fontSize="13"
-                    fill="#fff" fontWeight="700">−</text>
-                )}
-                {!isLastFilled && isFilled && (
-                  <text x="24" y="30" textAnchor="middle" fontSize="13"
-                    fill="#fff" fontWeight="700" opacity="0.7">✓</text>
-                )}
-                {isNext && (
-                  <text x="24" y="30" textAnchor="middle" fontSize="20"
-                    fill={PK.water} fontWeight="500">+</text>
-                )}
-              </svg>
-
-              {/* Etiketė – visada 250ml */}
-              <span style={{
-                fontSize:10,
-                color: isLastFilled ? PK.mid : isFilled ? PK.rose : PK.rose,
-                fontWeight: isFilled ? "700" : "400",
-              }}>
-                250ml
-              </span>
-            </div>
-          );
-        })}
+        {Array.from({ length: totalGlasses }, (_, i) => <GlassSVG key={i} index={i} />)}
+        {/* Papildomas + mygtukas eilutės pabaigoje */}
+        <div onClick={addGlass} style={{
+          flexShrink:0, width:52, display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center", gap:4, cursor:"pointer",
+        }}>
+          <div style={{
+            width:42, height:52, borderRadius:10,
+            border:"1.5px dashed rgba(255,255,255,0.35)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <span style={{ fontSize:20, color:"rgba(255,255,255,0.5)" }}>+</span>
+          </div>
+          <span style={{ fontSize:9, color:"rgba(255,255,255,0.4)" }}>250ml</span>
+        </div>
       </div>
-
-      {/* Pridėti mygtukas */}
-      <button onClick={addGlass} style={{
-        width:"100%", padding:"11px 0", background:PK.light,
-        border:"1px solid "+PK.blush, borderRadius:12,
-        fontSize:13, fontWeight:700, color:PK.mid,
-        cursor:"pointer", fontFamily:"inherit",
-      }}>
-        + Pridėti stiklinę (250ml)
-      </button>
-
-      {/* Žinutė */}
-      <p style={{
-        margin:"10px 0 0", fontSize:12, textAlign:"center",
-        color: done ? "#1D9E75" : PK.rose,
-        fontWeight: done ? 700 : 400,
-      }}>
-        {drunk === 0
-          ? "Spausk ant stiklinės norėdamas pradėti 💧"
-          : done
-          ? "✅ Tikslas pasiektas! Puiku!"
-          : "Liko "+(goal-drunk)+"ml ("+Math.ceil((goal-drunk)/ML)+" stiklinės)"}
-      </p>
     </div>
   );
 }
