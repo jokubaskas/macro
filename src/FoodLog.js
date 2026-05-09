@@ -34,116 +34,169 @@ function getNutrients(food, grams) {
 
 // ── BARKODO SKENAVIMAS ─────────────────────────────────────────────────────
 function BarcodeScanner({ onResult, onClose }) {
-  const videoRef = useRef(null);
-  const [error, setError] = useState("");
-  const [scanning, setScanning] = useState(false);
+  const videoRef    = useRef(null);
+  const canvasRef   = useRef(null);
+  const streamRef   = useRef(null);
+  const rafRef      = useRef(null);
+  const [status,  setStatus]  = useState("starting");
+  const [msg,     setMsg]     = useState("Paleidžiama kamera...");
+  const [manualCode, setManualCode] = useState("");
 
+  // Krauname ZXing iš CDN
   useEffect(() => {
-    let stream = null;
-    async function startCamera() {
+    let stopped = false;
+
+    async function init() {
+      // 1. Kamera
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: 1280, height: 720 }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width:{ ideal:1280 }, height:{ ideal:720 } }
         });
+        streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          setScanning(true);
+          await videoRef.current.play();
         }
       } catch(e) {
-        setError("Nepavyko pasiekti kameros. Leisk prieigą prie kameros.");
+        setStatus("error");
+        setMsg("Nepavyko pasiekti kameros. Patikrink ar leista prieiga.");
+        return;
       }
+
+      // 2. Krauname ZXing iš CDN
+      if (!window.ZXing) {
+        setMsg("Kraunama skenavimo biblioteka...");
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://unpkg.com/@zxing/library@latest/umd/index.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+
+      if (stopped) return;
+      setStatus("scanning");
+      setMsg("Nukreipk kamerą į barkodą");
+
+      // 3. Skenavimo ciklas
+      const hints = new Map();
+      const formats = [
+        window.ZXing.BarcodeFormat.EAN_13,
+        window.ZXing.BarcodeFormat.EAN_8,
+        window.ZXing.BarcodeFormat.UPC_A,
+        window.ZXing.BarcodeFormat.CODE_128,
+        window.ZXing.BarcodeFormat.QR_CODE,
+      ];
+      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      const reader = new window.ZXing.MultiFormatReader();
+      reader.setHints(hints);
+
+      function scanFrame() {
+        if (stopped || !videoRef.current || !canvasRef.current) return;
+        const video  = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext("2d").drawImage(video, 0, 0);
+          try {
+            const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+            const lumSrc  = new window.ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
+            const binBmp  = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lumSrc));
+            const result  = reader.decode(binBmp);
+            if (result) {
+              stopped = true;
+              lookupBarcode(result.getText());
+              return;
+            }
+          } catch(e) { /* nerasta šiame kadre */ }
+        }
+        rafRef.current = requestAnimationFrame(scanFrame);
+      }
+      rafRef.current = requestAnimationFrame(scanFrame);
     }
-    startCamera();
-    return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
+
+    init();
+    return () => {
+      stopped = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    };
   }, []);
 
-  async function captureAndScan() {
-    if (!videoRef.current) return;
-    const canvas = document.createElement("canvas");
-    canvas.width  = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL("image/jpeg", 0.8);
-
-    // Naudojame ZXing API per Open Food Facts
+  async function lookupBarcode(code) {
+    setStatus("found");
+    setMsg("Rastas barkodas: " + code + " – ieškoma...");
     try {
-      // Bandome per quagga-like approach su canvas
-      setError("Ieškoma...");
-      // Tiesiog naudojame manual input kaip fallback
-      setError("Nuskenuok barkodą ir palaukite...");
-    } catch(e) {}
-  }
-
-  async function manualBarcode(code) {
-    if (!code || code.length < 8) return;
-    try {
-      setError("Ieškoma...");
-      const res = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
+      const res  = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
         const n = p.nutriments || {};
+        const name = p.product_name_lt || p.product_name || p.product_name_en || "Nežinomas produktas";
         onResult({
-          id: "barcode_" + code,
-          name: p.product_name || p.product_name_lt || p.product_name_en || "Nežinomas produktas",
-          brand: p.brands || "",
+          id: "bc_" + code, name, brand: p.brands || "",
           category: "Barkodas",
           kcal:    n["energy-kcal_100g"]    || 0,
           protein: n["proteins_100g"]        || 0,
           fat:     n["fat_100g"]             || 0,
           carbs:   n["carbohydrates_100g"]   || 0,
-          units: [],
-          source: "barcode",
+          units: [], source: "barcode",
         });
       } else {
-        setError("Produktas nerastas. Pabandyk rankiniu būdu.");
+        setStatus("notfound");
+        setMsg("Produktas nerastas (" + code + "). Pabandyk įvesti rankiniu būdu.");
       }
     } catch(e) {
-      setError("Klaida ieškant produkto.");
+      setStatus("notfound");
+      setMsg("Klaida ieškant. Patikrink internetą.");
     }
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:200, display:"flex", flexDirection:"column" }}>
-      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+    <div style={{ position:"fixed", inset:0, background:"#000", zIndex:200, display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
         <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
-        {/* Kameros rodinys */}
-        <div style={{ position:"relative", width:"100%", maxWidth:380, borderRadius:16, overflow:"hidden", marginBottom:20 }}>
-          <video ref={videoRef} style={{ width:"100%", display:"block", borderRadius:16 }} playsInline muted />
-          {/* Taikinys */}
-          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ width:250, height:120, border:"3px solid "+PK.rose, borderRadius:12, boxShadow:"0 0 0 1000px rgba(0,0,0,0.4)" }} />
+      {/* Kameros rodinys */}
+      <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
+        <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+        <canvas ref={canvasRef} style={{ display:"none" }} />
+
+        {/* Taikinys */}
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ width:"80%", maxWidth:320, height:130, position:"relative" }}>
+            <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 2000px rgba(0,0,0,0.55)", borderRadius:12 }} />
+            <div style={{ position:"absolute", inset:0, border:"3px solid "+(status==="scanning"?PK.rose:"#22C55E"), borderRadius:12, transition:"border-color 0.3s" }}>
+              {/* Kampai */}
+              {[["0 auto auto 0"],["0 0 auto auto"],["auto auto 0 0"],["auto 0 0 auto"]].map((inset,i) => (
+                <div key={i} style={{ position:"absolute", width:20, height:20, borderColor:status==="scanning"?PK.mid:"#22C55E",
+                  borderStyle:"solid", borderWidth: i===0?"3px 0 0 3px": i===1?"3px 3px 0 0": i===2?"0 0 3px 3px":"0 3px 3px 0",
+                  top: i<2?"0":"auto", bottom: i>=2?"0":"auto", left: i%2===0?"0":"auto", right: i%2===1?"0":"auto" }} />
+              ))}
+            </div>
           </div>
         </div>
 
-        {error && (
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 16px", marginBottom:16, textAlign:"center" }}>
-            <p style={{ color:PK.blush, fontSize:13, margin:0 }}>{error}</p>
+        {/* Statusas */}
+        <div style={{ position:"absolute", bottom:16, left:0, right:0, display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"0 20px" }}>
+          <div style={{ background:"rgba(0,0,0,0.7)", borderRadius:12, padding:"10px 20px", textAlign:"center" }}>
+            <p style={{ color: status==="scanning"?PK.blush:"#22C55E", fontSize:13, margin:0 }}>{msg}</p>
           </div>
-        )}
 
-        {/* Rankinis barkodo įvedimas */}
-        <div style={{ width:"100%", maxWidth:380 }}>
-          <p style={{ color:PK.blush, fontSize:12, textAlign:"center", marginBottom:10 }}>
-            Arba įveskite barkodą rankiniu būdu:
-          </p>
-          <div style={{ display:"flex", gap:8 }}>
+          {/* Rankinis įvedimas */}
+          <div style={{ width:"100%", maxWidth:380, display:"flex", gap:8 }}>
             <input
               type="number"
-              placeholder="pvz. 4770077102214"
-              id="barcode-input"
-              style={{ flex:1, padding:"11px 14px", border:"2px solid "+PK.blush, borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit" }}
+              value={manualCode}
+              onChange={e => setManualCode(e.target.value)}
+              placeholder="Įvesk barkodą rankiniu būdu..."
+              style={{ flex:1, padding:"11px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.95)", outline:"none", fontFamily:"inherit" }}
             />
-            <button
-              onClick={() => {
-                const val = document.getElementById("barcode-input").value;
-                manualBarcode(val);
-              }}
+            <button onClick={() => manualCode.length >= 8 && lookupBarcode(manualCode)}
               style={{ padding:"11px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer" }}>
               Ieškoti
             </button>
