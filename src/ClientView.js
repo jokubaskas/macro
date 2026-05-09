@@ -116,49 +116,56 @@ export default function ClientView({ user, onLogout }) {
                   </div>
                 </div>
 
-                {/* Kalorijų kortelė */}
+                                {/* Dienos planas + Makronutrientai viename langelyje */}
                 <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:20, marginBottom:12, boxShadow:"0 6px 24px rgba(173,20,87,0.3)" }}>
                   <p style={{ fontSize:14, fontWeight:700, color:"#fff", textAlign:"center", marginBottom:14 }}>✨ Dienos planas</p>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
+
+                  {/* BMR / TDEE / TIKSLAS */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
                     {[
                       { l:"BMR",     v:res.bmr,    s:"bazinis" },
                       { l:"TDEE",    v:res.tdee,   s:"su aktyvumu" },
                       { l:"TIKSLAS", v:res.target, s:"per dieną" },
                     ].map(item => (
-                      <div key={item.l} style={{ background:"rgba(255,255,255,0.13)", borderRadius:14, padding:"12px 8px", textAlign:"center" }}>
+                      <div key={item.l} style={{ background:"rgba(255,255,255,0.13)", borderRadius:12, padding:"10px 6px", textAlign:"center" }}>
                         <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>{item.v}</div>
                         <div style={{ fontSize:9, color:PK.blush, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginTop:2 }}>{item.l}</div>
                         <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:1 }}>{item.s}</div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:10, padding:"10px 12px" }}>
+
+                  {/* Skyriklis */}
+                  <div style={{ height:1, background:"rgba(255,255,255,0.15)", marginBottom:14 }} />
+
+                  {/* Makronutrientai kompaktiškai */}
+                  <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                    {[
+                      { label:"💪 Baltymai",       data:res.prot, color:"#FFB3C6" },
+                      { label:"🥑 Riebalai",        data:res.fat,  color:"#FF80AB" },
+                      { label:"🍚 Angliavandeniai", data:res.carb, color:"#F48FB1" },
+                    ].map(macro => (
+                      <div key={macro.label}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{macro.label}</span>
+                          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                            <span style={{ fontSize:16, fontWeight:700, color:macro.color }}>{macro.data.g}g</span>
+                            <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>{macro.data.kcal} kcal</span>
+                            <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>{macro.data.pct}%</span>
+                          </div>
+                        </div>
+                        <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:99, height:5 }}>
+                          <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:macro.color, transition:"width 0.6s" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Patarimas */}
+                  <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:10, padding:"10px 12px", marginTop:14 }}>
                     <p style={{ margin:0, fontSize:11, color:PK.blush, lineHeight:1.6, textAlign:"center" }}>💡 {res.tip}</p>
                   </div>
                 </div>
-
-                {/* Makronutrientai */}
-                {[
-                  { label:"💪 Baltymai",        data:res.prot, color:PK.mid,    note:res.protNorm+"g/kg × "+profile.weight+"kg = "+res.prot.g+"g. Saugo raumenis." },
-                  { label:"🥑 Riebalai",         data:res.fat,  color:PK.bright, note:"Svarbūs hormonams ir vitaminų įsisavinimui." },
-                  { label:"🍚 Angliavandeniai",  data:res.carb, color:PK.rose,   note:"Pagrindinis energijos šaltinis treniruotėms." },
-                ].map(macro => (
-                  <div key={macro.label} style={{ background:"#fff", borderRadius:20, padding:"16px 14px", marginBottom:10, border:"1px solid "+PK.blush, boxShadow:"0 2px 12px rgba(173,20,87,0.07)" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                      <span style={{ fontSize:15, fontWeight:700, color:PK.dark }}>{macro.label}</span>
-                      <span style={{ fontSize:12, color:PK.rose }}>{macro.data.pct}%</span>
-                    </div>
-                    <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:8 }}>
-                      <span style={{ fontSize:30, fontWeight:700, color:macro.color }}>{macro.data.g}g</span>
-                      <span style={{ fontSize:12, color:PK.rose }}>{macro.data.kcal} kcal</span>
-                    </div>
-                    <div style={{ background:PK.light, borderRadius:99, height:6, marginBottom:8 }}>
-                      <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:"linear-gradient(90deg,"+macro.color+","+PK.bright+")" }} />
-                    </div>
-                    <p style={{ margin:0, fontSize:11, color:PK.rose, lineHeight:1.5 }}>{macro.note}</p>
-                  </div>
-                ))}
-
                 {/* Dienos pažanga */}
                 {todayTotals && (
                   <div style={{ background:"#fff", borderRadius:20, padding:"18px 16px", marginBottom:10, border:"1px solid "+PK.blush, boxShadow:"0 2px 12px rgba(173,20,87,0.07)" }}>
