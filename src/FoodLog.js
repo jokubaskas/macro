@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
-import { LOCAL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
+import { ALL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
 
 const PK = {
   dark:"#6D1B3B", mid:"#AD1457", bright:"#E91E8C",
@@ -33,8 +33,9 @@ function getNutrients(food, grams) {
 
 function FoodSearch({ onAdd, onClose }) {
   const [query,    setQuery]    = useState("");
-  const [localRes, setLocalRes] = useState(LOCAL_FOODS.slice(0, 15));
+  const [localRes, setLocalRes] = useState(ALL_FOODS.slice(0, 15));
   const [onlineRes,setOnlineRes]= useState([]);
+  const [usdaRes,  setUsdaRes]  = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [selected, setSelected] = useState(null);
   const [amount,   setAmount]   = useState("100");
@@ -45,27 +46,29 @@ function FoodSearch({ onAdd, onClose }) {
   useEffect(() => {
     setLocalRes(
       !query
-        ? (category === "Visi" ? LOCAL_FOODS.slice(0, 15) : LOCAL_FOODS.filter(f => f.category === category).slice(0, 15))
+        ? (category === "Visi" ? ALL_FOODS.slice(0, 15) : ALL_FOODS.filter(f => f.category === category).slice(0, 15))
         : searchLocalFoods(query)
     );
   }, [query, category]);
 
   // Pasaulinė paieška – automatiškai po 600ms
   useEffect(() => {
-    if (!query || query.length < 2) { setOnlineRes([]); return; }
+    if (!query || query.length < 2) { setOnlineRes([]); setUsdaRes([]); return; }
     const timer = setTimeout(async () => {
       setLoading(true);
+
+      // Open Food Facts
       try {
         const res = await fetch(
           "https://world.openfoodfacts.org/cgi/search.pl?search_terms=" +
           encodeURIComponent(query) +
-          "&search_simple=1&action=process&json=1&page_size=8&fields=product_name,nutriments,brands"
+          "&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,brands,code"
         );
         const data = await res.json();
         const filtered = (data.products || []).filter(p =>
           p.product_name && p.nutriments?.["energy-kcal_100g"]
         ).map(p => ({
-          id: "online_" + p.code,
+          id: "off_" + p.code,
           name: p.product_name,
           brand: p.brands || "",
           category: "Supakuoti produktai",
@@ -75,9 +78,46 @@ function FoodSearch({ onAdd, onClose }) {
           carbs:   p.nutriments["carbohydrates_100g"]    || 0,
           units: [],
           isOnline: true,
+          source: "off",
         }));
         setOnlineRes(filtered);
       } catch(e) { setOnlineRes([]); }
+
+      // USDA FoodData Central
+      try {
+        const USDA_KEY = process.env.REACT_APP_USDA_KEY;
+        const res = await fetch(
+          "https://api.nal.usda.gov/fdc/v1/foods/search?api_key=" + USDA_KEY +
+          "&query=" + encodeURIComponent(query) +
+          "&pageSize=8&dataType=SR%20Legacy,Foundation,Branded"
+        );
+        const data = await res.json();
+        const filtered = (data.foods || []).filter(f => {
+          const n = f.foodNutrients || [];
+          return n.some(x => x.nutrientName === "Energy" && x.value > 0);
+        }).map(f => {
+          const nutrients = f.foodNutrients || [];
+          const get = (name) => {
+            const n = nutrients.find(x => x.nutrientName === name || x.nutrientName?.startsWith(name));
+            return Math.round((n?.value || 0) * 10) / 10;
+          };
+          return {
+            id: "usda_" + f.fdcId,
+            name: f.description,
+            brand: f.brandOwner || f.brandName || "",
+            category: "USDA duomenų bazė",
+            kcal:    get("Energy"),
+            protein: get("Protein"),
+            fat:     get("Total lipid"),
+            carbs:   get("Carbohydrate"),
+            units: [],
+            isOnline: true,
+            source: "usda",
+          };
+        });
+        setUsdaRes(filtered);
+      } catch(e) { setUsdaRes([]); }
+
       setLoading(false);
     }, 600);
     return () => clearTimeout(timer);
@@ -124,7 +164,12 @@ function FoodSearch({ onAdd, onClose }) {
               {food.units.length} dydžiai
             </span>
           )}
-          {food.isOnline && (
+          {food.source === "usda" && (
+            <span style={{ fontSize:9, background:"#ECFDF5", color:"#059669", borderRadius:8, padding:"2px 6px", fontWeight:700 }}>
+              🇺🇸 USDA
+            </span>
+          )}
+          {food.source === "off" && (
             <span style={{ fontSize:9, background:"#EEF2FF", color:"#4F46E5", borderRadius:8, padding:"2px 6px", fontWeight:700 }}>
               🌍 internetas
             </span>
@@ -245,11 +290,17 @@ function FoodSearch({ onAdd, onClose }) {
               )}
               {onlineRes.length > 0 && (
                 <>
-                  <p style={{ fontSize:10, fontWeight:700, color:"#4F46E5", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>🌍 Supakuoti produktai</p>
+                  <p style={{ fontSize:10, fontWeight:700, color:"#4F46E5", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>🌍 Supakuoti produktai (Open Food Facts)</p>
                   {onlineRes.map(food => <FoodButton key={food.id} food={food} />)}
                 </>
               )}
-              {query && localRes.length === 0 && onlineRes.length === 0 && !loading && (
+              {usdaRes.length > 0 && (
+                <>
+                  <p style={{ fontSize:10, fontWeight:700, color:"#059669", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>🇺🇸 USDA duomenų bazė (400,000+ produktų)</p>
+                  {usdaRes.map(food => <FoodButton key={food.id} food={food} />)}
+                </>
+              )}
+              {query && localRes.length === 0 && onlineRes.length === 0 && usdaRes.length === 0 && !loading && (
                 <p style={{ textAlign:"center", color:PK.rose, padding:"20px 0", fontSize:13 }}>Nerasta produktų</p>
               )}
             </div>

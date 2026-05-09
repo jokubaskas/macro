@@ -162,3 +162,74 @@ export function searchLocalFoods(query) {
 }
 
 export const CATEGORIES = [...new Set(LOCAL_FOODS.map(f => f.category))];
+
+// ── PAPILDYMAI ─────────────────────────────────────────────────────────────
+const EXTRA_FOODS = [
+  // Kepyklos / duonos gaminiai
+  { id:"bagel",      name:"Beigelis (paprastas)",        category:"Kepykla", kcal:272, protein:10.6, fat:1.8,  carbs:53,  units:[{label:"1 mažas (70g)",grams:70},{label:"1 didelis (105g)",grams:105}] },
+  { id:"bagel_wh",   name:"Beigelis (viso grūdo)",       category:"Kepykla", kcal:245, protein:11,   fat:2,    carbs:48,  units:[{label:"1 vnt (105g)",grams:105}] },
+  { id:"bagel_bl",   name:"Beigelis su sėklomis",        category:"Kepykla", kcal:280, protein:10,   fat:3,    carbs:54,  units:[{label:"1 vnt (105g)",grams:105}] },
+  { id:"croissant",  name:"Kruasanas",                   category:"Kepykla", kcal:406, protein:8.2,  fat:21,   carbs:46,  units:[{label:"1 mažas (50g)",grams:50},{label:"1 didelis (80g)",grams:80}] },
+  { id:"muffin_bl",  name:"Muffinas (su mėlynėmis)",     category:"Kepykla", kcal:377, protein:5.7,  fat:14,   carbs:57,  units:[{label:"1 vnt (113g)",grams:113}] },
+  { id:"pita",       name:"Pita duona",                  category:"Kepykla", kcal:275, protein:9.1,  fat:1.2,  carbs:56,  units:[{label:"1 vnt (60g)",grams:60}] },
+  { id:"tortilla_wh",name:"Tortila (kvietinė)",          category:"Kepykla", kcal:312, protein:8.5,  fat:7.7,  carbs:51,  units:[{label:"1 maža (30g)",grams:30},{label:"1 didelė (65g)",grams:65}] },
+  { id:"tortilla_co",name:"Tortila (kukurūzų)",          category:"Kepykla", kcal:218, protein:5.7,  fat:3.2,  carbs:46,  units:[{label:"1 vnt (26g)",grams:26}] },
+  { id:"wrap",       name:"Wrap duonelė (pilno grūdo)",  category:"Kepykla", kcal:290, protein:9,    fat:6,    carbs:50,  units:[{label:"1 vnt (64g)",grams:64}] },
+  { id:"pancake",    name:"Blynai (klasikiniai)",        category:"Kepykla", kcal:227, protein:6.3,  fat:10,   carbs:28,  units:[{label:"1 blynas (40g)",grams:40},{label:"3 blynai",grams:120}] },
+  { id:"waffle",     name:"Vafelis",                     category:"Kepykla", kcal:291, protein:7.9,  fat:14,   carbs:37,  units:[{label:"1 vnt (75g)",grams:75}] },
+  { id:"rice_cake",  name:"Ryžių pyragaitis",            category:"Kepykla", kcal:387, protein:8,    fat:2.8,  carbs:81,  units:[{label:"1 vnt (9g)",grams:9},{label:"2 vnt",grams:18},{label:"3 vnt",grams:27}] },
+  { id:"granola_bar",name:"Granola batonėlis",           category:"Kepykla", kcal:471, protein:7,    fat:19,   carbs:70,  units:[{label:"1 vnt (47g)",grams:47}] },
+
+  // Snacks / užkandžiai
+  { id:"prot_bar",   name:"Baltymų batonėlis (vidut.)",  category:"Snacks",  kcal:350, protein:25,   fat:10,   carbs:40,  units:[{label:"1 vnt (60g)",grams:60}] },
+  { id:"chips_pot",  name:"Bulvių traškučiai",           category:"Snacks",  kcal:536, protein:7,    fat:35,   carbs:53,  units:[{label:"sauja (30g)",grams:30},{label:"mažas pakelis (50g)",grams:50}] },
+  { id:"popcorn",    name:"Spragėsiai (be sviesto)",     category:"Snacks",  kcal:382, protein:12,   fat:4.3,  carbs:78,  units:[{label:"1 puodelis (8g)",grams:8},{label:"3 puodeliai",grams:24}] },
+  { id:"dark_choc",  name:"Juodasis šokoladas (70%+)",   category:"Snacks",  kcal:598, protein:7.8,  fat:42,   carbs:46,  units:[{label:"2 plytelės (20g)",grams:20},{label:"4 plytelės",grams:40}] },
+  { id:"milk_choc",  name:"Pieninis šokoladas",          category:"Snacks",  kcal:535, protein:7.7,  fat:29,   carbs:60,  units:[{label:"2 plytelės (20g)",grams:20}] },
+  { id:"pretzel",    name:"Preceliai",                   category:"Snacks",  kcal:381, protein:9.6,  fat:3.6,  carbs:80,  units:[{label:"sauja (30g)",grams:30}] },
+
+  // Perdirbti maisto produktai
+  { id:"ham",        name:"Kumpis (virtas)",             category:"Perdirbta mėsa", kcal:145, protein:20,   fat:6.5,  carbs:1.6, units:[{label:"2 riekelės (60g)",grams:60},{label:"4 riekelės",grams:120}] },
+  { id:"salami",     name:"Salami",                      category:"Perdirbta mėsa", kcal:425, protein:22,   fat:37,   carbs:1.2, units:[{label:"3 riekelės (30g)",grams:30}] },
+  { id:"hotdog",     name:"Dešra (virta)",               category:"Perdirbta mėsa", kcal:290, protein:11,   fat:26,   carbs:2.7, units:[{label:"1 vnt (52g)",grams:52}] },
+  { id:"sausage_br", name:"Dešrelė pusryčiams (kepta)", category:"Perdirbta mėsa", kcal:301, protein:13,   fat:27,   carbs:2,   units:[{label:"1 vnt (45g)",grams:45},{label:"2 vnt",grams:90}] },
+
+  // Greitasis maistas / restoranai
+  { id:"pizza_sl",   name:"Pica (1 gabalėlis, sūrio)",  category:"Restoranai", kcal:285, protein:12,   fat:10,   carbs:36,  units:[{label:"1 gabalėlis (107g)",grams:107},{label:"2 gabalėliai",grams:214}] },
+  { id:"burger_p",   name:"Burgerio kotletas (jautiena)",category:"Restoranai", kcal:295, protein:20,   fat:23,   carbs:0,   units:[{label:"1 kotletas (113g)",grams:113}] },
+  { id:"sushi_r",    name:"Sushi ritiniklis (su žuvimi)",category:"Restoranai", kcal:93,  protein:5,    fat:0.7,  carbs:18,  units:[{label:"1 vnt (28g)",grams:28},{label:"6 vnt",grams:168},{label:"8 vnt",grams:224}] },
+
+  // Papildomi pieno
+  { id:"prot_yog",   name:"Baltyminis jogurtas (Skyr)", category:"Pieno produktai", kcal:67,  protein:11,   fat:0.2,  carbs:4.5, units:[{label:"1 indelis (150g)",grams:150},{label:"1 didelis (200g)",grams:200}] },
+  { id:"ice_cream",  name:"Ledai (vaniliniai)",          category:"Pieno produktai", kcal:207, protein:3.5,  fat:11,   carbs:24,  units:[{label:"1 kaušelis (65g)",grams:65},{label:"2 kaušeliai",grams:130}] },
+  { id:"whip_cream", name:"Grietinėlė (plakta, 35%)",   category:"Pieno produktai", kcal:340, protein:2.2,  fat:35,   carbs:2.8, units:[{label:"2 šaukštai (30g)",grams:30}] },
+
+  // Pupelių/sojos produktai
+  { id:"tempeh",     name:"Tempeh",                      category:"Ankštiniai", kcal:193, protein:19,   fat:11,   carbs:9.4, units:[{label:"½ bloko (85g)",grams:85}] },
+  { id:"miso",       name:"Miso pasta",                  category:"Ankštiniai", kcal:199, protein:12,   fat:6,    carbs:27,  units:[{label:"1 šaukštas (17g)",grams:17}] },
+
+  // Papildomos daržovės
+  { id:"artich",     name:"Artišokai (konservuoti)",     category:"Daržovės", kcal:50,  protein:2.8,  fat:0.2,  carbs:11,  units:[{label:"½ skardinė (120g)",grams:120}] },
+  { id:"sun_tom",    name:"Džiovinti pomidorai aliejuje",category:"Daržovės", kcal:213, protein:5.1,  fat:15,   carbs:23,  units:[{label:"2 šaukštai (30g)",grams:30}] },
+  { id:"olives",     name:"Alyvuogės (juodos)",          category:"Daržovės", kcal:115, protein:0.8,  fat:10.9, carbs:6.3, units:[{label:"10 vnt (40g)",grams:40}] },
+
+  // Prieskoniai
+  { id:"tahini",     name:"Tahini (sezamo pasta)",       category:"Padažai", kcal:595, protein:17,   fat:53,   carbs:21,  units:[{label:"1 šaukštas (15g)",grams:15}] },
+  { id:"pesto",      name:"Pesto padažas",               category:"Padažas", kcal:376, protein:6,    fat:35,   carbs:9,   units:[{label:"1 šaukštas (20g)",grams:20}] },
+  { id:"bbq_sauce",  name:"BBQ padažas",                 category:"Padažai", kcal:172, protein:1,    fat:0.4,  carbs:41,  units:[{label:"1 šaukštas (17g)",grams:17}] },
+  { id:"ranch",      name:"Ranch padažas",               category:"Padažai", kcal:522, protein:1.3,  fat:55,   carbs:5.1, units:[{label:"2 šaukštai (30g)",grams:30}] },
+];
+
+// Sujungiam su pagrindiniu masyvu
+export const ALL_FOODS = [...LOCAL_FOODS, ...EXTRA_FOODS];
+
+export function searchLocalFoods(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return ALL_FOODS.slice(0, 15);
+  return ALL_FOODS.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    f.category.toLowerCase().includes(q)
+  ).slice(0, 12);
+}
+
+export const CATEGORIES = [...new Set(ALL_FOODS.map(f => f.category))];
