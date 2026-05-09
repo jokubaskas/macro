@@ -4,9 +4,10 @@ import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import FoodLog from "./FoodLog";
 
 export default function ClientView({ user, onLogout }) {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState("macros"); // macros | food
+  const [profile,      setProfile]      = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [tab,          setTab]          = useState("macros");
+  const [todayTotals,  setTodayTotals]  = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -16,6 +17,24 @@ export default function ClientView({ user, onLogout }) {
     }
     load();
   }, [user.id]);
+
+  useEffect(() => {
+    async function loadToday() {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase.from("food_log").select("kcal,protein,fat,carbs").eq("user_id", user.id).eq("date", today);
+      if (data && data.length > 0) {
+        setTodayTotals(data.reduce((a,e) => ({
+          kcal:    a.kcal    + (e.kcal    || 0),
+          protein: a.protein + (e.protein || 0),
+          fat:     a.fat     + (e.fat     || 0),
+          carbs:   a.carbs   + (e.carbs   || 0),
+        }), { kcal:0, protein:0, fat:0, carbs:0 }));
+      } else {
+        setTodayTotals({ kcal:0, protein:0, fat:0, carbs:0 });
+      }
+    }
+    loadToday();
+  }, [user.id, tab]);
 
   if (loading) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,"+PK.pale+",#fff)", fontFamily:"-apple-system,sans-serif" }}>
@@ -138,6 +157,38 @@ export default function ClientView({ user, onLogout }) {
                     <p style={{ margin:0, fontSize:11, color:PK.rose, lineHeight:1.5 }}>{macro.note}</p>
                   </div>
                 ))}
+
+                {/* Dienos pažanga */}
+                {todayTotals && (
+                  <div style={{ background:"#fff", borderRadius:20, padding:"18px 16px", marginBottom:10, border:"1px solid "+PK.blush, boxShadow:"0 2px 12px rgba(173,20,87,0.07)" }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:14 }}>📊 Šiandien surinkta</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:10 }}>
+                      {[
+                        {l:"Kalorijos", cur:Math.round(todayTotals.kcal),    tgt:res.target,  c:PK.dark},
+                        {l:"Baltymai",  cur:Math.round(todayTotals.protein),  tgt:res.prot.g,  c:PK.mid},
+                        {l:"Riebalai",  cur:Math.round(todayTotals.fat),      tgt:res.fat.g,   c:PK.bright},
+                        {l:"Angliavandeniai", cur:Math.round(todayTotals.carbs), tgt:res.carb.g, c:PK.rose},
+                      ].map(item => {
+                        const pct = item.tgt ? Math.min(100, Math.round(item.cur/item.tgt*100)) : 0;
+                        const over = item.cur > item.tgt;
+                        return (
+                          <div key={item.l} style={{ textAlign:"center" }}>
+                            <div style={{ fontSize:16, fontWeight:700, color:over?"#D97706":item.c }}>{item.cur}</div>
+                            <div style={{ fontSize:9, color:PK.rose, marginBottom:6 }}>/ {item.tgt}</div>
+                            <div style={{ background:PK.light, borderRadius:99, height:6 }}>
+                              <div style={{ width:pct+"%", height:"100%", borderRadius:99, background:over?"#D97706":item.c, transition:"width 0.5s" }} />
+                            </div>
+                            <div style={{ fontSize:9, color:over?"#D97706":item.c, fontWeight:700, marginTop:4 }}>{pct}%</div>
+                            <div style={{ fontSize:9, color:PK.rose, marginTop:2 }}>{item.l}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button onClick={() => setTab("food")} style={{ width:"100%", marginTop:14, padding:"10px 0", background:PK.light, border:"1px solid "+PK.blush, borderRadius:12, fontSize:12, fontWeight:700, color:PK.mid, cursor:"pointer", fontFamily:"inherit" }}>
+                      + Pridėti maisto → Žurnalas
+                    </button>
+                  </div>
+                )}
 
                 {/* Vanduo */}
                 <div style={{ background:"#fff", borderRadius:20, padding:"16px 18px", border:"1px solid "+PK.blush, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
