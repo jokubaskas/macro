@@ -34,99 +34,15 @@ function getNutrients(food, grams) {
 
 // ── BARKODO SKENAVIMAS ─────────────────────────────────────────────────────
 function BarcodeScanner({ onResult, onClose }) {
-  const videoRef    = useRef(null);
-  const canvasRef   = useRef(null);
-  const streamRef   = useRef(null);
-  const rafRef      = useRef(null);
-  const [status,  setStatus]  = useState("starting");
-  const [msg,     setMsg]     = useState("Paleidžiama kamera...");
+  const [msg,        setMsg]        = useState("Paruošta");
+  const [searching,  setSearching]  = useState(false);
   const [manualCode, setManualCode] = useState("");
-
-  // Krauname ZXing iš CDN
-  useEffect(() => {
-    let stopped = false;
-
-    async function init() {
-      // 1. Kamera
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width:{ ideal:1280 }, height:{ ideal:720 } }
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch(e) {
-        setStatus("error");
-        setMsg("Nepavyko pasiekti kameros. Patikrink ar leista prieiga.");
-        return;
-      }
-
-      // 2. Krauname ZXing iš CDN
-      if (!window.ZXing) {
-        setMsg("Kraunama skenavimo biblioteka...");
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://unpkg.com/@zxing/library@latest/umd/index.min.js";
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
-      }
-
-      if (stopped) return;
-      setStatus("scanning");
-      setMsg("Nukreipk kamerą į barkodą");
-
-      // 3. Skenavimo ciklas
-      const hints = new Map();
-      const formats = [
-        window.ZXing.BarcodeFormat.EAN_13,
-        window.ZXing.BarcodeFormat.EAN_8,
-        window.ZXing.BarcodeFormat.UPC_A,
-        window.ZXing.BarcodeFormat.CODE_128,
-        window.ZXing.BarcodeFormat.QR_CODE,
-      ];
-      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-      const reader = new window.ZXing.MultiFormatReader();
-      reader.setHints(hints);
-
-      function scanFrame() {
-        if (stopped || !videoRef.current || !canvasRef.current) return;
-        const video  = videoRef.current;
-        const canvas = canvasRef.current;
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width  = video.videoWidth;
-          canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0);
-          try {
-            const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-            const lumSrc  = new window.ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
-            const binBmp  = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lumSrc));
-            const result  = reader.decode(binBmp);
-            if (result) {
-              stopped = true;
-              lookupBarcode(result.getText());
-              return;
-            }
-          } catch(e) { /* nerasta šiame kadre */ }
-        }
-        rafRef.current = requestAnimationFrame(scanFrame);
-      }
-      rafRef.current = requestAnimationFrame(scanFrame);
-    }
-
-    init();
-    return () => {
-      stopped = true;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-    };
-  }, []);
+  const [preview,    setPreview]    = useState(null);
+  const fileRef = useRef(null);
 
   async function lookupBarcode(code) {
-    setStatus("found");
-    setMsg("Rastas barkodas: " + code + " – ieškoma...");
+    setSearching(true);
+    setMsg("Ieškoma: " + code + "...");
     try {
       const res  = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code + ".json");
       const data = await res.json();
@@ -144,59 +60,127 @@ function BarcodeScanner({ onResult, onClose }) {
           units: [], source: "barcode",
         });
       } else {
-        setStatus("notfound");
-        setMsg("Produktas nerastas (" + code + "). Pabandyk įvesti rankiniu būdu.");
+        setMsg("Produktas nerastas (" + code + "). Bandyk dar kartą arba įvesk rankiniu būdu.");
+        setSearching(false);
       }
     } catch(e) {
-      setStatus("notfound");
-      setMsg("Klaida ieškant. Patikrink internetą.");
+      setMsg("Klaida. Patikrink internetą.");
+      setSearching(false);
     }
   }
 
+  async function handlePhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+    setMsg("Analizuojama nuotrauka...");
+    setSearching(true);
+
+    // 1. Bandome BarcodeDetector API (Chrome Android, Safari 17+)
+    if ("BarcodeDetector" in window) {
+      try {
+        const detector = new window.BarcodeDetector({
+          formats: ["ean_13","ean_8","upc_a","upc_e","code_128","qr_code"]
+        });
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(r => img.onload = r);
+        const barcodes = await detector.detect(img);
+        if (barcodes.length > 0) {
+          await lookupBarcode(barcodes[0].rawValue);
+          return;
+        }
+      } catch(e) {}
+    }
+
+    // 2. ZXing fallback
+    try {
+      if (!window.ZXing) {
+        setMsg("Kraunama biblioteka...");
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://unpkg.com/@zxing/library@latest/umd/index.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise(r => img.onload = r);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+      const lum = new window.ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
+      const bin = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lum));
+      const reader = new window.ZXing.MultiFormatReader();
+      const result = reader.decode(bin);
+      if (result) {
+        await lookupBarcode(result.getText());
+        return;
+      }
+    } catch(e) {}
+
+    setMsg("Nepavyko aptikti barkodo. Pabandyk nufotografuoti aiškiau arba įvesk rankiniu būdu.");
+    setSearching(false);
+  }
+
   return (
-    <div style={{ position:"fixed", inset:0, background:"#000", zIndex:200, display:"flex", flexDirection:"column" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", flexDirection:"column" }}>
       {/* Header */}
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
         <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
 
-      {/* Kameros rodinys */}
-      <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
-        <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-        <canvas ref={canvasRef} style={{ display:"none" }} />
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20, gap:16 }}>
 
-        {/* Taikinys */}
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ width:"80%", maxWidth:320, height:130, position:"relative" }}>
-            <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 2000px rgba(0,0,0,0.55)", borderRadius:12 }} />
-            <div style={{ position:"absolute", inset:0, border:"3px solid "+(status==="scanning"?PK.rose:"#22C55E"), borderRadius:12, transition:"border-color 0.3s" }}>
-              {/* Kampai */}
-              {[["0 auto auto 0"],["0 0 auto auto"],["auto auto 0 0"],["auto 0 0 auto"]].map((inset,i) => (
-                <div key={i} style={{ position:"absolute", width:20, height:20, borderColor:status==="scanning"?PK.mid:"#22C55E",
-                  borderStyle:"solid", borderWidth: i===0?"3px 0 0 3px": i===1?"3px 3px 0 0": i===2?"0 0 3px 3px":"0 3px 3px 0",
-                  top: i<2?"0":"auto", bottom: i>=2?"0":"auto", left: i%2===0?"0":"auto", right: i%2===1?"0":"auto" }} />
-              ))}
-            </div>
+        {/* Nuotraukos peržiūra */}
+        {preview ? (
+          <div style={{ width:"100%", maxWidth:360, borderRadius:16, overflow:"hidden", border:"3px solid "+PK.rose }}>
+            <img src={preview} alt="scan" style={{ width:"100%", display:"block" }} />
           </div>
-        </div>
+        ) : (
+          <div style={{ width:"100%", maxWidth:360, height:200, borderRadius:16, border:"3px dashed "+PK.rose, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10 }}>
+            <span style={{ fontSize:48 }}>📦</span>
+            <p style={{ color:PK.blush, fontSize:13, textAlign:"center", margin:0 }}>Nufotografuok barkodą</p>
+          </div>
+        )}
 
         {/* Statusas */}
-        <div style={{ position:"absolute", bottom:16, left:0, right:0, display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"0 20px" }}>
-          <div style={{ background:"rgba(0,0,0,0.7)", borderRadius:12, padding:"10px 20px", textAlign:"center" }}>
-            <p style={{ color: status==="scanning"?PK.blush:"#22C55E", fontSize:13, margin:0 }}>{msg}</p>
-          </div>
+        <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 20px", width:"100%", maxWidth:360, textAlign:"center" }}>
+          <p style={{ color:searching ? PK.coral : PK.blush, fontSize:13, margin:0 }}>
+            {searching ? "⏳ " : "ℹ️ "}{msg}
+          </p>
+        </div>
 
-          {/* Rankinis įvedimas */}
-          <div style={{ width:"100%", maxWidth:380, display:"flex", gap:8 }}>
+        {/* Foto mygtukas */}
+        <input ref={fileRef} type="file" accept="image/*" capture="environment"
+          onChange={handlePhoto} style={{ display:"none" }} />
+        <button
+          onClick={() => { setPreview(null); setMsg("Paruošta"); fileRef.current?.click(); }}
+          disabled={searching}
+          style={{ width:"100%", maxWidth:360, padding:"16px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:16, fontSize:16, fontWeight:700, cursor:"pointer", opacity:searching?0.6:1 }}>
+          📷 Fotografuoti barkodą
+        </button>
+
+        {/* Rankinis įvedimas */}
+        <div style={{ width:"100%", maxWidth:360 }}>
+          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:11, textAlign:"center", marginBottom:8 }}>
+            arba įvesk rankiniu būdu
+          </p>
+          <div style={{ display:"flex", gap:8 }}>
             <input
               type="number"
               value={manualCode}
               onChange={e => setManualCode(e.target.value)}
-              placeholder="Įvesk barkodą rankiniu būdu..."
+              placeholder="pvz. 4008400175478"
               style={{ flex:1, padding:"11px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.95)", outline:"none", fontFamily:"inherit" }}
             />
-            <button onClick={() => manualCode.length >= 8 && lookupBarcode(manualCode)}
+            <button
+              onClick={() => manualCode.length >= 8 && lookupBarcode(manualCode)}
+              disabled={searching}
               style={{ padding:"11px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer" }}>
               Ieškoti
             </button>
@@ -204,293 +188,6 @@ function BarcodeScanner({ onResult, onClose }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function FoodSearch({ onAdd, onClose }) {
-  const [query,    setQuery]    = useState("");
-  const [localRes, setLocalRes] = useState(ALL_FOODS.slice(0, 15));
-  const [onlineRes,setOnlineRes]= useState([]);
-  const [usdaRes,  setUsdaRes]  = useState([]);
-  const [loading,  setLoading]  = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [amount,   setAmount]   = useState("100");
-  const [unit,     setUnit]     = useState(null);
-  const [category, setCategory] = useState("Visi");
-  const [showBarcode, setShowBarcode] = useState(false);
-
-  // Vietinė paieška – iš karto
-  useEffect(() => {
-    setLocalRes(
-      !query
-        ? (category === "Visi" ? ALL_FOODS.slice(0, 15) : ALL_FOODS.filter(f => f.category === category).slice(0, 15))
-        : searchLocalFoods(query)
-    );
-  }, [query, category]);
-
-  // Pasaulinė paieška – automatiškai po 600ms
-  useEffect(() => {
-    if (!query || query.length < 2) { setOnlineRes([]); setUsdaRes([]); return; }
-    const timer = setTimeout(async () => {
-      setLoading(true);
-
-      // Open Food Facts
-      try {
-        const res = await fetch(
-          "https://world.openfoodfacts.org/cgi/search.pl?search_terms=" +
-          encodeURIComponent(query) +
-          "&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,brands,code"
-        );
-        const data = await res.json();
-        const filtered = (data.products || []).filter(p =>
-          p.product_name && p.nutriments?.["energy-kcal_100g"]
-        ).map(p => ({
-          id: "off_" + p.code,
-          name: p.product_name,
-          brand: p.brands || "",
-          category: "Supakuoti produktai",
-          kcal:    p.nutriments["energy-kcal_100g"]     || 0,
-          protein: p.nutriments["proteins_100g"]         || 0,
-          fat:     p.nutriments["fat_100g"]              || 0,
-          carbs:   p.nutriments["carbohydrates_100g"]    || 0,
-          units: [],
-          isOnline: true,
-          source: "off",
-        }));
-        setOnlineRes(filtered);
-      } catch(e) { setOnlineRes([]); }
-
-      // USDA FoodData Central
-      try {
-        const USDA_KEY = process.env.REACT_APP_USDA_KEY;
-        const res = await fetch(
-          "https://api.nal.usda.gov/fdc/v1/foods/search?api_key=" + USDA_KEY +
-          "&query=" + encodeURIComponent(query) +
-          "&pageSize=8&dataType=SR%20Legacy,Foundation,Branded"
-        );
-        const data = await res.json();
-        const filtered = (data.foods || []).filter(f => {
-          const n = f.foodNutrients || [];
-          return n.some(x => x.nutrientName === "Energy" && x.value > 0);
-        }).map(f => {
-          const nutrients = f.foodNutrients || [];
-          const get = (name) => {
-            const n = nutrients.find(x => x.nutrientName === name || x.nutrientName?.startsWith(name));
-            return Math.round((n?.value || 0) * 10) / 10;
-          };
-          return {
-            id: "usda_" + f.fdcId,
-            name: f.description,
-            brand: f.brandOwner || f.brandName || "",
-            category: "USDA duomenų bazė",
-            kcal:    get("Energy"),
-            protein: get("Protein"),
-            fat:     get("Total lipid"),
-            carbs:   get("Carbohydrate"),
-            units: [],
-            isOnline: true,
-            source: "usda",
-          };
-        });
-        setUsdaRes(filtered);
-      } catch(e) { setUsdaRes([]); }
-
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  function selectFood(food) {
-    setSelected(food);
-    setUnit(food.units?.length ? food.units[0] : null);
-    setAmount(food.units?.length ? "" : "100");
-  }
-
-  function getGrams() { return unit ? unit.grams : (parseFloat(amount) || 100); }
-
-  function handleAdd() {
-    if (!selected) return;
-    const g = getGrams();
-    const n = getNutrients(selected, g);
-    onAdd({ name: selected.name, brand: selected.brand || "", amount: g, ...n });
-  }
-
-  const inp = {
-    width:"100%", padding:"11px 14px", border:"2px solid "+PK.blush,
-    borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale,
-    outline:"none", fontFamily:"inherit", boxSizing:"border-box",
-  };
-
-  const FoodButton = ({ food }) => (
-    <button onClick={() => selectFood(food)} style={{
-      padding:"12px 14px", border:"2px solid "+PK.blush, borderRadius:14,
-      background:"#fff", textAlign:"left", cursor:"pointer", fontFamily:"inherit", width:"100%",
-    }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div style={{ flex:1 }}>
-          <p style={{ margin:"0 0 2px", fontSize:13, fontWeight:700, color:PK.dark }}>{food.name}</p>
-          {food.brand && <p style={{ margin:"0 0 2px", fontSize:11, color:PK.rose }}>{food.brand}</p>}
-          <p style={{ margin:0, fontSize:11, color:PK.mid }}>
-            {Math.round(food.kcal)} kcal · B:{Math.round(food.protein)}g · R:{Math.round(food.fat)}g · A:{Math.round(food.carbs)}g
-            <span style={{ color:PK.rose }}> / 100g</span>
-          </p>
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, marginLeft:8 }}>
-          {food.units?.length > 0 && (
-            <span style={{ fontSize:9, background:PK.light, color:PK.mid, borderRadius:8, padding:"2px 6px", fontWeight:700 }}>
-              {food.units.length} dydžiai
-            </span>
-          )}
-          {food.source === "usda" && (
-            <span style={{ fontSize:9, background:"#ECFDF5", color:"#059669", borderRadius:8, padding:"2px 6px", fontWeight:700 }}>
-              🇺🇸 USDA
-            </span>
-          )}
-          {food.source === "off" && (
-            <span style={{ fontSize:9, background:"#EEF2FF", color:"#4F46E5", borderRadius:8, padding:"2px 6px", fontWeight:700 }}>
-              🌍 internetas
-            </span>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-
-  return (
-    <>
-    {showBarcode && <BarcodeScanner onResult={(food) => { selectFood(food); setShowBarcode(false); }} onClose={() => setShowBarcode(false)} />}
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:100, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", maxHeight:"92vh", background:"#fff", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
-        <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-          <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>Ieškoti maisto</h3>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={() => setShowBarcode(true)} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>📷</button>
-            <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
-          </div>
-        </div>
-
-        <div style={{ overflowY:"auto", flex:1, padding:"16px" }}>
-          {/* Paieška */}
-          <div style={{ position:"relative", marginBottom:12 }}>
-            <input style={{ ...inp, paddingLeft:36 }} value={query}
-              onChange={e => { setQuery(e.target.value); setSelected(null); }}
-              placeholder="Ieškoti produkto..."
-            />
-            <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16 }}>🔍</span>
-            {loading && <span style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:PK.rose }}>...</span>}
-          </div>
-
-          {/* Kategorijos */}
-          {!query && (
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-              {["Visi", ...CATEGORIES].map(cat => (
-                <button key={cat} onClick={() => setCategory(cat)} style={{
-                  padding:"5px 10px", borderRadius:20, fontSize:11, fontWeight:700,
-                  cursor:"pointer", fontFamily:"inherit",
-                  border:"1px solid "+(category===cat ? PK.mid : PK.blush),
-                  background:category===cat ? PK.light : "#fff",
-                  color:category===cat ? PK.dark : PK.rose,
-                }}>{cat}</button>
-              ))}
-            </div>
-          )}
-
-          {/* Pasirinktas produktas */}
-          {selected && (
-            <div style={{ background:PK.pale, borderRadius:16, padding:16, marginBottom:14, border:"1px solid "+PK.blush }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
-                <div style={{ flex:1 }}>
-                  <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:PK.dark }}>{selected.name}</p>
-                  {selected.brand && <p style={{ margin:0, fontSize:11, color:PK.rose }}>{selected.brand}</p>}
-                  <p style={{ margin:"4px 0 0", fontSize:11, color:PK.mid }}>
-                    {Math.round(selected.kcal)} kcal · B:{Math.round(selected.protein)}g · R:{Math.round(selected.fat)}g · A:{Math.round(selected.carbs)}g (per 100g)
-                  </p>
-                </div>
-                <button onClick={() => setSelected(null)} style={{ background:"none", border:"none", color:PK.rose, fontSize:18, cursor:"pointer", marginLeft:8 }}>✕</button>
-              </div>
-
-              <p style={{ fontSize:11, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Kiekis</p>
-
-              {selected.units?.length > 0 && (
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
-                  {selected.units.map((u, i) => (
-                    <button key={i} onClick={() => { setUnit(u); setAmount(""); }} style={{
-                      padding:"7px 12px", borderRadius:10, fontSize:12, fontWeight:700,
-                      cursor:"pointer", fontFamily:"inherit",
-                      border:"2px solid "+(unit===u ? PK.mid : PK.blush),
-                      background:unit===u ? PK.light : "#fff",
-                      color:unit===u ? PK.dark : PK.rose,
-                    }}>{u.label}</button>
-                  ))}
-                  <button onClick={() => { setUnit(null); setAmount("100"); }} style={{
-                    padding:"7px 12px", borderRadius:10, fontSize:12, fontWeight:700,
-                    cursor:"pointer", fontFamily:"inherit",
-                    border:"2px solid "+(!unit ? PK.mid : PK.blush),
-                    background:!unit ? PK.light : "#fff",
-                    color:!unit ? PK.dark : PK.rose,
-                  }}>Gramai</button>
-                </div>
-              )}
-
-              {!unit && (
-                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                    style={{ ...inp, width:100, padding:"8px 12px" }} placeholder="100" />
-                  <span style={{ fontSize:13, color:PK.mid, fontWeight:600 }}>gramų</span>
-                </div>
-              )}
-
-              {(() => {
-                const g = getGrams();
-                const n = getNutrients(selected, g);
-                return (
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-                    {[{l:"Kalorijos",v:n.kcal,u:"kcal",c:PK.dark},{l:"Baltymai",v:n.protein,u:"g",c:PK.mid},{l:"Riebalai",v:n.fat,u:"g",c:PK.bright},{l:"Angliavandeniai",v:n.carbs,u:"g",c:PK.rose}].map(item => (
-                      <div key={item.l} style={{ background:"#fff", borderRadius:10, padding:"8px 4px", textAlign:"center", border:"1px solid "+PK.blush }}>
-                        <div style={{ fontSize:16, fontWeight:700, color:item.c }}>{item.v}<span style={{ fontSize:9 }}>{item.u}</span></div>
-                        <div style={{ fontSize:9, color:PK.rose, marginTop:1 }}>{item.l}</div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              <button onClick={handleAdd} style={{ width:"100%", padding:"13px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:14, fontSize:15, fontWeight:700, cursor:"pointer" }}>
-                ✓ Pridėti į žurnalą
-              </button>
-            </div>
-          )}
-
-          {/* Sujungti rezultatai */}
-          {!selected && (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {localRes.length > 0 && (
-                <>
-                  {query && <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0" }}>🇱🇹 Mūsų duomenų bazė</p>}
-                  {localRes.map(food => <FoodButton key={food.id} food={food} />)}
-                </>
-              )}
-              {onlineRes.length > 0 && (
-                <>
-                  <p style={{ fontSize:10, fontWeight:700, color:"#4F46E5", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>🌍 Supakuoti produktai (Open Food Facts)</p>
-                  {onlineRes.map(food => <FoodButton key={food.id} food={food} />)}
-                </>
-              )}
-              {usdaRes.length > 0 && (
-                <>
-                  <p style={{ fontSize:10, fontWeight:700, color:"#059669", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>🇺🇸 USDA duomenų bazė (400,000+ produktų)</p>
-                  {usdaRes.map(food => <FoodButton key={food.id} food={food} />)}
-                </>
-              )}
-              {query && localRes.length === 0 && onlineRes.length === 0 && usdaRes.length === 0 && !loading && (
-                <p style={{ textAlign:"center", color:PK.rose, padding:"20px 0", fontSize:13 }}>Nerasta produktų</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-    </>
   );
 }
 
