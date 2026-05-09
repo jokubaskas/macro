@@ -371,9 +371,14 @@ function FoodSearch({ onAdd, onClose, onBarcode, barcodeFood, clearBarcodeFood }
             )}
             {selected && (
               <div style={{ background:PK.pale, borderRadius:16, padding:16, marginBottom:14, border:"1px solid "+PK.blush }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
                   <div style={{ flex:1 }}>
-                    <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:PK.dark }}>{selected.name}</p>
+                    <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em" }}>Pavadinimas (galima redaguoti)</p>
+                    <input
+                      value={selected.name}
+                      onChange={e => setSelected(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:13, color:PK.dark, background:"#fff", outline:"none", fontFamily:"inherit", boxSizing:"border-box", marginBottom:4 }}
+                    />
                     {selected.brand && <p style={{ margin:0, fontSize:11, color:PK.rose }}>{selected.brand}</p>}
                     <p style={{ margin:"4px 0 0", fontSize:11, color:PK.mid }}>{Math.round(selected.kcal)} kcal · B:{Math.round(selected.protein)}g · R:{Math.round(selected.fat)}g · A:{Math.round(selected.carbs)}g / 100g</p>
                   </div>
