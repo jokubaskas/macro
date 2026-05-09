@@ -47,19 +47,13 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
     if (!userId) return;
     setSaving(true);
     const today = todayStr();
-    // Bandome update pirma
-    const { data: updated, error: updateErr } = await supabase
-      .from("water_log")
-      .update({ ml: newDrunk, goal })
-      .eq("user_id", userId)
-      .eq("date", today)
-      .select();
-    // Jei eilutės nebuvo - insert
-    if (!updateErr && (!updated || updated.length === 0)) {
-      await supabase.from("water_log").insert({
-        user_id: userId, date: today, ml: newDrunk, goal,
-      });
-    }
+    const { error } = await supabase.rpc("upsert_water_log", {
+      p_user_id: userId,
+      p_date:    today,
+      p_ml:      newDrunk,
+      p_goal:    goal,
+    });
+    if (error) console.error("Water save error:", error);
     setSaving(false);
   }
 
