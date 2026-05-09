@@ -25,12 +25,14 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
   useEffect(() => {
     if (!userId) return;
     async function load() {
-      const { data } = await supabase
+      console.log("WATER LOAD:", { userId, date: todayStr() });
+      const { data, error } = await supabase
         .from("water_log")
         .select("ml, goal")
         .eq("user_id", userId)
         .eq("date", todayStr())
         .single();
+      console.log("WATER LOAD result:", { data, error });
       if (data) {
         setDrunk(data.ml || 0);
         setGoal(data.goal || defaultGoal);
@@ -44,7 +46,8 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId }) {
   }, [userId, defaultGoal]);
 
   async function save(newDrunk) {
-    if (!userId) return;
+    console.log("WATER SAVE:", { userId, newDrunk, goal, date: todayStr() });
+    if (!userId) { console.error("userId tuscias!"); return; }
     setSaving(true);
     const today = todayStr();
     const { error } = await supabase.rpc("upsert_water_log", {
