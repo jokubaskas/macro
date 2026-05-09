@@ -152,17 +152,6 @@ export const LOCAL_FOODS = [
   { id:"honey",      name:"Medus",                     category:"Padažai", kcal:304, protein:0.3,  fat:0,    carbs:82,  units:[{label:"1 šaukštelis (7g)",grams:7},{label:"1 šaukštas (21g)",grams:21}] },
 ];
 
-export function searchLocalFoods(query) {
-  const q = query.toLowerCase().trim();
-  if (!q) return LOCAL_FOODS.slice(0, 15);
-  return LOCAL_FOODS.filter(f =>
-    f.name.toLowerCase().includes(q) ||
-    f.category.toLowerCase().includes(q)
-  ).slice(0, 12);
-}
-
-export const CATEGORIES = [...new Set(LOCAL_FOODS.map(f => f.category))];
-
 // ── PAPILDYMAI ─────────────────────────────────────────────────────────────
 const EXTRA_FOODS = [
   // Kepyklos / duonos gaminiai
