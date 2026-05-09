@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import Quagga from "@ericblade/quagga2";
 import { supabase } from "./supabase";
 import { ALL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
 
@@ -29,18 +30,91 @@ function getNutrients(food, grams) {
 }
 
 function BarcodeScanner({ onResult, onClose }) {
-  const [msg,       setMsg]       = useState("");
-  const [searching, setSearching] = useState(false);
+  const scannerRef = useRef(null);
+  const [started,   setStarted]   = useState(false);
+  const [msg,       setMsg]       = useState("Paleidžiama kamera...");
   const [manual,    setManual]    = useState("");
-  const fileRef = useRef(null);
+  const [searching, setSearching] = useState(false);
+  const detectedRef = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+
+    Quagga.init({
+      inputStream: {
+        type: "LiveStream",
+        target: scannerRef.current,
+        constraints: {
+          width:  { min: 640, ideal: 1280 },
+          height: { min: 480, ideal: 720 },
+          facingMode: "environment",
+          aspectRatio: { ideal: 1.5 },
+        },
+        area: {
+          top:    "20%",
+          right:  "10%",
+          left:   "10%",
+          bottom: "20%",
+        },
+      },
+      locator: {
+        patchSize: "medium",
+        halfSample: true,
+      },
+      numOfWorkers: 2,
+      frequency: 10,
+      decoder: {
+        readers: [
+          "ean_reader",
+          "ean_8_reader",
+          "upc_reader",
+          "upc_e_reader",
+          "code_128_reader",
+          "code_39_reader",
+        ],
+      },
+      locate: true,
+    }, (err) => {
+      if (!active) return;
+      if (err) {
+        setMsg("Nepavyko pasiekti kameros: " + err);
+        return;
+      }
+      Quagga.start();
+      setStarted(true);
+      setMsg("Nukreipk kamerą į barkodą");
+    });
+
+    Quagga.onDetected((data) => {
+      if (!active || detectedRef.current) return;
+      const code = data?.codeResult?.code;
+      if (!code) return;
+
+      // Filtruojame neaiškius rezultatus
+      const errors = data?.codeResult?.decodedCodes
+        ?.filter(c => c.error !== undefined)
+        ?.map(c => c.error) || [];
+      const avgError = errors.length ? errors.reduce((a,b) => a+b, 0) / errors.length : 1;
+      if (avgError > 0.25) return; // per daug klaidų
+
+      detectedRef.current = true;
+      Quagga.stop();
+      setStarted(false);
+      lookupBarcode(code);
+    });
+
+    return () => {
+      active = false;
+      try { Quagga.stop(); } catch(e) {}
+      try { Quagga.offDetected(); } catch(e) {}
+    };
+  }, []);
 
   async function lookupBarcode(code) {
-    const clean = code.trim();
-    if (!clean || clean.length < 6) return;
     setSearching(true);
-    setMsg("Ieškoma: " + clean + "...");
+    setMsg("Rastas: " + code + " – ieškoma...");
     try {
-      const res  = await fetch("https://world.openfoodfacts.org/api/v0/product/" + clean + ".json");
+      const res  = await fetch("https://world.openfoodfacts.org/api/v0/product/" + code.trim() + ".json");
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
@@ -56,101 +130,82 @@ function BarcodeScanner({ onResult, onClose }) {
         });
         return;
       }
-      setMsg("Produktas nerastas (" + clean + "). Bandyk įvesti rankiniu būdu.");
+      // Produktas nerastas – paleidžiam skenerį iš naujo
+      detectedRef.current = false;
+      setMsg("Produktas nerastas (" + code + "). Bandyk dar kartą.");
+      setSearching(false);
+      Quagga.start();
+      setStarted(true);
     } catch(e) {
       setMsg("Klaida. Patikrink internetą.");
+      setSearching(false);
+      detectedRef.current = false;
     }
-    setSearching(false);
   }
 
-  // Nuotrauka → BarcodeDetector API (veikia iOS 17+ ir Android Chrome)
-  async function handlePhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSearching(true);
-    setMsg("Analizuojama nuotrauka...");
-
-    if ("BarcodeDetector" in window) {
-      try {
-        const detector = new window.BarcodeDetector({
-          formats: ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
-        });
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.src = url;
-        await new Promise(r => { img.onload = r; });
-        const codes = await detector.detect(img);
-        URL.revokeObjectURL(url);
-        if (codes.length > 0) {
-          await lookupBarcode(codes[0].rawValue);
-          return;
-        }
-      } catch(e) {}
-    }
-
-    setMsg("Nepavyko aptikti barkodo iš nuotraukos. Įvesk rankiniu būdu.");
-    setSearching(false);
-    // Reset file input
-    if (fileRef.current) fileRef.current.value = "";
+  async function handleManual() {
+    if (!manual || manual.trim().length < 6) return;
+    try { Quagga.stop(); } catch(e) {}
+    setStarted(false);
+    await lookupBarcode(manual.trim());
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:300, display:"flex", flexDirection:"column", background:"#1a0a10" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:300, background:"#000", display:"flex", flexDirection:"column" }}>
+      {/* Header */}
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
         <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"8px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, gap:16 }}>
-
-        <div style={{ width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}>
-          📦
+      {/* Kameros rodinys */}
+      <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
+        <div
+          ref={scannerRef}
+          style={{ width:"100%", height:"100%", position:"relative" }}
+        >
+          <canvas className="drawingBuffer" style={{ position:"absolute", inset:0, width:"100%", height:"100%", zIndex:1 }} />
         </div>
 
-        <div style={{ textAlign:"center" }}>
-          <p style={{ color:"#fff", fontSize:16, fontWeight:700, margin:"0 0 8px" }}>Nufotografuok barkodą</p>
-          <p style={{ color:PK.blush, fontSize:13, margin:0 }}>Telefonas atsidaro kamerą – nukreipk į barkodą</p>
+        {/* Taikinys */}
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, pointerEvents:"none" }}>
+          <div style={{ width:"80%", maxWidth:300, height:100, position:"relative" }}>
+            <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 2000px rgba(0,0,0,0.5)", borderRadius:8 }} />
+            <div style={{ position:"absolute", inset:0, border:"3px solid "+(started?PK.rose:"rgba(255,255,255,0.3)"), borderRadius:8, transition:"border-color 0.3s" }}>
+              {/* Kampai */}
+              {[{top:0,left:0,bt:"3px 0 0 3px"},{top:0,right:0,bt:"3px 3px 0 0"},{bottom:0,left:0,bt:"0 0 3px 3px"},{bottom:0,right:0,bt:"0 3px 3px 0"}].map((s,i) => (
+                <div key={i} style={{ position:"absolute", width:20, height:20, borderStyle:"solid", borderColor:PK.mid, borderWidth:s.bt, ...s }} />
+              ))}
+            </div>
+          </div>
         </div>
 
-        {msg && (
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"12px 20px", width:"100%", maxWidth:360, textAlign:"center" }}>
-            <p style={{ color:searching ? PK.coral : PK.blush, fontSize:13, margin:0 }}>
-              {searching ? "⏳ " : "ℹ️ "}{msg}
+        {/* Statusas */}
+        <div style={{ position:"absolute", bottom:120, left:0, right:0, display:"flex", justifyContent:"center", zIndex:3, padding:"0 20px" }}>
+          <div style={{ background:"rgba(0,0,0,0.75)", borderRadius:12, padding:"10px 20px", textAlign:"center" }}>
+            <p style={{ color:searching?PK.coral:started?PK.blush:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>
+              {searching ? "⏳ " : started ? "🟢 " : "⚪ "}{msg}
             </p>
           </div>
-        )}
+        </div>
+      </div>
 
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display:"none" }} />
-
-        <button
-          onClick={() => { if(fileRef.current) { fileRef.current.value=""; fileRef.current.click(); } }}
-          disabled={searching}
-          style={{ width:"100%", maxWidth:360, padding:"16px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:16, fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:searching?0.6:1 }}>
-          📷 Atidaryti kamerą
-        </button>
-
-        <div style={{ width:"100%", maxWidth:360 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-            <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.15)" }} />
-            <span style={{ color:"rgba(255,255,255,0.4)", fontSize:12 }}>arba rankiniu būdu</span>
-            <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.15)" }} />
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <input
-              type="number"
-              value={manual}
-              onChange={e => setManual(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && lookupBarcode(manual)}
-              placeholder="pvz. 4008400175478"
-              style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }}
-            />
-            <button
-              onClick={() => lookupBarcode(manual)}
-              disabled={searching || manual.length < 6}
-              style={{ padding:"12px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:(searching||manual.length<6)?0.5:1 }}>
-              Ieškoti
-            </button>
-          </div>
+      {/* Rankinis įvedimas */}
+      <div style={{ background:"rgba(0,0,0,0.9)", padding:"16px 20px", flexShrink:0 }}>
+        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, textAlign:"center", marginBottom:10 }}>arba įvesk barkodą rankiniu būdu</p>
+        <div style={{ display:"flex", gap:8 }}>
+          <input
+            type="number"
+            value={manual}
+            onChange={e => setManual(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && handleManual()}
+            placeholder="pvz. 4008400175478"
+            style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }}
+          />
+          <button onClick={handleManual} disabled={searching}
+            style={{ padding:"12px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            Ieškoti
+          </button>
         </div>
       </div>
     </div>
