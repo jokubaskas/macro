@@ -62,7 +62,14 @@ Atsakyk TIK JSON, be jokio papildomo teksto:
     body:    JSON.stringify({ prompt }),
   });
 
-  const data = await res.json();
+  // Skaityti kaip tekstą pirmiausia (apsauga nuo tuščio/HTML atsakymo)
+  const raw = await res.text();
+  if (!raw || raw.trim() === "") throw new Error("Tuščias serverio atsakymas (funkcija neveikia?)");
+
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e) { throw new Error("Serverio klaida: " + raw.substring(0, 120)); }
+
   if (!res.ok) throw new Error(data?.error || "Funkcijos klaida " + res.status);
 
   const text = data.content?.[0]?.text || "";
