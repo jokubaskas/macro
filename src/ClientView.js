@@ -164,7 +164,7 @@ export default function ClientView({ user, onLogout }) {
   if (loading) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,"+PK.pale+",#fff)", fontFamily:"-apple-system,sans-serif" }}>
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:40, marginBottom:12 }}>💗</div>
+        <img src="/logo.png" alt="Coach Vilma" style={{ width:70, height:70, objectFit:"contain", borderRadius:14, marginBottom:12 }} />
         <p style={{ color:PK.rose, fontSize:14 }}>Kraunama...</p>
       </div>
     </div>
@@ -276,7 +276,7 @@ export default function ClientView({ user, onLogout }) {
           Atsijungti
         </button>
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontSize:26, marginBottom:6 }}>💗</div>
+          <img src="/logo.png" alt="Coach Vilma" style={{ width:54, height:54, objectFit:"contain", borderRadius:12, marginBottom:6 }} />
           <h1 style={{ fontSize:19, fontWeight:700, color:"#fff", marginBottom:4 }}>
             Sveika, {profile?.name?.split(" ")[0] ?? ""}!
           </h1>
