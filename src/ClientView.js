@@ -5,6 +5,7 @@ import WaterTracker from "./WaterTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
 import FoodSearch from "./FoodSearch";
+import RecipeSuggestion from "./RecipeSuggestion";
 import BarcodeScanner from "./BarcodeScanner";
 
 const MEALS = [
@@ -114,7 +115,9 @@ export default function ClientView({ user, onLogout }) {
   const [openMeal,     setOpenMeal]     = useState(null);
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showBarcode,  setShowBarcode]  = useState(false);
+  const [showBarcode,     setShowBarcode]     = useState(false);
+  const [showRecipe,     setShowRecipe]     = useState(false);
+  const [recipeMealId,   setRecipeMealId]   = useState(null);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -186,6 +189,13 @@ export default function ClientView({ user, onLogout }) {
     fat:  a.fat+(e.fat||0),   carbs:   a.carbs+(e.carbs||0),
   }), { kcal:0, protein:0, fat:0, carbs:0 });
 
+  const remaining = res ? {
+    kcal:    Math.max(0, res.target  - totals.kcal),
+    protein: Math.max(0, res.prot.g  - totals.protein),
+    fat:     Math.max(0, res.fat.g   - totals.fat),
+    carbs:   Math.max(0, res.carb.g  - totals.carbs),
+  } : null;
+
   function MealButtons() {
     return (
       <>
@@ -215,10 +225,16 @@ export default function ClientView({ user, onLogout }) {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px" }}>
               <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{MEALS.find(m=>m.id===openMeal)?.label}</span>
               {isToday && (
-                <button onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
-                  style={{ padding:"5px 12px", background:"rgba(255,255,255,0.2)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:8, fontSize:11, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
-                  + Pridėti
-                </button>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={() => { setRecipeMealId(openMeal); setShowRecipe(true); }}
+                    style={{ padding:"5px 9px", background:"rgba(255,255,180,0.12)", border:"1px solid rgba(255,255,150,0.4)", borderRadius:8, fontSize:11, fontWeight:700, color:"rgba(255,255,180,0.9)", cursor:"pointer", fontFamily:"inherit" }}>
+                    💡 Receptas
+                  </button>
+                  <button onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
+                    style={{ padding:"5px 12px", background:"rgba(255,255,255,0.2)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:8, fontSize:11, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
+                    + Pridėti
+                  </button>
+                </div>
               )}
             </div>
             {(() => {
@@ -252,6 +268,15 @@ export default function ClientView({ user, onLogout }) {
       )}
 
       {/* Maisto paieška */}
+      {showRecipe && remaining && (
+        <RecipeSuggestion
+          mealId={recipeMealId}
+          remaining={remaining}
+          res={res}
+          onClose={() => { setShowRecipe(false); setRecipeMealId(null); }}
+        />
+      )}
+
       {searching && (
         <FoodSearch
           onAdd={food => addEntry(activeMeal, food)}
