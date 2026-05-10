@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
+import TrainerMeasurements from "./TrainerMeasurements";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SERVICE_KEY  = process.env.REACT_APP_SERVICE_ROLE_KEY;
@@ -218,6 +219,11 @@ function ClientProfile({ client, onClose, onSaved }) {
               </div>
             </Card>
           )}
+          {/* Check-in sekcija */}
+          <div style={{ marginBottom:12 }}>
+            <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Check-in & Progresas</p>
+            <TrainerMeasurements clientId={client.id} clientName={client.name} />
+          </div>
         </div>
       </div>
     </div>
