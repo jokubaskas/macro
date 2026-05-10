@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
@@ -12,15 +12,22 @@ const MEALS = [
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
+function fmtDate(d) {
+  return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" });
+}
 
 export default function ClientView({ user, onLogout }) {
-  const [profile,     setProfile]     = useState(null);
-  const [loading,     setLoading]     = useState(true);
-  const [entries,     setEntries]     = useState([]);
-  const [searching,   setSearching]   = useState(false);
-  const [activeMeal,  setActiveMeal]  = useState(null);
-  const [showMeals,   setShowMeals]   = useState(false);
-  const [openMeal,    setOpenMeal]    = useState(null); // kuris valgymų blokas atidarytas
+  const [profile,      setProfile]      = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [entries,      setEntries]      = useState([]);
+  const [searching,    setSearching]    = useState(false);
+  const [activeMeal,   setActiveMeal]   = useState(null);
+  const [showMeals,    setShowMeals]    = useState(false); // ar rodomos 4 parinktys
+  const [openMeal,     setOpenMeal]     = useState(null);  // kuris valgymų blokas atidarytas
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const calendarRef = useRef(null);
+
+  const isToday = selectedDate === todayStr();
 
   useEffect(() => {
     async function load() {
@@ -35,16 +42,16 @@ export default function ClientView({ user, onLogout }) {
     const { data } = await supabase
       .from("food_log").select("*")
       .eq("user_id", user.id)
-      .eq("date", todayStr())
+      .eq("date", selectedDate)
       .order("created_at");
     setEntries(data || []);
-  }, [user.id]);
+  }, [user.id, selectedDate]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
   async function addEntry(meal, food) {
     await supabase.from("food_log").insert({
-      user_id: user.id, date: todayStr(), meal,
+      user_id: user.id, date: selectedDate, meal,
       name: food.name, brand: food.brand || "",
       amount: food.amount, kcal: food.kcal,
       protein: food.protein, fat: food.fat, carbs: food.carbs,
@@ -61,6 +68,17 @@ export default function ClientView({ user, onLogout }) {
 
   function toggleMeal(mealId) {
     setOpenMeal(prev => prev === mealId ? null : mealId);
+  }
+
+  function closeMeals() {
+    setShowMeals(false);
+    setOpenMeal(null);
+  }
+
+  function handleDateChange(e) {
+    setSelectedDate(e.target.value);
+    setShowMeals(false);
+    setOpenMeal(null);
   }
 
   if (loading) return (
@@ -183,10 +201,35 @@ export default function ClientView({ user, onLogout }) {
               </div>
             </div>
 
-            {/* Šiandien surinkta – GRADIENTAS */}
+            {/* Šiandien surinkta */}
             <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:18, marginBottom:12, boxShadow:"0 6px 24px rgba(173,20,87,0.3)" }}>
+
+              {/* Header su data ir kalendoriumi */}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-                <p style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.8)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>📊 Šiandien surinkta</p>
+                <p style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.8)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
+                  📊 {isToday ? "Šiandien surinkta" : fmtDate(selectedDate)}
+                </p>
+                {/* Kalendoriaus ikona */}
+                <div style={{ position:"relative" }}>
+                  <button
+                    onClick={() => calendarRef.current?.showPicker?.() || calendarRef.current?.click()}
+                    style={{
+                      background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.3)",
+                      borderRadius:8, padding:"5px 8px", cursor:"pointer", fontSize:14, lineHeight:1,
+                    }}
+                    title="Pasirinkti dieną"
+                  >
+                    📅
+                  </button>
+                  <input
+                    ref={calendarRef}
+                    type="date"
+                    max={todayStr()}
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    style={{ position:"absolute", opacity:0, width:1, height:1, top:0, left:0, pointerEvents:"none" }}
+                  />
+                </div>
               </div>
 
               {/* Progreso juostos */}
@@ -216,82 +259,116 @@ export default function ClientView({ user, onLogout }) {
               {/* Valgymai */}
               <div style={{ borderTop:"1px solid rgba(255,255,255,0.15)", paddingTop:14 }}>
 
-                {/* Keturi valgymų mygtukai – visada matomi */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom: openMeal ? 12 : 0 }}>
-                  {MEALS.map(meal => {
-                    const me = entries.filter(e => e.meal === meal.id);
-                    const mT = me.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0) }), { kcal:0 });
-                    const isActive = openMeal === meal.id;
-                    return (
-                      <button key={meal.id} onClick={() => toggleMeal(meal.id)}
-                        style={{
-                          padding:"10px 8px",
-                          background: isActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
-                          border: isActive ? "1.5px solid rgba(255,255,255,0.5)" : "1px solid rgba(255,255,255,0.15)",
-                          borderRadius:12,
-                          color:"#fff", fontSize:12, fontWeight:700,
-                          cursor:"pointer", fontFamily:"inherit",
-                          textAlign:"center", transition:"all 0.15s",
-                        }}>
-                        <div>{meal.label}</div>
-                        {me.length > 0 && (
-                          <div style={{ fontSize:10, color:"rgba(255,255,255,0.6)", marginTop:3 }}>
-                            {me.length} irašai · {Math.round(mT.kcal)} kcal
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Atidaryto valgymo blokas */}
-                {openMeal && (
-                  <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:14, overflow:"hidden" }}>
-                    {/* Header su + Pridėti */}
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px" }}>
-                      <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>
-                        {MEALS.find(m => m.id === openMeal)?.label}
-                      </span>
-                      <button
-                        onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
-                        style={{
-                          padding:"5px 12px", background:"rgba(255,255,255,0.2)",
-                          border:"1px solid rgba(255,255,255,0.3)", borderRadius:8,
-                          fontSize:11, fontWeight:700, color:"#fff",
-                          cursor:"pointer", fontFamily:"inherit",
-                        }}>
-                        + Pridėti
-                      </button>
+                {/* Pagrindinis mygtukas */}
+                {!showMeals ? (
+                  <button
+                    onClick={() => setShowMeals(true)}
+                    style={{
+                      width:"100%", padding:"12px 0",
+                      background:"rgba(255,255,255,0.15)",
+                      border:"1.5px solid rgba(255,255,255,0.3)",
+                      borderRadius:14, color:"#fff", fontSize:14, fontWeight:700,
+                      cursor:"pointer", fontFamily:"inherit",
+                    }}
+                  >
+                    🍽️ Pridėti maisto +
+                  </button>
+                ) : (
+                  <>
+                    {/* 4 valgymų mygtukai */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+                      {MEALS.map(meal => {
+                        const me = entries.filter(e => e.meal === meal.id);
+                        const mT = me.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0) }), { kcal:0 });
+                        const isActive = openMeal === meal.id;
+                        return (
+                          <button key={meal.id} onClick={() => toggleMeal(meal.id)}
+                            style={{
+                              padding:"10px 8px",
+                              background: isActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
+                              border: isActive ? "1.5px solid rgba(255,255,255,0.5)" : "1px solid rgba(255,255,255,0.15)",
+                              borderRadius:12, color:"#fff", fontSize:12, fontWeight:700,
+                              cursor:"pointer", fontFamily:"inherit",
+                              textAlign:"center", transition:"all 0.15s",
+                            }}>
+                            <div>{meal.label}</div>
+                            {me.length > 0 && (
+                              <div style={{ fontSize:10, color:"rgba(255,255,255,0.6)", marginTop:3 }}>
+                                {me.length} įrašai · {Math.round(mT.kcal)} kcal
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {/* Įrašai */}
-                    {(() => {
-                      const me = entries.filter(e => e.meal === openMeal);
-                      if (me.length === 0) return (
-                        <p style={{ margin:0, padding:"8px 14px 12px", fontSize:11, color:"rgba(255,255,255,0.4)", fontStyle:"italic" }}>
-                          Dar nieko nepridėta
-                        </p>
-                      );
-                      return me.map(e => (
-                        <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", borderTop:"1px solid rgba(255,255,255,0.1)" }}>
-                          <div style={{ flex:1 }}>
-                            <p style={{ margin:"0 0 1px", fontSize:12, color:"#fff", fontWeight:500 }}>{e.name}</p>
-                            <p style={{ margin:0, fontSize:10, color:"rgba(255,255,255,0.5)" }}>
-                              {e.amount}g · {e.kcal} kcal · B:{e.protein}g R:{e.fat}g A:{e.carbs}g
-                            </p>
-                          </div>
-                          <button onClick={() => removeEntry(e.id)}
-                            style={{ background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:16, cursor:"pointer", padding:"0 0 0 8px" }}>✕</button>
+                    {/* Atidaryto valgymo blokas */}
+                    {openMeal && (
+                      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:14, overflow:"hidden", marginBottom:10 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px" }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>
+                            {MEALS.find(m => m.id === openMeal)?.label}
+                          </span>
+                          {isToday && (
+                            <button
+                              onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
+                              style={{
+                                padding:"5px 12px", background:"rgba(255,255,255,0.2)",
+                                border:"1px solid rgba(255,255,255,0.3)", borderRadius:8,
+                                fontSize:11, fontWeight:700, color:"#fff",
+                                cursor:"pointer", fontFamily:"inherit",
+                              }}>
+                              + Pridėti
+                            </button>
+                          )}
                         </div>
-                      ));
-                    })()}
-                  </div>
+                        {(() => {
+                          const me = entries.filter(e => e.meal === openMeal);
+                          if (me.length === 0) return (
+                            <p style={{ margin:0, padding:"8px 14px 12px", fontSize:11, color:"rgba(255,255,255,0.4)", fontStyle:"italic" }}>
+                              Dar nieko nepridėta
+                            </p>
+                          );
+                          return me.map(e => (
+                            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", borderTop:"1px solid rgba(255,255,255,0.1)" }}>
+                              <div style={{ flex:1 }}>
+                                <p style={{ margin:"0 0 1px", fontSize:12, color:"#fff", fontWeight:500 }}>{e.name}</p>
+                                <p style={{ margin:0, fontSize:10, color:"rgba(255,255,255,0.5)" }}>
+                                  {e.amount}g · {e.kcal} kcal · B:{e.protein}g R:{e.fat}g A:{e.carbs}g
+                                </p>
+                              </div>
+                              {isToday && (
+                                <button onClick={() => removeEntry(e.id)}
+                                  style={{ background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:16, cursor:"pointer", padding:"0 0 0 8px" }}>✕</button>
+                              )}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Uždaryti mygtukas */}
+                    <button
+                      onClick={closeMeals}
+                      style={{
+                        width:"100%", padding:"10px 0",
+                        background:"rgba(255,255,255,0.08)",
+                        border:"1px solid rgba(255,255,255,0.2)",
+                        borderRadius:12, color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:700,
+                        cursor:"pointer", fontFamily:"inherit",
+                      }}
+                    >
+                      Uždaryti −
+                    </button>
+                  </>
                 )}
               </div>
             </div>
 
-            {/* Vanduo */}
-            <WaterTracker goal={Math.round(parseFloat(profile.weight) * 33)} userId={user.id} />
+            {/* Vanduo – tik šiandienos data */}
+            {isToday && (
+              <WaterTracker goal={Math.round(parseFloat(profile.weight) * 33)} userId={user.id} />
+            )}
           </>
         )}
       </div>
