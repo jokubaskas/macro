@@ -407,7 +407,7 @@ export default function ClientView({ user, onLogout }) {
               </div>
             </div>
 
-            <CheckIn userId={user.id} />
+            <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} />
 
             <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
           </>
