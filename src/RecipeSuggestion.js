@@ -71,12 +71,6 @@ Atsakyk TIK JSON, be jokio papildomo teksto:
   return JSON.parse(match[0]);
 }
 
-  const text = data.content?.[0]?.text || "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Neteisingas atsakymo formatas");
-  return JSON.parse(match[0]);
-}
-
 // ── Makro juosta ──────────────────────────────────────────────────────────────
 function MacroBar({ label, value, target, color }) {
   const pct = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
