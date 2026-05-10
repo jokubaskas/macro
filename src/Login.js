@@ -51,9 +51,9 @@ export default function Login() {
       padding: "0 20px",
     }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 48, marginBottom: 10 }}>&#128151;</div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: PK.dark, marginBottom: 4 }}>
-          Makro skaiciuokle
+        <img src="/logo.png" alt="Coach Vilma" style={{ width: 90, height: 90, objectFit: "contain", borderRadius: 18, marginBottom: 14 }} />
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: PK.dark, marginBottom: 4 }}>
+          Coach Vilma
         </h1>
         <p style={{ fontSize: 13, color: PK.rose }}>
           {mode === "login" ? "Prisijunk prie savo paskyros" : "Sukurk nauja paskyra"}
