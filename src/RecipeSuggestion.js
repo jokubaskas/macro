@@ -56,21 +56,22 @@ Atsakyk TIK JSON, be jokio papildomo teksto:
 }`;
 
   // Kviesti per Netlify Function (apeina CORS)
-  const res = await fetch("/.netlify/functions/recipe", {
+  const res = await fetch("/api/recipe", {
     method:  "POST",
     headers: { "Content-Type":"application/json" },
     body:    JSON.stringify({ prompt }),
   });
 
-  // Skaityti kaip tekstą pirmiausia (apsauga nuo tuščio/HTML atsakymo)
   const raw = await res.text();
-  if (!raw || raw.trim() === "") throw new Error("Tuščias serverio atsakymas (funkcija neveikia?)");
+  if (!raw || raw.trim() === "") {
+    throw new Error("HTTP " + res.status + ": tuščias atsakymas. Patikrink Netlify → Functions logs.");
+  }
 
   let data;
   try { data = JSON.parse(raw); }
-  catch(e) { throw new Error("Serverio klaida: " + raw.substring(0, 120)); }
+  catch(e) { throw new Error("HTTP " + res.status + " – ne JSON: " + raw.substring(0, 100)); }
 
-  if (!res.ok) throw new Error(data?.error || "Funkcijos klaida " + res.status);
+  if (!res.ok) throw new Error(data?.error || "Klaida " + res.status);
 
   const text = data.content?.[0]?.text || "";
   const match = text.match(/\{[\s\S]*\}/);
