@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { PK } from "./constants";
+
+// Admin client su service role – apeinamas RLS
+const adminDb = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SERVICE_ROLE_KEY
+);
 
 function fmt(dateStr) {
   return new Date(dateStr+"T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" });
@@ -116,8 +123,8 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
   const load = useCallback(async () => {
     const [{ data:m }, { data:c }] = await Promise.all([
-      supabase.from("trainer_measurements").select("*").eq("user_id",clientId).order("measured_at",{ascending:true}),
-      supabase.from("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
+      adminDb.from("trainer_measurements").select("*").eq("user_id",clientId).order("measured_at",{ascending:true}),
+      adminDb.from("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
     ]);
     setMeasures(m||[]);
     setCheckins(c||[]);
@@ -168,9 +175,9 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       trainer_note:     form.trainer_note||null,
     };
     if (editId) {
-      await supabase.from("trainer_measurements").update(payload).eq("id",editId);
+      await adminDb.from("trainer_measurements").update(payload).eq("id",editId);
     } else {
-      await supabase.from("trainer_measurements").insert(payload);
+      await adminDb.from("trainer_measurements").insert(payload);
     }
     await load();
     setTab("overview");
