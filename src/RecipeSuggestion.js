@@ -17,7 +17,7 @@ const MEAL_CONTEXT = {
 
 async function fetchRecipe(mealId, remaining, alreadyEaten) {
   const key = process.env.REACT_APP_ANTHROPIC_KEY;
-  if (!key) throw new Error("REACT_APP_ANTHROPIC_KEY nenustatytas");
+  if (!key) throw new Error("Raktas nerastas – pridėk REACT_APP_ANTHROPIC_KEY į Netlify ir redeploy");
 
   const isEmpty = remaining.kcal < 50;
   const isLow   = remaining.kcal < 300;
@@ -73,10 +73,12 @@ Atsakyk TIK JSON, be jokio papildomo teksto:
     }),
   });
 
-  if (!res.ok) throw new Error("API klaida: " + res.status);
   const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.message || ("HTTP " + res.status);
+    throw new Error(msg);
+  }
   const text = data.content?.[0]?.text || "";
-  // Ištraukti JSON iš atsakymo
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Neteisingas atsakymo formatas");
   return JSON.parse(match[0]);
