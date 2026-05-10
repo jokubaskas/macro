@@ -21,9 +21,10 @@ async function translateToLT(text) {
   return text;
 }
 
-// ── Natyvinis BarcodeDetector (greitas) ──────────────────────────────────────
+// ── Natyvinis BarcodeDetector – skenuoja visomis kryptimis ───────────────────
 function NativeScanner({ onDetected, onError }) {
-  const videoRef = useRef(null);
+  const videoRef  = useRef(null);
+  const canvasRef = useRef(document.createElement("canvas"));
   const activeRef = useRef(true);
 
   useEffect(() => {
@@ -34,26 +35,50 @@ function NativeScanner({ onDetected, onError }) {
     async function start() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment",
-            width:  { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          video: { facingMode:"environment", width:{ideal:1280}, height:{ideal:720} },
         });
-        if (!activeRef.current) { stream.getTracks().forEach(t => t.stop()); return; }
+        if (!activeRef.current) { stream.getTracks().forEach(t=>t.stop()); return; }
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
 
         const detector = new window.BarcodeDetector({ formats: FORMATS });
+        const canvas   = canvasRef.current;
+        const ctx      = canvas.getContext("2d");
+
+        function drawRotated(deg) {
+          const vw = videoRef.current.videoWidth;
+          const vh = videoRef.current.videoHeight;
+          const swap = deg === 90 || deg === 270;
+          canvas.width  = swap ? vh : vw;
+          canvas.height = swap ? vw : vh;
+          ctx.save();
+          ctx.translate(canvas.width/2, canvas.height/2);
+          ctx.rotate(deg * Math.PI / 180);
+          ctx.drawImage(videoRef.current, -vw/2, -vh/2);
+          ctx.restore();
+        }
 
         async function scan() {
           if (!activeRef.current) return;
           try {
-            const results = await detector.detect(videoRef.current);
-            if (results.length > 0) {
-              onDetected(results[0].rawValue);
-              return; // sustabdome ciklą
-            }
+            // 0° – tiesiogiai iš video elemento (greičiau)
+            let r = await detector.detect(videoRef.current);
+            if (r.length) { onDetected(r[0].rawValue); return; }
+
+            // 90°
+            drawRotated(90);
+            r = await detector.detect(canvas);
+            if (r.length) { onDetected(r[0].rawValue); return; }
+
+            // 270°
+            drawRotated(270);
+            r = await detector.detect(canvas);
+            if (r.length) { onDetected(r[0].rawValue); return; }
+
+            // 180°
+            drawRotated(180);
+            r = await detector.detect(canvas);
+            if (r.length) { onDetected(r[0].rawValue); return; }
           } catch(e) {}
           animId = requestAnimationFrame(scan);
         }
@@ -64,25 +89,20 @@ function NativeScanner({ onDetected, onError }) {
     }
 
     start();
-
     return () => {
       activeRef.current = false;
       cancelAnimationFrame(animId);
-      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (stream) stream.getTracks().forEach(t=>t.stop());
     };
   }, []);
 
   return (
-    <video
-      ref={videoRef}
-      muted
-      playsInline
-      style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-    />
+    <video ref={videoRef} muted playsInline
+      style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
   );
 }
 
-// ── Quagga atsarginis variantas ───────────────────────────────────────────────
+// ── Quagga atsarginis ─────────────────────────────────────────────────────────
 function QuaggaScanner({ onDetected, onError }) {
   const containerRef = useRef(null);
   const detectedRef  = useRef(false);
@@ -93,17 +113,12 @@ function QuaggaScanner({ onDetected, onError }) {
       inputStream: {
         type: "LiveStream",
         target: containerRef.current,
-        constraints: {
-          facingMode: "environment",
-          width:  { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        constraints: { facingMode:"environment", width:{ideal:1280}, height:{ideal:720} },
       },
       locator:    { patchSize:"medium", halfSample:true },
-      numOfWorkers: 2,
-      frequency:  10,
-      decoder:    { readers:["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader"] },
-      locate:     true,
+      numOfWorkers: 2, frequency: 10,
+      decoder: { readers:["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader"] },
+      locate: true,
     }, err => {
       if (!active) return;
       if (err) { onError("Klaida: " + err); return; }
@@ -123,7 +138,7 @@ function QuaggaScanner({ onDetected, onError }) {
 
     return () => {
       active = false;
-      try { Quagga.stop(); }       catch(e) {}
+      try { Quagga.stop(); }        catch(e) {}
       try { Quagga.offDetected(); } catch(e) {}
     };
   }, []);
@@ -142,15 +157,14 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const [searching, setSearching] = useState(false);
   const [manual,    setManual]    = useState("");
   const [ready,     setReady]     = useState(false);
-  const [key,       setKey]       = useState(0); // perkrauti skenerį
+  const [key,       setKey]       = useState(0);
 
   const useNative = typeof window !== "undefined" && "BarcodeDetector" in window;
 
   useEffect(() => {
-    // Trumpa pauzė kad DOM susimontruotų
     const t = setTimeout(() => {
       setReady(true);
-      setMsg(useNative ? "Nukreipk kamerą į barkodą" : "Nukreipk kamerą į barkodą (Quagga)");
+      setMsg("Nukreipk kamerą į barkodą – bet kuria kryptimi");
     }, 300);
     return () => clearTimeout(t);
   }, [key]);
@@ -162,10 +176,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
     await lookupBarcode(code);
   }
 
-  function handleError(err) {
-    setMsg(err);
-    setMsgType("error");
-  }
+  function handleError(err) { setMsg(err); setMsgType("error"); }
 
   async function lookupBarcode(code) {
     try {
@@ -189,7 +200,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
       setMsgType("error");
       setSearching(false);
       setReady(false);
-      setKey(k => k + 1); // restart scanner
+      setKey(k => k+1);
     } catch(e) {
       setMsg("Klaida. Patikrink internetą.");
       setMsgType("error");
@@ -202,34 +213,34 @@ export default function BarcodeScanner({ onResult, onClose }) {
     if (code.length < 6) return;
     setReady(false);
     setSearching(true);
+    setMsg("Ieškoma...");
+    setMsgType("info");
     await lookupBarcode(code);
   }
 
   function handleRetry() {
     setSearching(false);
-    setMsg("Nukreipk kamerą į barkodą");
+    setMsg("Nukreipk kamerą į barkodą – bet kuria kryptimi");
     setMsgType("info");
     setReady(false);
-    setKey(k => k + 1);
+    setKey(k => k+1);
   }
 
-  const msgColor = msgType === "error" ? PK.coral : msgType === "success" ? "#7FFFB0" : PK.blush;
+  const msgColor = msgType==="error" ? PK.coral : msgType==="success" ? "#7FFFB0" : PK.blush;
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:300, background:"#000", display:"flex", flexDirection:"column" }}>
 
-      {/* Header */}
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
         <div>
           <h3 style={{ color:"#fff", margin:"0 0 2px", fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
           <p style={{ color:"rgba(255,255,255,0.5)", margin:0, fontSize:10 }}>
-            {useNative ? "⚡ Greitas natyvinis skeneris" : "Quagga skeneris"}
+            {useNative ? "⚡ Greitas – bet kuria kryptimi" : "Quagga skeneris"}
           </p>
         </div>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"8px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
 
-      {/* Kameros sritis */}
       <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
         {ready && !searching && (
           <div key={key} style={{ position:"absolute", inset:0 }}>
@@ -245,15 +256,15 @@ export default function BarcodeScanner({ onResult, onClose }) {
           <div style={{ width:"85%", maxWidth:320, height:110, position:"relative" }}>
             <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 2000px rgba(0,0,0,0.5)", borderRadius:10 }} />
             <div style={{ position:"absolute", inset:0, border:"2px solid "+(ready&&!searching?PK.rose:"rgba(255,255,255,0.2)"), borderRadius:10, transition:"border-color 0.3s" }} />
-            {/* Kampai */}
-            {[[{top:0,left:0},{borderTop:"3px solid "+PK.mid,borderLeft:"3px solid "+PK.mid}],
-              [{top:0,right:0},{borderTop:"3px solid "+PK.mid,borderRight:"3px solid "+PK.mid}],
-              [{bottom:0,left:0},{borderBottom:"3px solid "+PK.mid,borderLeft:"3px solid "+PK.mid}],
-              [{bottom:0,right:0},{borderBottom:"3px solid "+PK.mid,borderRight:"3px solid "+PK.mid}],
-            ].map(([pos,border],i) => (
-              <div key={i} style={{ position:"absolute", width:22, height:22, ...pos, ...border }} />
+            {[[{top:0,left:0}],[{top:0,right:0}],[{bottom:0,left:0}],[{bottom:0,right:0}]].map(([pos],i)=>(
+              <div key={i} style={{
+                position:"absolute", width:22, height:22, ...pos,
+                borderTop:    pos.top    === 0 ? "3px solid "+PK.mid : "none",
+                borderBottom: pos.bottom === 0 ? "3px solid "+PK.mid : "none",
+                borderLeft:   pos.left   === 0 ? "3px solid "+PK.mid : "none",
+                borderRight:  pos.right  === 0 ? "3px solid "+PK.mid : "none",
+              }} />
             ))}
-            {/* Skenavimo linija */}
             {ready && !searching && (
               <div style={{
                 position:"absolute", left:4, right:4, height:2,
@@ -264,7 +275,6 @@ export default function BarcodeScanner({ onResult, onClose }) {
           </div>
         </div>
 
-        {/* Statusas */}
         <div style={{ position:"absolute", bottom:130, left:0, right:0, zIndex:3, display:"flex", flexDirection:"column", alignItems:"center", gap:10, padding:"0 20px" }}>
           <div style={{ background:"rgba(0,0,0,0.72)", borderRadius:12, padding:"9px 18px" }}>
             <p style={{ color:msgColor, fontSize:13, margin:0, textAlign:"center" }}>
@@ -280,18 +290,12 @@ export default function BarcodeScanner({ onResult, onClose }) {
         </div>
       </div>
 
-      {/* Rankinis įvedimas */}
       <div style={{ background:"rgba(0,0,0,0.9)", padding:"16px 20px", flexShrink:0 }}>
         <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, textAlign:"center", marginBottom:10 }}>arba įvesk barkodą rankiniu būdu</p>
         <div style={{ display:"flex", gap:8 }}>
-          <input
-            type="number"
-            value={manual}
-            onChange={e => setManual(e.target.value)}
-            onKeyDown={e => e.key==="Enter" && handleManual()}
-            placeholder="pvz. 4008400175478"
-            style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }}
-          />
+          <input type="number" value={manual} onChange={e=>setManual(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleManual()} placeholder="pvz. 4008400175478"
+            style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }} />
           <button onClick={handleManual} disabled={searching}
             style={{ padding:"12px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:searching?0.6:1 }}>
             Ieškoti
