@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
 import CheckIn from "./CheckIn";
+import MotivationalCard from "./MotivationalCard";
 import FoodSearch from "./FoodSearch";
 import BarcodeScanner from "./BarcodeScanner";
 
@@ -294,6 +295,9 @@ export default function ClientView({ user, onLogout }) {
           </div>
         ) : (
           <>
+            {/* Motyvacinė žinutė */}
+            <MotivationalCard userId={user.id} res={res} goalId={profile?.goal} />
+
             {/* Profilis */}
             <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:12, border:"1px solid "+PK.blush, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div style={{ display:"flex", gap:10, alignItems:"center" }}>
