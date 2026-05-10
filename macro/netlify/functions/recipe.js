@@ -12,7 +12,7 @@ exports.handler = async (event) => {
       method:  "POST",
       headers: {
         "Content-Type":      "application/json",
-        "x-api-key":         process.env.ANTHROPIC_KEY,
+        "x-api-key":         process.env.REACT_APP_ANTHROPIC_KEY || process.env.ANTHROPIC_KEY,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
