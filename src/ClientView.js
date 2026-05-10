@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
+import CheckIn from "./CheckIn";
 import FoodSearch from "./FoodSearch";
 import BarcodeScanner from "./BarcodeScanner";
 
@@ -405,6 +406,8 @@ export default function ClientView({ user, onLogout }) {
                 )}
               </div>
             </div>
+
+            <CheckIn userId={user.id} />
 
             <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
           </>
