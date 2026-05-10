@@ -244,7 +244,7 @@ export default function ClientView({ user, onLogout }) {
       {/* Barkodo skenavimas */}
       {showBarcode && (
         <BarcodeScanner
-          onResult={food => { setShowBarcode(false); setBarcodeFood(food); }}
+          onResult={food => { setShowBarcode(false); setBarcodeFood(food); setSearching(true); }}
           onClose={() => setShowBarcode(false)}
         />
       )}
