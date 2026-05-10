@@ -397,8 +397,7 @@ export default function AdminPanel({ user, onLogout }) {
       <div style={{ background: "linear-gradient(135deg," + PK.dark + "," + PK.mid + ")", padding: "16px 20px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>💗</span>
-            <div>
+<img src="/logo.png" alt="Coach Vilma" style={{ width:38, height:38, objectFit:"contain", borderRadius:8 }} />            <div>
               <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Admin panele</h1>
               <p style={{ fontSize: 11, color: PK.blush, margin: 0 }}>{user.email}</p>
             </div>
