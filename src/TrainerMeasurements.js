@@ -248,7 +248,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                `🗓️ Kitas matavimas po ${weeksLeft} sav.`}
             </p>
             <p style={{ fontSize:11, color:PK.rose, margin:0 }}>
-              {!last ? "Įvesk pirmus matavimus mygtuku "+ Matuoti"" :
+              {!last ? 'Įvesk pirmus matavimus mygtuku "+ Matuoti"' :
                `Paskutinis: ${fmtFull(last.measured_at)} · ${weeksAgo(last.measured_at)} sav. atgal`}
             </p>
           </div>
