@@ -15,10 +15,7 @@ const MEAL_CONTEXT = {
   snack:     "Užkandis – greitas tarpinis valgymas. Tinka: riešutai, vaisiai, varškė, jogurtas.",
 };
 
-async function fetchRecipe(mealId, remaining, alreadyEaten) {
-  const key = process.env.REACT_APP_ANTHROPIC_KEY;
-  if (!key) throw new Error("Raktas nerastas – pridėk REACT_APP_ANTHROPIC_KEY į Netlify ir redeploy");
-
+async function fetchRecipe(mealId, remaining) {
   const isEmpty = remaining.kcal < 50;
   const isLow   = remaining.kcal < 300;
 
@@ -36,7 +33,7 @@ ${isLow ? "SVARBU: liko mažai kalorijų – pasiūlyk lengvą, mažą porciją.
 Kontekstas: ${MEAL_CONTEXT[mealId]}
 
 Receptas PRIVALO:
-• Tiksliai atitikti likusias makros (±20%)
+• Tiksliai atitikti likusias makras (±20%)
 • Būti pagaminamas per 30 min.
 • Naudoti ingredientus iš Lietuvos parduotuvių
 • Porcija – 1 asmeniui
@@ -58,26 +55,22 @@ Atsakyk TIK JSON, be jokio papildomo teksto:
   "tip": "Trumpas patarimas arba variacija"
 }`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  // Kviesti per Netlify Function (apeina CORS)
+  const res = await fetch("/.netlify/functions/recipe", {
     method:  "POST",
-    headers: {
-      "Content-Type":         "application/json",
-      "x-api-key":            key,
-      "anthropic-version":    "2023-06-01",
-      "anthropic-dangerous-allow-browser": "true",
-    },
-    body: JSON.stringify({
-      model:      "claude-sonnet-4-20250514",
-      max_tokens: 900,
-      messages:   [{ role:"user", content:prompt }],
-    }),
+    headers: { "Content-Type":"application/json" },
+    body:    JSON.stringify({ prompt }),
   });
 
   const data = await res.json();
-  if (!res.ok) {
-    const msg = data?.error?.message || data?.message || ("HTTP " + res.status);
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(data?.error || "Funkcijos klaida " + res.status);
+
+  const text = data.content?.[0]?.text || "";
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Neteisingas atsakymo formatas");
+  return JSON.parse(match[0]);
+}
+
   const text = data.content?.[0]?.text || "";
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Neteisingas atsakymo formatas");
@@ -205,13 +198,7 @@ export default function RecipeSuggestion({ mealId, remaining, res, onClose }) {
               <div style={{ fontSize:48, marginBottom:12 }}>😕</div>
               <p style={{ color:PK.mid, fontSize:14, marginBottom:8, fontWeight:600 }}>Nepavyko gauti pasiūlymo</p>
               <p style={{ color:PK.rose, fontSize:12, marginBottom:20 }}>{error}</p>
-              {!process.env.REACT_APP_ANTHROPIC_KEY && (
-                <div style={{ background:"#FFF3CD", border:"1px solid #FAD389", borderRadius:12, padding:"12px 14px", marginBottom:16, textAlign:"left" }}>
-                  <p style={{ fontSize:12, color:"#744210", margin:0, lineHeight:1.5 }}>
-                    ⚙️ Pridėk <strong>REACT_APP_ANTHROPIC_KEY</strong> į Netlify aplinkos kintamuosius (Environment variables)
-                  </p>
-                </div>
-              )}
+
               <button onClick={handleGenerate} style={{ padding:"12px 24px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 🔄 Bandyti dar kartą
               </button>
