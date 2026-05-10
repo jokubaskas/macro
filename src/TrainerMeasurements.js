@@ -215,6 +215,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto" }}>
         {[
           { id:"overview",  l:"Apžvalga" },
+          { id:"checkins",  l:"📋 Check-inai" },
           { id:"form",      l: measures.length===0?"+ Pirmas mat.":isDue||isOverdue?"⚡ Matuoti":"+ Matuoti" },
           { id:"charts",    l:"📈 Grafikai" },
           { id:"history",   l:"Istorija" },
@@ -314,7 +315,84 @@ export default function TrainerMeasurements({ clientId, clientName }) {
         </>
       )}
 
-      {/* ── MATAVIMO FORMA ── */}
+      {/* ── KLIENTO CHECK-IN’AI ── */}
+      {tab==="checkins" && (
+        <div>
+          {checkins.length===0 ? (
+            <div style={{ background:PK.pale, borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+              <p style={{ fontSize:32, marginBottom:8 }}>📋</p>
+              <p style={{ color:PK.rose, fontSize:13 }}>Klientė dar neatliko nė vieno check-in’o</p>
+            </div>
+          ) : [...checkins].reverse().map((ci, idx) => {
+            const isThisWeek = ci.week_start === (()=>{
+              const d=new Date(); const day=d.getDay();
+              d.setDate(d.getDate()-day+(day===0?-6:1));
+              return d.toISOString().split("T")[0];
+            })();
+            return (
+              <div key={ci.id} style={{
+                background:"#fff", borderRadius:14, padding:"14px 16px", marginBottom:10,
+                border:"1px solid "+(isThisWeek?PK.mid:PK.blush),
+                boxShadow: isThisWeek?"0 2px 12px rgba(173,20,87,0.12)":"none",
+              }}>
+                {/* Savaitės header */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <div>
+                    <span style={{ fontSize:13, fontWeight:700, color:PK.dark }}>
+                      {isThisWeek?"🟢 Ši savaitė":fmt(ci.week_start)}
+                    </span>
+                    {!isThisWeek&&<span style={{ fontSize:11, color:PK.rose, marginLeft:8 }}>{ci.week_start}</span>}
+                  </div>
+                  {!ci.is_done
+                    ? <span style={{ fontSize:10, background:"#FFF3CD", color:"#856404", borderRadius:8, padding:"3px 8px", fontWeight:700 }}>⏳ Neatliko</span>
+                    : <span style={{ fontSize:10, background:"#F0FFF4", color:"#276749", borderRadius:8, padding:"3px 8px", fontWeight:700 }}>✅ Užpildyta</span>
+                  }
+                </div>
+
+                {ci.is_done ? (
+                  <>
+                    {/* Reitingai */}
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:10 }}>
+                      {[
+                        { l:"Miegas",   v:ci.sleep_quality,  e:"😴" },
+                        { l:"Energija", v:ci.energy,          e:"⚡" },
+                        { l:"Mityba",   v:ci.diet_adherence,  e:"🥗" },
+                        { l:"Stresas",  v:ci.stress_level,    e:"🧘" },
+                        { l:"Sport.",   v:ci.workouts_done!=null?`${ci.workouts_done} k.`:null, e:"🏋️" },
+                        { l:"Svoris",   v:ci.weight_self?`${ci.weight_self} kg`:null, e:"⚖️" },
+                      ].map(item => item.v!=null && (
+                        <div key={item.l} style={{ background:PK.pale, borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
+                          <div style={{ fontSize:16 }}>{item.e}</div>
+                          <div style={{ fontSize:13, fontWeight:700, color:PK.dark }}>
+                            {typeof item.v==="number"?item.v+"/5":item.v}
+                          </div>
+                          <div style={{ fontSize:9, color:PK.rose }}>{item.l}</div>
+                          {/* Spalva pagal reitiną */}
+                          {typeof item.v==="number" && (
+                            <div style={{ width:"100%", height:3, borderRadius:99, marginTop:4,
+                              background:`linear-gradient(90deg, ${item.v>=4?"#90EE90":item.v>=3?"#FFD700":"#FF8C69"}, transparent)` }}/>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Pastaba */}
+                    {ci.client_note && (
+                      <div style={{ background:PK.pale, borderRadius:10, padding:"8px 12px", border:"1px solid "+PK.blush }}>
+                        <p style={{ fontSize:10, fontWeight:700, color:PK.mid, margin:"0 0 3px", textTransform:"uppercase" }}>Klientės pastaba</p>
+                        <p style={{ fontSize:12, color:PK.dark, margin:0, lineHeight:1.5 }}>"{ci.client_note}"</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ fontSize:12, color:PK.blush, fontStyle:"italic" }}>Klientė dar neatliko šios savaitės check-in’o</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── MATAVIMO FORMA ── */}}
       {tab==="form" && (
         <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid "+PK.blush }}>
           <p style={{ fontSize:13, fontWeight:700, color:PK.dark, marginBottom:4 }}>
