@@ -29,7 +29,7 @@ export default function App() {
   if (loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FFF0F5", fontFamily: "-apple-system, sans-serif" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>💗</div>
+        <img src="/logo.png" alt="Coach Vilma" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 16, marginBottom: 16 }} />
         <p style={{ color: "#F48FB1", fontSize: 14 }}>Kraunama...</p>
       </div>
     </div>
@@ -38,7 +38,6 @@ export default function App() {
   if (!session) return <Login />;
 
   const isAdmin = ADMIN_EMAILS.includes(session.user.email);
-
   if (isAdmin) return <AdminPanel user={session.user} onLogout={handleLogout} />;
   return <ClientView user={session.user} onLogout={handleLogout} />;
 }
