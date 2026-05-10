@@ -425,8 +425,131 @@ const EXTRA_FOODS = [
   { id:"corn_ch",    name:"Kukurūzų dribsniai šokolado glaze", category:"Kita", kcal:397, protein:6, fat:5.5, carbs:82, units:[{label:"1 porcija (30g)",grams:30}] },
 ];
 
-// Sujungiame viską
-export const ALL_FOODS = [...LOCAL_FOODS, ...EXTRA_FOODS];
+// ── LIETUVIŠKOS IR LIETUVOJE PARDUODAMOS PREKĖS SU BARKODAIS ───────────────
+const LT_BRANDED = [
+
+  // ═══ PIENO PRODUKTAI – lietuviški gamintojai ═══
+
+  // Džiugas
+  { id:"dziugas_12",  name:"Džiugas brandintas sūris 12 mėn.",   category:"🇱🇹 Lietuviški produktai", kcal:389, protein:26,   fat:31,   carbs:0,   units:[{label:"1 riekelė (30g)",grams:30},{label:"50g",grams:50}] },
+  { id:"dziugas_18",  name:"Džiugas brandintas sūris 18 mėn.",   category:"🇱🇹 Lietuviški produktai", kcal:402, protein:28,   fat:32,   carbs:0,   units:[{label:"1 riekelė (30g)",grams:30},{label:"50g",grams:50}] },
+  { id:"dziugas_24",  name:"Džiugas senasis sūris 24 mėn.",      category:"🇱🇹 Lietuviški produktai", kcal:405, protein:29,   fat:32.5, carbs:0,   units:[{label:"1 riekelė (30g)",grams:30},{label:"50g",grams:50}] },
+  { id:"dziugas_36",  name:"Džiugas ekstra brandintas 36 mėn.",  category:"🇱🇹 Lietuviški produktai", kcal:413, protein:30,   fat:33,   carbs:0,   units:[{label:"1 riekelė (30g)",grams:30}] },
+
+  // Rokiškio
+  { id:"rokiskio_sur",name:"Rokiškio sūris 45%",                 category:"🇱🇹 Lietuviški produktai", kcal:356, protein:25,   fat:28,   carbs:0.5, units:[{label:"1 riekelė (30g)",grams:30},{label:"2 riekelės",grams:60}] },
+  { id:"rokiskio_v5", name:"Rokiškio varškė 5%",                 category:"🇱🇹 Lietuviški produktai", kcal:103, protein:11,   fat:4.5,  carbs:3.4, units:[{label:"½ puodelis (120g)",grams:120},{label:"1 puodelis (240g)",grams:240}] },
+  { id:"rokiskio_v9", name:"Rokiškio varškė 9%",                 category:"🇱🇹 Lietuviški produktai", kcal:174, protein:9,    fat:9,    carbs:3.5, units:[{label:"½ puodelis (120g)",grams:120}] },
+  { id:"rokiskio_gr", name:"Rokiškio grietinė 30%",              category:"🇱🇹 Lietuviški produktai", kcal:292, protein:2.5,  fat:30,   carbs:3.5, units:[{label:"1 šaukštas (25g)",grams:25}] },
+  { id:"rokiskio_pi", name:"Rokiškio pienas 3,5%",               category:"🇱🇹 Lietuviški produktai", kcal:61,  protein:3.2,  fat:3.5,  carbs:4.8, units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"rokiskio_kef",name:"Rokiškio kefyras 2,5%",              category:"🇱🇹 Lietuviški produktai", kcal:52,  protein:3.2,  fat:2.5,  carbs:4.5, units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"rokiskio_jog",name:"Rokiškio natūralus jogurtas 3,5%",   category:"🇱🇹 Lietuviški produktai", kcal:68,  protein:3.5,  fat:3.5,  carbs:5.2, units:[{label:"1 indelis (180g)",grams:180}] },
+  { id:"rokiskio_but",name:"Rokiškio sviestas 82,5%",            category:"🇱🇹 Lietuviški produktai", kcal:741, protein:0.6,  fat:82.5, carbs:0.6, units:[{label:"1 šaukštelis (5g)",grams:5},{label:"1 šaukštas (15g)",grams:15}] },
+
+  // Žemaitijos pienas
+  { id:"zem_sur45",   name:"Žemaitijos sūris 45%",               category:"🇱🇹 Lietuviški produktai", kcal:348, protein:24.5, fat:27.5, carbs:0.5, units:[{label:"1 riekelė (30g)",grams:30}] },
+  { id:"zem_pienas",  name:"Žemaitijos pienas 2,5%",             category:"🇱🇹 Lietuviški produktai", kcal:47,  protein:3.3,  fat:2.5,  carbs:4.8, units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"zem_sviest",  name:"Žemaitijos sviestas 82%",            category:"🇱🇹 Lietuviški produktai", kcal:738, protein:0.6,  fat:82,   carbs:0.7, units:[{label:"1 šaukštelis (5g)",grams:5},{label:"1 šaukštas (15g)",grams:15}] },
+  { id:"zem_griet",   name:"Žemaitijos grietinė 15%",            category:"🇱🇹 Lietuviški produktai", kcal:160, protein:2.8,  fat:15,   carbs:4,   units:[{label:"1 šaukštas (25g)",grams:25}] },
+
+  // Vilkyškių pieninė
+  { id:"vilk_sviest", name:"Vilkyškių sviestas 82%",             category:"🇱🇹 Lietuviški produktai", kcal:738, protein:0.6,  fat:82,   carbs:0.7, units:[{label:"1 šaukštelis (5g)",grams:5},{label:"1 šaukštas (15g)",grams:15}] },
+  { id:"vilk_sur",    name:"Vilkyškių sūris Džiugelis",          category:"🇱🇹 Lietuviški produktai", kcal:370, protein:25,   fat:29.5, carbs:0,   units:[{label:"1 riekelė (30g)",grams:30}] },
+
+  // Kiti pieno produktai
+  { id:"lindahls",    name:"Lindahls kvarg 0.2%",                category:"🇱🇹 Lietuviški produktai", kcal:63,  protein:11.3, fat:0.2,  carbs:4,   units:[{label:"1 indelis (150g)",grams:150}] },
+  { id:"arla_skyr",   name:"Arla Skyr natūralus",                category:"🇱🇹 Lietuviški produktai", kcal:65,  protein:11,   fat:0.2,  carbs:4.5, units:[{label:"1 indelis (150g)",grams:150}] },
+  { id:"arla_gr_jog", name:"Arla graikiškas jogurtas 2%",        category:"🇱🇹 Lietuviški produktai", kcal:73,  protein:9.5,  fat:2,    carbs:3.8, units:[{label:"1 indelis (150g)",grams:150}] },
+  { id:"danone_activ",name:"Danone Activia natūralus",           category:"🇱🇹 Lietuviški produktai", kcal:62,  protein:4.3,  fat:2.8,  carbs:5.3, units:[{label:"1 indelis (125g)",grams:125}] },
+  { id:"danone_jog",  name:"Danone Activia vaisinis jogurtas",   category:"🇱🇹 Lietuviški produktai", kcal:90,  protein:3.8,  fat:2.5,  carbs:13,  units:[{label:"1 indelis (125g)",grams:125}] },
+  { id:"ehrmann_gr",  name:"Ehrmann Grand Dessert šokolado",     category:"🇱🇹 Lietuviški produktai", kcal:148, protein:4.8,  fat:7.5,  carbs:16,  units:[{label:"1 indelis (200g)",grams:200}] },
+
+  // ═══ DUONA IR KEPYKLA ═══
+
+  // Mantinga
+  { id:"mant_juoda",  name:"Mantinga juoda ruginė duona",        category:"🇱🇹 Lietuviški produktai", kcal:215, protein:6.5,  fat:1.2,  carbs:44,  units:[{label:"1 riekelė (35g)",grams:35},{label:"2 riekelės",grams:70}] },
+  { id:"mant_rugin",  name:"Mantinga ruginė duona",              category:"🇱🇹 Lietuviški produktai", kcal:229, protein:7.2,  fat:1.3,  carbs:46,  units:[{label:"1 riekelė (35g)",grams:35}] },
+  { id:"mant_kviet",  name:"Mantinga kvietinė duona",            category:"🇱🇹 Lietuviški produktai", kcal:258, protein:8.5,  fat:2.8,  carbs:50,  units:[{label:"1 riekelė (35g)",grams:35}] },
+  { id:"mant_sek",    name:"Mantinga duona su sėklomis",         category:"🇱🇹 Lietuviški produktai", kcal:248, protein:9.5,  fat:5.2,  carbs:40,  units:[{label:"1 riekelė (35g)",grams:35}] },
+  { id:"fazer_rugin", name:"Fazer ruginė duona",                 category:"🇱🇹 Lietuviški produktai", kcal:200, protein:6,    fat:1,    carbs:41,  units:[{label:"1 riekelė (35g)",grams:35}] },
+  { id:"wasa_rye",    name:"Wasa Crisp'n Light ruginiai skrebučiai", category:"🇱🇹 Lietuviški produktai", kcal:317, protein:10, fat:2.1, carbs:63, units:[{label:"1 vnt (8g)",grams:8},{label:"3 vnt",grams:24}] },
+
+  // ═══ MESA GAMINIAI ═══
+  { id:"mt_skiland",  name:"Mešų taurai skilandis",              category:"🇱🇹 Lietuviški produktai", kcal:335, protein:19.5, fat:28,   carbs:0,   units:[{label:"3 riekelės (30g)",grams:30},{label:"100g",grams:100}] },
+  { id:"mt_kumpis",   name:"Mešų taurai virtas kumpis",          category:"🇱🇹 Lietuviški produktai", kcal:112, protein:18.5, fat:3.5,  carbs:2.5, units:[{label:"2 riekelės (50g)",grams:50},{label:"100g",grams:100}] },
+  { id:"mt_desrele",  name:"Mešų taurai vištienos dešrelės",     category:"🇱🇹 Lietuviški produktai", kcal:155, protein:13,   fat:10.5, carbs:2.2, units:[{label:"1 vnt (60g)",grams:60}] },
+  { id:"sams_krump",  name:"Samsonas rūkytas kumpis",            category:"🇱🇹 Lietuviški produktai", kcal:185, protein:20,   fat:11,   carbs:0,   units:[{label:"2 riekelės (50g)",grams:50}] },
+  { id:"chorizo_lt",  name:"Chorizo tipo dešra",                 category:"🇱🇹 Lietuviški produktai", kcal:455, protein:24,   fat:38.3, carbs:2.5, units:[{label:"3 riekelės (30g)",grams:30}] },
+
+  // ═══ ŽUVIS – VICI ir kiti ═══
+  { id:"vici_pirsti", name:"VICI žuvų pirštai (kepti)",          category:"🇱🇹 Lietuviški produktai", kcal:220, protein:12,   fat:10,   carbs:21,  units:[{label:"4 vnt (100g)",grams:100},{label:"1 vnt (25g)",grams:25}] },
+  { id:"vici_surimi", name:"VICI surimi lazdelės",               category:"🇱🇹 Lietuviški produktai", kcal:95,  protein:9.5,  fat:0.9,  carbs:12,  units:[{label:"1 lazdelė (15g)",grams:15},{label:"4 lazdelės",grams:60}] },
+  { id:"vici_lasis",  name:"VICI lašiša rūkyta šaltai",         category:"🇱🇹 Lietuviški produktai", kcal:142, protein:22.5, fat:5.8,  carbs:0,   units:[{label:"3 riekelės (60g)",grams:60},{label:"100g",grams:100}] },
+  { id:"vici_silke",  name:"VICI silkė aliejuje su svogūnais",   category:"🇱🇹 Lietuviški produktai", kcal:175, protein:14,   fat:12,   carbs:3,   units:[{label:"1 porcija (100g)",grams:100}] },
+  { id:"vici_krevs",  name:"VICI krevetės virtos šaldytos",      category:"🇱🇹 Lietuviški produktai", kcal:82,  protein:18,   fat:0.8,  carbs:0.5, units:[{label:"1 porcija (100g)",grams:100}] },
+  { id:"klk_silke",   name:"Klaipėdos konservai silkė marinuota", category:"🇱🇹 Lietuviški produktai", kcal:162, protein:16.5, fat:9.5, carbs:3.5, units:[{label:"1 filė (80g)",grams:80}] },
+  { id:"klk_sprot",   name:"Klaipėdos konservai šprotai aliejuje", category:"🇱🇹 Lietuviški produktai", kcal:313, protein:18.5, fat:26, carbs:0, units:[{label:"½ skardinė (60g)",grams:60}] },
+
+  // ═══ GRŪDAI IR PUSRYČIAI ═══
+  { id:"herc_aviz",   name:"Hercules avižiniai dribsniai",       category:"🇱🇹 Lietuviški produktai", kcal:352, protein:13,   fat:6.2,  carbs:62,  units:[{label:"½ puodelio (40g)",grams:40},{label:"1 puodelis (80g)",grams:80}] },
+  { id:"herc_inst",   name:"Hercules momentinės avižos",         category:"🇱🇹 Lietuviški produktai", kcal:360, protein:12,   fat:6,    carbs:64,  units:[{label:"1 paketėlis (35g)",grams:35}] },
+  { id:"kell_cornfl", name:"Kellogg's Corn Flakes",              category:"🇱🇹 Lietuviški produktai", kcal:378, protein:7.5,  fat:0.9,  carbs:84,  units:[{label:"1 porcija (30g)",grams:30}] },
+  { id:"kell_specK",  name:"Kellogg's Special K",                category:"🇱🇹 Lietuviški produktai", kcal:378, protein:14,   fat:1.5,  carbs:74,  units:[{label:"1 porcija (30g)",grams:30}] },
+  { id:"kell_chocp",  name:"Kellogg's Choco Pops",               category:"🇱🇹 Lietuviški produktai", kcal:385, protein:5,    fat:3.5,  carbs:84,  units:[{label:"1 porcija (30g)",grams:30}] },
+  { id:"quaker_aviz", name:"Quaker avižiniai dribsniai",         category:"🇱🇹 Lietuviški produktai", kcal:362, protein:12.5, fat:7.2,  carbs:60,  units:[{label:"½ puodelio (40g)",grams:40}] },
+  { id:"fitness_drib",name:"Nestle Fitness dribsniai",           category:"🇱🇹 Lietuviški produktai", kcal:375, protein:9,    fat:2.5,  carbs:77,  units:[{label:"1 porcija (30g)",grams:30}] },
+
+  // ═══ SALDUMYNAI ═══
+  { id:"perg_pienis",  name:"Pergalė pieninis šokoladas",        category:"🇱🇹 Lietuviški produktai", kcal:536, protein:7.8,  fat:29.5, carbs:60,  units:[{label:"2 plytelės (20g)",grams:20},{label:"4 plytelės",grams:40}] },
+  { id:"perg_juodas",  name:"Pergalė juodasis šokoladas 70%",    category:"🇱🇹 Lietuviški produktai", kcal:537, protein:7,    fat:37,   carbs:46,  units:[{label:"2 plytelės (20g)",grams:20}] },
+  { id:"perg_migdol",  name:"Pergalė šokoladas su migdolais",    category:"🇱🇹 Lietuviški produktai", kcal:548, protein:8.5,  fat:33,   carbs:55,  units:[{label:"2 plytelės (20g)",grams:20}] },
+  { id:"ruta_pienis",  name:"Rūta pieninis šokoladas",           category:"🇱🇹 Lietuviški produktai", kcal:530, protein:7.5,  fat:29,   carbs:61,  units:[{label:"2 plytelės (20g)",grams:20}] },
+  { id:"ruta_karamel", name:"Rūta karamelių saldainiai",         category:"🇱🇹 Lietuviški produktai", kcal:397, protein:2.8,  fat:10,   carbs:73,  units:[{label:"3 vnt (20g)",grams:20}] },
+  { id:"laima_pienis", name:"Laima pieninis šokoladas",          category:"🇱🇹 Lietuviški produktai", kcal:534, protein:8,    fat:30,   carbs:59,  units:[{label:"2 plytelės (20g)",grams:20}] },
+
+  // ═══ UZKANDZIAI ═══
+  { id:"chazz_solt",   name:"Chazz traškučiai sūdyti",           category:"🇱🇹 Lietuviški produktai", kcal:528, protein:6.5,  fat:33,   carbs:52,  units:[{label:"sauja (30g)",grams:30},{label:"mažas pakelis (50g)",grams:50}] },
+  { id:"chazz_grot",   name:"Chazz traškučiai su grietinėle",    category:"🇱🇹 Lietuviški produktai", kcal:530, protein:6.2,  fat:33.5, carbs:52,  units:[{label:"sauja (30g)",grams:30}] },
+  { id:"chazz_paprik", name:"Chazz traškučiai paprika",          category:"🇱🇹 Lietuviški produktai", kcal:527, protein:6.3,  fat:33,   carbs:52,  units:[{label:"sauja (30g)",grams:30}] },
+  { id:"lays_solt",    name:"Lay's traškučiai sūdyti",           category:"🇱🇹 Lietuviški produktai", kcal:536, protein:7,    fat:34,   carbs:53,  units:[{label:"sauja (30g)",grams:30}] },
+  { id:"lays_paprik",  name:"Lay's traškučiai paprika",          category:"🇱🇹 Lietuviški produktai", kcal:533, protein:6.5,  fat:33.5, carbs:53,  units:[{label:"sauja (30g)",grams:30}] },
+  { id:"pring_orig",   name:"Pringles Original",                 category:"🇱🇹 Lietuviški produktai", kcal:524, protein:5.4,  fat:33.7, carbs:52,  units:[{label:"~10 vnt (30g)",grams:30}] },
+  { id:"leibniz_but",  name:"Leibniz sviestiniai sausainiai",    category:"🇱🇹 Lietuviški produktai", kcal:487, protein:6.8,  fat:20,   carbs:69,  units:[{label:"3 sausainiai (30g)",grams:30}] },
+  { id:"oreo",         name:"Oreo sausainiai",                   category:"🇱🇹 Lietuviški produktai", kcal:480, protein:5.5,  fat:21,   carbs:69,  units:[{label:"3 sausainiai (34g)",grams:34}] },
+  { id:"digestive",    name:"McVitie Digestive sausainiai",      category:"🇱🇹 Lietuviški produktai", kcal:463, protein:7.2,  fat:20.3, carbs:63,  units:[{label:"2 sausainiai (29g)",grams:29}] },
+  { id:"rivona_aviz",  name:"Rivona avižiniai sausainiai",       category:"🇱🇹 Lietuviški produktai", kcal:448, protein:7.5,  fat:18,   carbs:65,  units:[{label:"3 sausainiai (30g)",grams:30}] },
+
+  // Baltymų batonėliai
+  { id:"barebells_ch", name:"Barebells Protein Bar šokolado",    category:"🇱🇹 Lietuviški produktai", kcal:373, protein:20,   fat:15,   carbs:38,  units:[{label:"1 batonėlis (55g)",grams:55}] },
+  { id:"quest_bar",    name:"Quest Protein Bar",                 category:"🇱🇹 Lietuviški produktai", kcal:376, protein:21,   fat:9,    carbs:44,  units:[{label:"1 batonėlis (60g)",grams:60}] },
+  { id:"myp_prot_bar", name:"MyProtein Impact Protein Bar",      category:"🇱🇹 Lietuviški produktai", kcal:356, protein:22,   fat:10,   carbs:40,  units:[{label:"1 batonėlis (65g)",grams:65}] },
+
+  // ═══ GERIMAI ═══
+  { id:"cido_apel",    name:"Cido apelsinų sultys",              category:"🇱🇹 Lietuviški produktai", kcal:46,  protein:0.7,  fat:0.1,  carbs:10.6, units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"cido_obul",    name:"Cido obuolių sultys",               category:"🇱🇹 Lietuviški produktai", kcal:47,  protein:0.3,  fat:0.1,  carbs:11.2, units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"gira_birzai",  name:"Biržų gira",                        category:"🇱🇹 Lietuviški produktai", kcal:28,  protein:0.2,  fat:0,    carbs:7,   units:[{label:"1 stiklinė (200ml)",grams:200}] },
+  { id:"redbull",      name:"Red Bull",                          category:"🇱🇹 Lietuviški produktai", kcal:45,  protein:0,    fat:0,    carbs:11,  units:[{label:"1 skardinė (250ml)",grams:250}] },
+  { id:"monster_orig", name:"Monster Energy Original",           category:"🇱🇹 Lietuviški produktai", kcal:46,  protein:0,    fat:0,    carbs:11.3, units:[{label:"1 skardinė (500ml)",grams:500}] },
+  { id:"jacobs_3in1",  name:"Jacobs Latte 3in1",                 category:"🇱🇹 Lietuviški produktai", kcal:387, protein:5,    fat:11.5, carbs:67,  units:[{label:"1 maišelis (12g)",grams:12}] },
+
+  // ═══ PADAZAI IR KONSERVAI ═══
+  { id:"babic_majones",name:"Babičiaus majonezas 67%",           category:"🇱🇹 Lietuviški produktai", kcal:620, protein:1.2,  fat:67,   carbs:5,   units:[{label:"1 šaukštas (15g)",grams:15}] },
+  { id:"hortex_zirn",  name:"Hortex žirneliai šaldyti",          category:"🇱🇹 Lietuviški produktai", kcal:69,  protein:5,    fat:0.4,  carbs:12,  units:[{label:"½ puodelis (80g)",grams:80}] },
+  { id:"hortex_brok",  name:"Hortex brokoliai šaldyti",          category:"🇱🇹 Lietuviški produktai", kcal:28,  protein:2.8,  fat:0.3,  carbs:4.5, units:[{label:"1 porcija (150g)",grams:150}] },
+  { id:"bond_kukur",   name:"Bonduelle kukurūzai konservuoti",    category:"🇱🇹 Lietuviški produktai", kcal:86,  protein:3.2,  fat:1.2,  carbs:19,  units:[{label:"½ skardinė (100g)",grams:100}] },
+  { id:"bond_zirnmor", name:"Bonduelle žirneliai ir morkos",     category:"🇱🇹 Lietuviški produktai", kcal:55,  protein:3.4,  fat:0.5,  carbs:10,  units:[{label:"½ skardinė (100g)",grams:100}] },
+
+  // ═══ BALTYMU MILTELIAI ═══
+  { id:"opt_whey",     name:"Optimum Nutrition Gold Standard Whey", category:"🇱🇹 Lietuviški produktai", kcal:402, protein:79, fat:5,    carbs:6,   units:[{label:"1 porcija (30g)",grams:30}] },
+  { id:"myp_whey",     name:"MyProtein Impact Whey Protein",     category:"🇱🇹 Lietuviški produktai", kcal:392, protein:80,   fat:4.5,  carbs:5.5, units:[{label:"1 porcija (25g)",grams:25}] },
+
+  // ═══ SALDYTI PATIEKALAI ═══
+  { id:"nomad_cepel",  name:"Nomad šaldyti cepelinai su mėsa",   category:"🇱🇹 Lietuviški produktai", kcal:127, protein:6,    fat:4,    carbs:18,  units:[{label:"1 vnt (300g)",grams:300}] },
+  { id:"vici_lazanija",name:"VICI lasagna su vištiena šaldyta",   category:"🇱🇹 Lietuviški produktai", kcal:132, protein:7.5,  fat:5.5,  carbs:14,  units:[{label:"1 porcija (300g)",grams:300}] },
+];
+
+// Sujungiame viška
+export const ALL_FOODS = [...LOCAL_FOODS, ...EXTRA_FOODS, ...LT_BRANDED];
 
 export function searchLocalFoods(query) {
   const q = query.toLowerCase().trim();
