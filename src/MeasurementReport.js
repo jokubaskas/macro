@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const adminDb = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SERVICE_ROLE_KEY
+);
 import { PK } from "./constants";
 
 function fmt(d) {
@@ -132,7 +138,7 @@ export default function MeasurementReport({ userId, onClose }) {
   async function handleRead() {
     if (!report) return;
     setMarking(true);
-    await supabase
+    await adminDb
       .from("trainer_measurements")
       .update({ client_read_at: new Date().toISOString() })
       .eq("id", report.current.id);
