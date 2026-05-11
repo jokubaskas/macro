@@ -33,8 +33,13 @@ export default function App() {
   }, []);
 
   async function loadProfile(userId) {
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    setProfile(data);
+    const today = new Date().toISOString().split("T")[0];
+    const [{ data: prof }, { data: steps }] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", userId).single(),
+      supabase.from("step_log").select("steps").eq("user_id", userId).eq("date", today).maybeSingle(),
+    ]);
+    setProfile(prof);
+    if (steps?.steps) setStepsToday(steps.steps);
     setLoading(false);
   }
 
