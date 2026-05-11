@@ -143,6 +143,9 @@ export default function ClientView({ user, onLogout }) {
   const [showBarcode,     setShowBarcode]     = useState(false);
   const [hasReport,      setHasReport]      = useState(false);
   const [showReport,     setShowReport]     = useState(false);
+  const [openSection,    setOpenSection]    = useState(null); // null|food|health|checkin|targets
+  const [todaySleep,     setTodaySleep]     = useState(null);
+  const [todayWater,     setTodayWater]     = useState({ ml:0, goal:2000 });
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -172,13 +175,16 @@ export default function ClientView({ user, onLogout }) {
   }, [user.id]);
 
   const loadEntries = useCallback(async () => {
-    const { data } = await supabase
-      .from("food_log").select("*")
-      .eq("user_id", user.id)
-      .eq("date", selectedDate)
-      .order("created_at");
-    setEntries(data || []);
-  }, [user.id, selectedDate]);
+    const today = todayStr();
+    const [{ data:food }, { data:sleep }, { data:water }] = await Promise.all([
+      supabase.from("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
+      supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",today).maybeSingle(),
+      supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",today).maybeSingle(),
+    ]);
+    setEntries(food || []);
+    setTodaySleep(sleep?.hours_slept ?? null);
+    setTodayWater({ ml: water?.ml || 0, goal: water?.goal || Math.round(parseFloat(profile?.weight||60)*33) });
+  }, [user.id, selectedDate, profile?.weight]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
@@ -371,133 +377,183 @@ export default function ClientView({ user, onLogout }) {
           {/* Motyvacinė žinutė */}
             <MotivationalCard userId={user.id} res={res} goalId={profile?.goal} />
 
-            {/* Profilis */}
-            <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:12, border:"1px solid "+PK.blush, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                <div style={{ width:42, height:42, borderRadius:"50%", background:PK.light, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
-                  {profile.gender==="f"?"👩":"👨"}
-                </div>
-                <div>
-                  <p style={{ fontSize:14, fontWeight:700, color:PK.dark, marginBottom:2 }}>{profile.name}</p>
-                  <p style={{ fontSize:11, color:PK.rose }}>{profile.age}m. · {profile.weight}kg · {profile.height}cm</p>
-                </div>
-              </div>
-              <div style={{ textAlign:"right" }}>
-                <p style={{ fontSize:11, color:PK.rose, marginBottom:2 }}>{actLabel}</p>
-                <p style={{ fontSize:11, fontWeight:700, color:PK.mid }}>{goalLabel}</p>
-              </div>
-            </div>
+            {/* ── GRID ARBA IŠSKLEISTA SEKCIJA ── */}
+            {openSection ? (
+              /* ── Išskleista sekcija ── */
+              <div>
+                <button onClick={()=>setOpenSection(null)} style={{
+                  display:"flex", alignItems:"center", gap:6,
+                  background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.2)",
+                  borderRadius:10, padding:"8px 14px", color:"rgba(255,255,255,0.8)",
+                  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                  marginBottom:12,
+                }}>← Grįžti</button>
 
-            {/* Dienos planas – collapsible */}
-            <CollapseSection
-              title="📊 Makro tikslai"
-              subtitle={`${res.target} kcal · B:${res.prot.g}g · R:${res.fat.g}g · A:${res.carb.g}g`}
-              defaultOpen={false}
-            >
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-                {[{l:"BMR",v:res.bmr,s:"bazinis"},{l:"TDEE",v:res.tdee,s:"su aktyvumu"},{l:"Tikslas",v:res.target,s:"per dieną"}].map(item=>(
-                  <div key={item.l} style={{ background:PK.light, borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
-                    <div style={{ fontSize:17, fontWeight:700, color:PK.dark }}>{item.v}</div>
-                    <div style={{ fontSize:8, color:PK.mid, fontWeight:700, textTransform:"uppercase" }}>{item.l}</div>
-                    <div style={{ fontSize:8, color:PK.rose }}>{item.s}</div>
+                {openSection==="food" && (
+                  <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                      <p style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)", margin:0 }}>📊 Šiandien surinkta</p>
+                      <button onClick={()=>setShowCalendar(true)} style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.25)", borderRadius:8, padding:"5px 10px", color:"#fff", fontSize:11, cursor:"pointer" }}>📅 {selectedDate}</button>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+                      {[
+                        {l:"Kalorijos",cur:Math.round(totals.kcal),tgt:res.target},
+                        {l:"Baltymai",cur:Math.round(totals.protein),tgt:res.prot.g},
+                        {l:"Riebalai",cur:Math.round(totals.fat),tgt:res.fat.g},
+                        {l:"Angliav.",cur:Math.round(totals.carbs),tgt:res.carb.g},
+                      ].map(item=>{ const pct=item.tgt?Math.min(100,Math.round(item.cur/item.tgt*100)):0; const over=item.cur>item.tgt; return (
+                        <div key={item.l} style={{ textAlign:"center" }}>
+                          <div style={{ fontSize:14, fontWeight:700, color:over?"#FFD700":"#fff" }}>{item.cur}</div>
+                          <div style={{ fontSize:8, color:"rgba(255,255,255,0.45)", margin:"2px 0" }}>{item.l}</div>
+                          <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:99, height:3 }}>
+                            <div style={{ width:pct+"%", height:"100%", borderRadius:99, background:over?"#FFD700":"rgba(255,255,255,0.8)" }}/>
+                          </div>
+                          <div style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:2 }}>{pct}%</div>
+                        </div>
+                      );})}
+                    </div>
+                    <div style={{ borderTop:"1px solid rgba(255,255,255,0.15)", paddingTop:14 }}>
+                      {isToday ? (
+                        !showMeals ? (
+                          <button onClick={()=>setShowMeals(true)} style={{ width:"100%", padding:"12px 0", background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.25)", borderRadius:14, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                            🍽️ Pridėti maisto +
+                          </button>
+                        ) : (
+                          <>
+                            <MealButtons />
+                            <button onClick={closeMeals} style={{ width:"100%", padding:"10px 0", marginTop:10, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, color:"rgba(255,255,255,0.6)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                              Uždaryti −
+                            </button>
+                          </>
+                        )
+                      ) : <MealButtons />}
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {[
-                  {label:"💪 Baltymai",data:res.prot,color:PK.mid},
-                  {label:"🥑 Riebalai",data:res.fat,color:"#E91E8C"},
-                  {label:"🍚 Angliavandeniai",data:res.carb,color:PK.dark},
-                ].map(macro=>(
-                  <div key={macro.label}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                      <span style={{ fontSize:12, fontWeight:600, color:PK.dark }}>{macro.label}</span>
-                      <span style={{ fontSize:12, color:PK.mid }}><strong>{macro.data.g}g</strong> · {macro.data.kcal} kcal · {macro.data.pct}%</span>
+                )}
+
+                {openSection==="targets" && (
+                  <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:"#fff", textAlign:"center", marginBottom:14 }}>📊 Tavo makro tikslai</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+                      {[{l:"BMR",v:res.bmr,s:"bazinis"},{l:"TDEE",v:res.tdee,s:"su aktyvumu"},{l:"Tikslas",v:res.target,s:"per dieną"}].map(item=>(
+                        <div key={item.l} style={{ background:"rgba(255,255,255,0.13)", borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
+                          <div style={{ fontSize:18, fontWeight:700, color:"#fff" }}>{item.v}</div>
+                          <div style={{ fontSize:8, color:PK.blush, fontWeight:700, textTransform:"uppercase" }}>{item.l}</div>
+                          <div style={{ fontSize:8, color:"rgba(255,255,255,0.5)" }}>{item.s}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ background:PK.blush, borderRadius:99, height:5 }}>
-                      <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:macro.color }}/>
+                    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                      {[
+                        {label:"💪 Baltymai",data:res.prot,color:"#FFB3C6"},
+                        {label:"🥑 Riebalai",data:res.fat,color:"#FF80AB"},
+                        {label:"🍚 Angliavandeniai",data:res.carb,color:"#F48FB1"},
+                      ].map(macro=>(
+                        <div key={macro.label}>
+                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                            <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{macro.label}</span>
+                            <div style={{ display:"flex", alignItems:"baseline", gap:5 }}>
+                              <span style={{ fontSize:15, fontWeight:700, color:macro.color }}>{macro.data.g}g</span>
+                              <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>{macro.data.kcal} kcal</span>
+                            </div>
+                          </div>
+                          <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:99, height:5 }}>
+                            <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:macro.color }}/>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </CollapseSection>
+                )}
 
+                {openSection==="health" && (
+                  <div>
+                    <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
+                    <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
+                  </div>
+                )}
 
-            {/* Surinkta */}
-            <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:18, marginBottom:12, boxShadow:"0 6px 24px rgba(173,20,87,0.3)" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-                <p style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.8)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
-                  📊 {isToday ? "Šiandien surinkta" : fmtDate(selectedDate)}
-                </p>
-                <button
-                  onClick={() => setShowCalendar(true)}
-                  style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:8, padding:"5px 9px", cursor:"pointer", fontSize:15, lineHeight:1 }}
-                >📅</button>
-              </div>
-
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:16 }}>
-                {[
-                  {l:"Kalorijos",cur:Math.round(totals.kcal),tgt:res.target},
-                  {l:"Baltymai",cur:Math.round(totals.protein),tgt:res.prot.g},
-                  {l:"Riebalai",cur:Math.round(totals.fat),tgt:res.fat.g},
-                  {l:"Angliavandeniai",cur:Math.round(totals.carbs),tgt:res.carb.g},
-                ].map(item=>{
-                  const pct=item.tgt?Math.min(100,Math.round(item.cur/item.tgt*100)):0;
-                  const over=item.cur>item.tgt;
-                  return (
-                    <div key={item.l} style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:15, fontWeight:700, color:over?"#FFD700":"#fff" }}>{item.cur}</div>
-                      <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginBottom:5 }}>/ {item.tgt}</div>
-                      <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:99, height:5 }}>
-                        <div style={{ width:pct+"%", height:"100%", borderRadius:99, background:over?"#FFD700":"rgba(255,255,255,0.85)", transition:"width 0.5s" }} />
-                      </div>
-                      <div style={{ fontSize:9, color:over?"#FFD700":"rgba(255,255,255,0.8)", fontWeight:700, marginTop:3 }}>{pct}%</div>
-                      <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{item.l}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ borderTop:"1px solid rgba(255,255,255,0.15)", paddingTop:14 }}>
-                {isToday ? (
-                  !showMeals ? (
-                    <button onClick={() => setShowMeals(true)}
-                      style={{ width:"100%", padding:"12px 0", background:"rgba(255,255,255,0.15)", border:"1.5px solid rgba(255,255,255,0.3)", borderRadius:14, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                      🍽️ Pridėti maisto +
-                    </button>
-                  ) : (
-                    <>
-                      <MealButtons />
-                      <button onClick={closeMeals}
-                        style={{ width:"100%", padding:"10px 0", marginTop:10, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)", borderRadius:12, color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                        Uždaryti −
-                      </button>
-                    </>
-                  )
-                ) : (
-                  <MealButtons />
+                {openSection==="checkin" && (
+                  <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
                 )}
               </div>
-            </div>
-
-            <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
-
-            {/* Miegas + Vanduo – kompaktiškas blokas su išskleidžiamu slankikliu */}
-            <CollapseSection
-              title="😴 Miegas · 💧 Vanduo"
-              subtitle={null}
-              defaultOpen={false}
-              badge={null}
-            >
-              <div style={{ marginBottom:10 }}>
-                <p style={{ fontSize:11, fontWeight:700, color:PK.mid, margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"0.06em" }}>Miegas</p>
-                <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
-              </div>
+            ) : (
+              /* ── Kompaktiška grid ── */
               <div>
-                <p style={{ fontSize:11, fontWeight:700, color:PK.mid, margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"0.06em" }}>Vanduo</p>
-                <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
+                {/* 4 kortelės 2x2 */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+
+                  {/* Mityba */}
+                  {[
+                    {
+                      key:"food",
+                      icon:"🍽️",
+                      title:"Mityba šiandien",
+                      main: Math.round(totals.kcal)+" kcal",
+                      sub: `iš ${res.target} kcal tikslo`,
+                      pct: res.target ? Math.min(100,Math.round(totals.kcal/res.target*100)) : 0,
+                      barColor: totals.kcal>res.target?"#FFD700":"#FFB3C6",
+                      date: isToday ? null : selectedDate,
+                    },
+                    {
+                      key:"targets",
+                      icon:"🎯",
+                      title:"Makro tikslai",
+                      main: res.target+" kcal",
+                      sub: `B:${res.prot.g}g · R:${res.fat.g}g · A:${res.carb.g}g`,
+                      pct: null,
+                    },
+                    {
+                      key:"health",
+                      icon:"😴",
+                      title:"Miegas & Vanduo",
+                      main: todaySleep !== null ? todaySleep+"h" : "–",
+                      sub: `💧 ${todayWater.ml}/${todayWater.goal} ml`,
+                      pct: todayWater.goal ? Math.min(100,Math.round(todayWater.ml/todayWater.goal*100)) : 0,
+                      barColor:"#89CFF0",
+                    },
+                    {
+                      key:"checkin",
+                      icon:"📋",
+                      title:"Savaitinis check-in",
+                      main: "Pildyti →",
+                      sub: (() => { const d=new Date(),day=d.getDay(),left=day===0?0:7-day; return left===0?"🔔 Šiandien sekmadienis":"Po "+left+" d. (sekmadienis)"; })(),
+                      pct: null,
+                    },
+                  ].map(card=>(
+                    <button key={card.key} onClick={()=>setOpenSection(card.key)} style={{
+                      background:`linear-gradient(135deg,${PK.dark},${PK.mid})`,
+                      borderRadius:20, border:"none", padding:"18px 16px",
+                      cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+                      boxShadow:"0 4px 16px rgba(173,20,87,0.28)",
+                      display:"flex", flexDirection:"column", justifyContent:"space-between",
+                      minHeight:150,
+                    }}>
+                      <div>
+                        <span style={{ fontSize:26 }}>{card.icon}</span>
+                        {card.date && <span style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginLeft:6 }}>{card.date}</span>}
+                      </div>
+                      <div>
+                        <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"10px 0 2px", lineHeight:1 }}>{card.main}</p>
+                        <p style={{ fontSize:10, color:PK.blush, margin:0, lineHeight:1.4 }}>{card.title}</p>
+                        <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:"3px 0 0" }}>{card.sub}</p>
+                      </div>
+                      {card.pct !== null && (
+                        <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:99, height:4, marginTop:10 }}>
+                          <div style={{ width:card.pct+"%", height:"100%", borderRadius:99, background:card.barColor||"rgba(255,255,255,0.8)", transition:"width 0.5s" }}/>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 📅 datos keitimas */}
+                <button onClick={()=>setShowCalendar(true)} style={{ width:"100%", marginTop:10, padding:"10px 0", background:"rgba(255,255,255,0.08)", border:"1px solid "+PK.blush, borderRadius:12, color:PK.rose, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  📅 {isToday ? "Šiandien" : selectedDate} · Keisti datą
+                </button>
               </div>
-            </CollapseSection>
+            )}
+
           </>
         )}
       </div>
