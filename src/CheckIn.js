@@ -21,10 +21,14 @@ function fmt(dateStr) {
 // Sekmadienio info
 function getSundayInfo() {
   const today = new Date();
-  const day   = today.getDay(); // 0=Sun
-  const isSunday      = day === 0;
-  const daysUntilSun  = isSunday ? 0 : 7 - day;
-  return { isSunday, daysUntilSun };
+  const day   = today.getDay();
+  const isSunday     = day === 0;
+  const daysUntilSun = isSunday ? 0 : 7 - day;
+  // Kito sekmadienio data
+  const nextSun = new Date(today);
+  nextSun.setDate(today.getDate() + (isSunday ? 7 : 7 - day));
+  const nextSunStr = nextSun.toLocaleDateString("lt-LT", { month:"long", day:"numeric" });
+  return { isSunday, daysUntilSun, nextSunStr };
 }
 
 // ── Auto-skaičiavimai iš food_log ir sleep_log ───────────────────────────────
@@ -157,6 +161,7 @@ function AutoBlock({ label, emoji, score, detail, color="#90EE90" }) {
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
 export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const [checkins,    setCheckins]    = useState([]);
+  const [collapsed,   setCollapsed]   = useState(true);
   const [showForm,    setShowForm]    = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
@@ -179,7 +184,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const set = k => v => setForm(f=>({...f,[k]:v}));
 
   const weekStart = getWeekStart();
-  const { isSunday, daysUntilSun } = getSundayInfo();
+  const { isSunday, daysUntilSun, nextSunStr } = getSundayInfo();
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -232,38 +237,54 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   return (
     <div style={{
       background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
-      borderRadius:20, padding:18, marginBottom:12,
+      borderRadius:20, marginBottom:12,
       boxShadow:"0 6px 24px rgba(173,20,87,0.3)",
+      overflow:"hidden",
     }}>
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+      {/* Antraštė – paspaudžiama */}
+      <div
+        onClick={()=>setCollapsed(s=>!s)}
+        style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", cursor:"pointer" }}
+      >
         <div>
           <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>📋 Savaitinis check-in</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:0 }}>
             {isDone
-              ? `✅ ${fmt(weekStart)} savaitė užpildyta`
+              ? `✅ Savaitė užpildyta · Kitas: ${nextSunStr}`
               : isSunday
-                ? "🔔 Šiandien sekmadienis – laikas check-in'ui!"
-                : `⏳ Liko ${daysUntilSun} d. iki sekmadienio`}
+                ? "🔔 Šiandien sekmadienis – laikas pildyti!"
+                : `⏳ Kitas check-in: ${nextSunStr} (po ${daysUntilSun} d.)`}
           </p>
         </div>
-        {!isDone && (isSunday || showForm) && (
-          <button onClick={()=>setShowForm(s=>!s)} style={{
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {isDone && <span style={{ fontSize:10, background:"rgba(127,255,176,0.2)", color:"#7FFFB0", borderRadius:8, padding:"3px 8px" }}>✓ atlikta</span>}
+          {isSunday && !isDone && <span style={{ fontSize:10, background:"rgba(255,200,0,0.2)", color:"#FFD700", borderRadius:8, padding:"3px 8px" }}>🔔 šiandien</span>}
+          <span style={{ fontSize:16, color:"rgba(255,255,255,0.5)", transform: collapsed?"rotate(0deg)":"rotate(180deg)", transition:"transform 0.2s" }}>⌄</span>
+        </div>
+      </div>
+
+      {/* Turinys – išskleidžiamas */}
+      {!collapsed && (
+      <div style={{ padding:"0 18px 18px" }}>
+      {/* Formos mygtukas */}
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
+        {!isDone && (
+          <button onClick={e=>{e.stopPropagation();setShowForm(s=>!s);}} style={{
             background: showForm?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.2)",
-            border:"1.5px solid rgba(255,255,255,0.35)",
-            borderRadius:10, padding:"6px 12px", color:"#fff",
+            border:"1.5px solid rgba(255,255,255,"+(isSunday?"0.5":"0.25")+")",
+            borderRadius:10, padding:"6px 14px", color:"#fff",
             fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
           }}>
-            {showForm ? "✕" : "Pildyti →"}
+            {showForm ? "✕ Uždaryti" : isSunday ? "✍️ Pildyti dabar" : "Pildyti anksčiau"}
           </button>
         )}
-        {!isDone && !isSunday && !showForm && (
-          <button onClick={()=>setShowForm(true)} style={{
+        {isDone && (
+          <button onClick={e=>{e.stopPropagation();setShowForm(s=>!s);}} style={{
             background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
-            borderRadius:10, padding:"6px 10px", color:"rgba(255,255,255,0.5)",
+            borderRadius:10, padding:"6px 12px", color:"rgba(255,255,255,0.5)",
             fontSize:11, cursor:"pointer", fontFamily:"inherit",
           }}>
-            Pildyti anksčiau
+            {showForm ? "✕" : "✏️ Redaguoti"}
           </button>
         )}
       </div>
@@ -356,13 +377,15 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
         </div>
       )}
 
-      {/* Jei ne sekmadienis ir dar neužpildyta – priminti */}
+      {/* Priminti jei ne sekmadienis */}
       {!isDone && !showForm && !isSunday && (
         <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:12, padding:"10px 14px" }}>
           <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", margin:0, textAlign:"center" }}>
-            🗓️ Check-in'ą pildyk kiekvieną sekmadienį — apibendrink savaitę
+            🗓️ Pildyk kiekvieną sekmadienį · Kitas: {nextSunStr}
           </p>
         </div>
+      )}
+      </div>
       )}
     </div>
   );
