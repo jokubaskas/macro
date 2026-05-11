@@ -276,10 +276,11 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.6)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>
               Savaitės {fmt(weekStart)} – {fmt(getWeekEnd(weekStart))} rezultatai
             </p>
-            <MetricRow emoji="😴" label="Miegas"   cur={current.sleep_quality}  prev={previous?.sleep_quality} />
-            <MetricRow emoji="⚡" label="Energija" cur={current.energy}          prev={previous?.energy} />
-            <MetricRow emoji="🥗" label="Mityba"   cur={current.diet_adherence}  prev={previous?.diet_adherence} />
-            <MetricRow emoji="🧘" label="Stresas"  cur={current.stress_level}    prev={previous?.stress_level} invertGood />
+            <MetricRow emoji="😴" label="Miegas"   cur={current.sleep_quality??sleepScore}  prev={previous?.sleep_quality} />
+            <MetricRow emoji="⚡" label="Energija" cur={current.energy}                      prev={previous?.energy} />
+            <MetricRow emoji="🥗" label="Mityba"   cur={current.diet_adherence??dietScore}   prev={previous?.diet_adherence} />
+            <MetricRow emoji="💧" label="Vanduo"   cur={current.water_score??waterScore}     prev={previous?.water_score} />
+            <MetricRow emoji="🧘" label="Stresas"  cur={current.stress_level}                prev={previous?.stress_level} invertGood />
             <MetricRow emoji="🏋️" label="Treniruotės" cur={current.workouts_done!=null?current.workouts_done+"k":null} prev={previous?.workouts_done!=null?previous.workouts_done+"k":null} />
             <MetricRow emoji="⚖️" label="Svoris"   cur={current.weight_self?current.weight_self+"kg":null} prev={previous?.weight_self?previous.weight_self+"kg":null} />
             {previous && (
