@@ -228,13 +228,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   );
 
   const hasData     = profile?.weight && profile?.height && profile?.age;
-  const extraKcal   = calcStepCalories(todaySteps, parseFloat(profile?.weight||60));
-  const adjustedTarget = hasData ? (res?.target || 0) + extraKcal : 0;
   const res = hasData ? calcMacros({
     gender: profile.gender, age: parseInt(profile.age),
     weight: parseFloat(profile.weight), height: parseFloat(profile.height),
     actId: profile.act, goalId: profile.goal,
   }) : null;
+  const extraKcal      = calcStepCalories(todaySteps, parseFloat(profile?.weight||60));
+  const adjustedTarget = hasData ? (res?.target || 0) + extraKcal : 0;
 
   const goalLabel = GOALS.find(g => g.id === profile?.goal)?.label ?? "";
   const actLabel  = ACTIVITY.find(a => a.id === profile?.act)?.label ?? "";
