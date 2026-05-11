@@ -72,7 +72,18 @@ async function calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age
     sleepAvg    = avg;
   }
 
-  return { dietScore, dietDetail, sleepScore, sleepDetail, sleepAvg };
+  // Vanduo
+  let waterScore = null;
+  const { data:waters } = await supabase
+    .from("water_log").select("ml,goal")
+    .eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd);
+  if (waters?.length) {
+    const goalDays = waters.filter(w=>w.ml>=(w.goal||2000)).length;
+    const rate     = goalDays/7;
+    waterScore = Math.max(1, Math.min(5, Math.round(rate*4)+1));
+  }
+
+  return { dietScore, dietDetail, sleepScore, sleepDetail, sleepAvg, waterScore };
 }
 
 // ── Metrikos palyginimo komponentas ──────────────────────────────────────────
@@ -155,6 +166,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const [dietDetail, setDietDetail] = useState(null);
   const [sleepScore, setSleepScore] = useState(null);
   const [sleepDetail,setSleepDetail]= useState(null);
+  const [waterScore, setWaterScore]  = useState(null);
 
   // Rankiniai laukai
   const [form, setForm] = useState({
@@ -187,6 +199,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
     calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age).then(r => {
       setDietScore(r.dietScore);   setDietDetail(r.dietDetail);
       setSleepScore(r.sleepScore); setSleepDetail(r.sleepDetail);
+      setWaterScore(r.waterScore);
       setAutoLoading(false);
     });
   }, [userId, weekStart, targetKcal]);
@@ -200,6 +213,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
       energy:         form.energy,
       diet_adherence: dietScore,
       sleep_quality:  sleepScore,
+      water_score:    waterScore,
       workouts_done:  form.workouts_done,
       stress_level:   form.stress_level,
       client_note:    form.client_note||null,
@@ -300,6 +314,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
           {/* Auto metrikos */}
           <AutoBlock label="Miego kokybė"           emoji="😴" score={sleepScore} detail={sleepDetail} color="#89CFF0" />
           <AutoBlock label="Mitybos plano laikymasis" emoji="🥗" score={dietScore}  detail={dietDetail}  color="#90EE90" />
+          <AutoBlock label="Vandens norma"               emoji="💧" score={waterScore} detail={null}        color="#89CFF0" />
 
           {/* Rankinis */}
           <EmojiRating label="⚡ Energija / Nuotaika savaitę"  value={form.energy}       onChange={set("energy")} />
