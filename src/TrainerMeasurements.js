@@ -336,12 +336,13 @@ export default function TrainerMeasurements({ clientId, clientName }) {
             const isThisWeek = ci.week_start === (()=>{ const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
 
             const METRICS = [
-              { e:"😴", l:"Miegas",      k:"sleep_quality",  inv:false },
-              { e:"⚡", l:"Energija",    k:"energy",          inv:false },
-              { e:"🥗", l:"Mityba",      k:"diet_adherence",  inv:false },
-              { e:"🧘", l:"Stresas",     k:"stress_level",    inv:true  },
-              { e:"🏋️", l:"Treniruotės", k:"workouts_done",   inv:false, suffix:"k" },
-              { e:"⚖️", l:"Svoris",      k:"weight_self",     inv:false, suffix:"kg" },
+              { e:"😴", l:"Miegas",   k:"sleep_quality",  inv:false },
+              { e:"⚡", l:"Energija", k:"energy",          inv:false },
+              { e:"🥗", l:"Mityba",   k:"diet_adherence",  inv:false },
+              { e:"💧", l:"Vanduo",   k:"water_score",     inv:false },
+              { e:"🧘", l:"Stresas",  k:"stress_level",    inv:true  },
+              { e:"🏋️", l:"Sport.",   k:"workouts_done",   inv:false, suffix:"k" },
+              { e:"⚖️", l:"Svoris",   k:"weight_self",     inv:false, suffix:"kg" },
             ];
 
             // Spalva pagal vertę (1-5 skalė)
