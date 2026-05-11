@@ -133,6 +133,18 @@ export default function ClientView({ user, onLogout }) {
       setLoading(false);
     }
     load();
+
+    // Patikrinti ar yra neperskaityta ataskaita
+    supabase
+      .from("trainer_measurements")
+      .select("id")
+      .eq("user_id", user.id)
+      .is("client_read_at", null)
+      .limit(1)
+      .then(({ data, error }) => {
+        if (error) console.warn("Report check:", error.message);
+        if (data?.length) { setHasReport(true); setShowReport(true); }
+      });
   }, [user.id]);
 
   const loadEntries = useCallback(async () => {
