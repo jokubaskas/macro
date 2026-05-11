@@ -122,7 +122,7 @@ function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function SleepTracker({ userId, age, date }) {
+export default function SleepTracker({ userId, age, date, compact = false }) {
   const currentDate = date || todayStr();
   const isToday     = currentDate === todayStr();
 
@@ -172,6 +172,31 @@ export default function SleepTracker({ userId, age, date }) {
   }
 
   if (!loaded) return null;
+
+  // ── Kompaktiškas režimas ──────────────────────────────────────────────────
+  if (compact) {
+    const statusColor = savedHours === null ? "rgba(0,0,0,0.35)"
+      : savedHours >= recMin && savedHours <= recMax ? "#27ae60"
+      : "#f39c12";
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ fontSize:14 }}>😴</span>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+            <span style={{ fontSize:11, color:"#333", fontWeight:600 }}>
+              {savedHours !== null ? savedHours+"h" : "Nesuvedė"}
+            </span>
+            <span style={{ fontSize:10, color:statusColor, fontWeight:700 }}>
+              Rek. {recMin}–{recMax}h
+            </span>
+          </div>
+          <div style={{ background:"#f0f0f0", borderRadius:99, height:5 }}>
+            <div style={{ width: savedHours ? Math.min(100,(savedHours/12)*100)+"%" : "0%", height:"100%", borderRadius:99, background:statusColor, transition:"width 0.3s" }}/>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const inRange   = displayHours >= recMin && displayHours <= recMax;
   const tooLittle = displayHours < recMin;
