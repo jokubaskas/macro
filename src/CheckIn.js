@@ -19,6 +19,38 @@ function fmt(dateStr) {
 }
 function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
 
+
+// ── Automatinis miego kokybės skaičiavimas iš sleep_log ──────────────────────
+async function calcSleepScore(userId, weekStart, age) {
+  const weekEnd = getWeekEnd(weekStart);
+  const { data } = await supabase
+    .from("sleep_log")
+    .select("hours_slept")
+    .eq("user_id", userId)
+    .gte("date", weekStart)
+    .lte("date", weekEnd);
+
+  if (!data || data.length === 0) return { score:null, detail:null };
+
+  const hours  = data.map(d => +d.hours_slept);
+  const avg    = +(hours.reduce((a,b)=>a+b,0)/hours.length).toFixed(1);
+  const daysLogged = hours.length;
+
+  // Rekomenduojama zona pagal amžių
+  const recMin = (!age||age<=64) ? 7 : 7;
+  const recMax = (!age||age<=64) ? 9 : 8;
+
+  // Nukrypimas nuo rekomenduojamos zonos
+  const deviation = avg < recMin ? recMin - avg : avg > recMax ? avg - recMax : 0;
+  const accuracyScore = Math.max(0, 1 - deviation / 3); // 0–1
+  const consistency   = daysLogged / 7;
+  const combined      = accuracyScore * 0.6 + consistency * 0.4;
+  const score         = Math.max(1, Math.min(5, Math.round(combined * 4) + 1));
+  const detail        = `${daysLogged}/7 d. · vid. ${avg}h (rek. ${recMin}–${recMax}h)`;
+
+  return { score, detail, avg, daysLogged };
+}
+
 // ── Automatinis mitybos laikymosi skaičiavimas ────────────────────────────────
 async function calcDietAdherence(userId, weekStart, targetKcal, targetProtein) {
   if (!targetKcal) return { score: null, detail: null };
@@ -265,22 +297,24 @@ function DietAdherenceBlock({ score, detail, loading }) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function CheckIn({ userId, targetKcal, targetProtein }) {
+export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const [checkins,    setCheckins]    = useState([]);
   const [measures,    setMeasures]    = useState([]);
   const [current,     setCurrent]     = useState(null);
   const [showForm,    setShowForm]    = useState(false);
   const [showChart,   setShowChart]   = useState(false);
   const [saving,      setSaving]      = useState(false);
-  const [dietScore,   setDietScore]   = useState(null);   // auto-calculated
+  const [dietScore,   setDietScore]   = useState(null);
   const [dietDetail,  setDietDetail]  = useState(null);
   const [dietLoading, setDietLoading] = useState(false);
+  const [sleepScore,  setSleepScore]  = useState(null);
+  const [sleepDetail, setSleepDetail] = useState(null);
+  const [sleepAvg,    setSleepAvg]    = useState(null);
 
   const weekStart = getWeekStart();
 
   const [form, setForm] = useState({
     weight_self:   "",
-    sleep_quality: null,
     energy:        null,
     workouts_done: null,
     stress_level:  null,
@@ -301,7 +335,6 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
     if (cur?.is_done) {
       setForm({
         weight_self:   cur.weight_self   ?? "",
-        sleep_quality: cur.sleep_quality ?? null,
         energy:        cur.energy        ?? null,
         workouts_done: cur.workouts_done ?? null,
         stress_level:  cur.stress_level  ?? null,
@@ -310,7 +343,6 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
     }
   }, [userId, weekStart]);
 
-  // Skaičiuoti mitybos laikymąsi iš food_log
   const loadDietScore = useCallback(async () => {
     if (!targetKcal) return;
     setDietLoading(true);
@@ -320,8 +352,16 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
     setDietLoading(false);
   }, [userId, weekStart, targetKcal, targetProtein]);
 
+  const loadSleepScore = useCallback(async () => {
+    const result = await calcSleepScore(userId, weekStart, age);
+    setSleepScore(result.score);
+    setSleepDetail(result.detail);
+    setSleepAvg(result.avg);
+  }, [userId, weekStart, age]);
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadDietScore(); }, [loadDietScore]);
+  useEffect(() => { loadSleepScore(); }, [loadSleepScore]);
 
   async function handleSave() {
     setSaving(true);
@@ -329,7 +369,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
       user_id:        userId,
       week_start:     weekStart,
       weight_self:    parseFloat(form.weight_self) || null,
-      sleep_quality:  form.sleep_quality,
+      sleep_quality:  sleepScore,          // automatiškai iš sleep_log
       energy:         form.energy,
       diet_adherence: dietScore,          // automatiškai apskaičiuotas
       workouts_done:  form.workouts_done,
@@ -409,7 +449,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
         <div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:10 }}>
             {[
-              { l:"Miegas",   v:current.sleep_quality,                              e:"😴" },
+              { l:"Miegas",   v:sleepAvg?sleepAvg+"h":current.sleep_quality,       e:"😴" },
               { l:"Energija", v:current.energy,                                     e:"⚡" },
               { l:"Mityba",   v:current.diet_adherence,                             e:"🥗" },
               { l:"Stresas",  v:current.stress_level,                               e:"🧘" },
@@ -450,7 +490,30 @@ export default function CheckIn({ userId, targetKcal, targetProtein }) {
             loading={dietLoading}
           />
 
-          <EmojiRating label="😴 Miego kokybė"         value={form.sleep_quality} onChange={set("sleep_quality")} />
+          {/* Miegas – automatiškai iš SleepTracker */}
+          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"10px 12px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.7)", fontWeight:600, margin:0 }}>😴 Miego kokybė</p>
+              <span style={{ fontSize:9, color:"rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.08)", borderRadius:6, padding:"2px 6px" }}>⚙️ automatiškai</span>
+            </div>
+            {sleepScore ? (
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ display:"flex", gap:3 }}>
+                  {[1,2,3,4,5].map(n=>(
+                    <div key={n} style={{ width:18, height:18, borderRadius:5, background:n<=sleepScore?"#89CFF0":"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)" }}/>
+                  ))}
+                </div>
+                <div>
+                  <span style={{ fontSize:14, fontWeight:700, color:"#89CFF0" }}>{sleepScore}/5</span>
+                  {sleepDetail && <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:"2px 0 0" }}>{sleepDetail}</p>}
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>
+                Suvesk miegą SleepTracker'yje – balas apskaičiuos automatiškai
+              </p>
+            )}
+          </div>
           <EmojiRating label="⚡ Energija / Nuotaika"  value={form.energy}         onChange={set("energy")} />
           <EmojiRating label="🧘 Streso lygis"          value={form.stress_level}  onChange={set("stress_level")} />
 
