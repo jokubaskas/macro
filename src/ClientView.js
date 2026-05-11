@@ -5,6 +5,7 @@ import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
+import { calcStepCalories } from "./StepTracker";
 import MeasurementReport from "./MeasurementReport";
 import FoodSearch from "./FoodSearch";
 import BarcodeScanner from "./BarcodeScanner";
@@ -130,7 +131,7 @@ function DatePickerModal({ value, minDate, onSelect, onClose }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ClientView({ user, onLogout }) {
+export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange }) {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [entries,      setEntries]      = useState([]);
@@ -138,7 +139,8 @@ export default function ClientView({ user, onLogout }) {
   const [activeMeal,   setActiveMeal]   = useState(null);
   const [showMeals,    setShowMeals]    = useState(false);
   const [openMeal,     setOpenMeal]     = useState(null);
-  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const selectedDate = propDate || todayStr();
+  const setSelectedDate = (d) => onDateChange ? onDateChange(d) : undefined;
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBarcode,     setShowBarcode]     = useState(false);
   const [hasReport,      setHasReport]      = useState(false);
@@ -146,7 +148,8 @@ export default function ClientView({ user, onLogout }) {
   const [openSection,    setOpenSection]    = useState(null); // null|food|health|checkin|targets
   const [todaySleep,     setTodaySleep]     = useState(null);
   const [todayWater,     setTodayWater]     = useState({ ml:0, goal:2000 });
-  const [checkinDone,    setCheckinDone]    = useState(null); // null|true|false
+  const [checkinDone,    setCheckinDone]    = useState(null);
+  const [todaySteps,     setTodaySteps]     = useState(0);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -178,16 +181,18 @@ export default function ClientView({ user, onLogout }) {
   const loadEntries = useCallback(async () => {
     const today = todayStr();
     const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
-    const [{ data:food }, { data:sleep }, { data:water }, { data:ci }] = await Promise.all([
+    const [{ data:food }, { data:sleep }, { data:water }, { data:ci }, { data:stepRow }] = await Promise.all([
       supabase.from("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
       supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
       supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
       supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
+      supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
     ]);
     setEntries(food || []);
     setTodaySleep(sleep?.hours_slept ?? null);
     setTodayWater({ ml: water?.ml || 0, goal: water?.goal || Math.round(parseFloat(profile?.weight||60)*33) });
     setCheckinDone(ci?.is_done ?? false);
+    setTodaySteps(stepRow?.steps || 0);
   }, [user.id, selectedDate, profile?.weight]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
@@ -222,7 +227,9 @@ export default function ClientView({ user, onLogout }) {
     </div>
   );
 
-  const hasData = profile?.weight && profile?.height && profile?.age;
+  const hasData     = profile?.weight && profile?.height && profile?.age;
+  const extraKcal   = calcStepCalories(todaySteps, parseFloat(profile?.weight||60));
+  const adjustedTarget = hasData ? (res?.target || 0) + extraKcal : 0;
   const res = hasData ? calcMacros({
     gender: profile.gender, age: parseInt(profile.age),
     weight: parseFloat(profile.weight), height: parseFloat(profile.height),
@@ -525,8 +532,8 @@ export default function ClientView({ user, onLogout }) {
                       icon:"🍽️",
                       title:"Mityba šiandien",
                       main: Math.round(totals.kcal)+" kcal",
-                      sub: `iš ${res.target} kcal tikslo`,
-                      pct: res.target ? Math.min(100,Math.round(totals.kcal/res.target*100)) : 0,
+                      sub: extraKcal>0?`iš ${adjustedTarget} kcal (🚶+${extraKcal})`:`iš ${res.target} kcal tikslo`,
+                      pct: adjustedTarget ? Math.min(100,Math.round(totals.kcal/adjustedTarget*100)) : 0,
                       barColor: totals.kcal>res.target?"#FFD700":"#FFB3C6",
                       date: isToday ? null : selectedDate,
                     },
