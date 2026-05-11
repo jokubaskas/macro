@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
-import { PK, calcMacros } from "./constants";
+import { PK } from "./constants";
 
 // Admin client su service role – apeinamas RLS
 const adminDb = createClient(
@@ -128,44 +128,47 @@ export default function TrainerMeasurements({ clientId, clientName }) {
     ]);
     setMeasures(m||[]);
 
-    // Paskaičiuoti vandeni ir mitybą iš žurnalų (seniems check-in'ams kur null)
+    // Sodinti vandenį ir mitybą iš žurnalų (visada – ne tik null)
     const ciList = c || [];
     if (ciList.length > 0) {
       const oldestWeek = ciList[0].week_start;
 
-      // Gauti visus duomenis lygiagrečiai
-      const [{ data: waterData }, { data: foodData }, { data: clientProfile }] = await Promise.all([
+      const [{ data: waterData }, { data: foodData }] = await Promise.all([
         adminDb.from("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek),
         adminDb.from("food_log").select("date,kcal,protein").eq("user_id",clientId).gte("date",oldestWeek),
-        adminDb.from("profiles").select("weight,height,goal,activity,dob").eq("id",clientId).maybeSingle(),
       ]);
 
-      // Apskaičiuoti tikslus iš profilio
-      let targetKcal = null, targetProtein = null;
-      if (clientProfile) {
-        const age = clientProfile.dob ? Math.floor((new Date()-new Date(clientProfile.dob))/(365.25*24*60*60*1000)) : 30;
-        const res = calcMacros({ ...clientProfile, age });
-        targetKcal    = res?.target;
-        targetProtein = res?.prot?.g;
+      const wkEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
+
+      // Kalorių vidurkis iš visų duomenų – kaip "tikslas"
+      let globalAvgKcal = null, globalAvgProt = null;
+      if (foodData?.length) {
+        const allByDate = {};
+        foodData.forEach(e => {
+          if (!allByDate[e.date]) allByDate[e.date] = { kcal:0, protein:0 };
+          allByDate[e.date].kcal    += e.kcal    || 0;
+          allByDate[e.date].protein += e.protein || 0;
+        });
+        const vals = Object.values(allByDate);
+        globalAvgKcal = vals.reduce((a,d)=>a+d.kcal,0)/vals.length;
+        globalAvgProt = vals.reduce((a,d)=>a+d.protein,0)/vals.length;
       }
 
-      const weekEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
-
       const enriched = ciList.map(ci => {
-        const wEnd = weekEnd(ci.week_start);
+        const wEnd = wkEnd(ci.week_start);
         let result = { ...ci };
 
-        // Vanduo
-        if (result.water_score == null && waterData?.length) {
-          const ww = waterData.filter(w => w.date >= ci.week_start && w.date <= wEnd);
+        // Vanduo – visada perskaičiuoti iš water_log
+        if (waterData?.length) {
+          const ww      = waterData.filter(w => w.date >= ci.week_start && w.date <= wEnd);
           if (ww.length) {
             const goalDays = ww.filter(w => w.ml >= (w.goal||2000)).length;
             result.water_score = Math.max(1, Math.min(5, Math.round((goalDays/7)*4)+1));
           }
         }
 
-        // Mityba
-        if (result.diet_adherence == null && foodData?.length && targetKcal) {
+        // Mityba – perskaičiuoti iš food_log
+        if (foodData?.length) {
           const wf = foodData.filter(f => f.date >= ci.week_start && f.date <= wEnd);
           if (wf.length) {
             const byDate = {};
@@ -174,12 +177,16 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               byDate[e.date].kcal    += e.kcal    || 0;
               byDate[e.date].protein += e.protein || 0;
             });
-            const days     = Object.keys(byDate).length;
-            const avgK     = Object.values(byDate).reduce((a,d)=>a+d.kcal,0)/days;
-            const avgP     = Object.values(byDate).reduce((a,d)=>a+d.protein,0)/days;
-            const protRate = targetProtein ? avgP/targetProtein : 1;
-            const kcalAcc  = Math.max(0, 1-Math.abs(avgK-targetKcal)/targetKcal);
-            const combined = protRate*0.4 + kcalAcc*0.3 + (days/7)*0.3;
+            const days  = Object.keys(byDate).length;
+            const avgK  = Object.values(byDate).reduce((a,d)=>a+d.kcal,0)/days;
+            const avgP  = Object.values(byDate).reduce((a,d)=>a+d.protein,0)/days;
+            // Lyginame su kliento vidurkiu (konsistencija + nuokrypis nuo savo normos)
+            const refK   = globalAvgKcal || avgK;
+            const refP   = globalAvgProt || avgP;
+            const kcalAcc  = Math.max(0, 1-Math.abs(avgK-refK)/(refK||1));
+            const protAcc  = Math.max(0, 1-Math.abs(avgP-refP)/(refP||1));
+            const consRate = days/7;
+            const combined = kcalAcc*0.35 + protAcc*0.25 + consRate*0.4;
             result.diet_adherence = Math.max(1, Math.min(5, Math.round(combined*4)+1));
           }
         }
