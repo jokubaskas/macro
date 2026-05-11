@@ -14,6 +14,7 @@ export default function App() {
   const [loading,      setLoading]      = useState(true);
   const [tab,          setTab]          = useState("food");
   const [foodKey,      setFoodKey]      = useState(0);
+  const [stepsToday,   setStepsToday]   = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
@@ -77,8 +78,8 @@ export default function App() {
   return (
     <div style={{ position:"relative" }}>
       {tab==="food"
-        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
-        : <ActivityView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
+        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} stepsToday={stepsToday} selectedDate={selectedDate} onDateChange={handleDateChange} />
+        : <ActivityView user={session.user} onLogout={handleLogout} stepsToday={stepsToday} onStepsChange={setStepsToday} selectedDate={selectedDate} onDateChange={handleDateChange} />
       }
 
       {/* Apačios navigacija */}
