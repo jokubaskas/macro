@@ -131,7 +131,7 @@ function DatePickerModal({ value, minDate, onSelect, onClose }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: _unused }) {
+export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: propSteps }) {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [entries,      setEntries]      = useState([]);
@@ -149,7 +149,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [todaySleep,     setTodaySleep]     = useState(null);
   const [todayWater,     setTodayWater]     = useState({ ml:0, goal:2000 });
   const [checkinDone,    setCheckinDone]    = useState(null);
-  const [todaySteps,     setTodaySteps]     = useState(propSteps || 0);
+  const [todaySteps,     setTodaySteps]     = useState(0);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
