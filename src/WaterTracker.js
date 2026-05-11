@@ -10,7 +10,7 @@ const PK = {
 const ML = 250;
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-export default function WaterTracker({ goal: defaultGoal = 2000, userId, date }) {
+export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, compact = false }) {
   const currentDate = date || todayStr();
   const isToday = currentDate === todayStr();
 
@@ -74,6 +74,26 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date })
   }
 
   if (!loaded) return null;
+
+  // ── Kompaktiškas režimas ──────────────────────────────────────────────────
+  if (compact) {
+    const { PK: PKc } = { PK: { dark:"#6D1B3B", mid:"#AD1457", blush:"#F8BBD9", light:"#FCE4EC", pale:"#FFF0F5" } };
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ fontSize:14 }}>💧</span>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+            <span style={{ fontSize:11, color:PK.dark, fontWeight:600 }}>{drunk} / {goal} ml</span>
+            <span style={{ fontSize:11, color: done ? "#27ae60" : PK.mid, fontWeight:700 }}>{pct}%</span>
+          </div>
+          <div style={{ background:PK.blush, borderRadius:99, height:5 }}>
+            <div style={{ width:pct+"%", height:"100%", borderRadius:99, background: done ? "#27ae60" : PK.water, transition:"width 0.3s" }}/>
+          </div>
+        </div>
+        <span style={{ fontSize:11, color:PK.mid, fontWeight:700, minWidth:30, textAlign:"right" }}>{filled}🥛</span>
+      </div>
+    );
+  }
 
   const GlassSVG = ({ index }) => {
     const isFilled     = index < filled;
