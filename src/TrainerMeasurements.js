@@ -160,10 +160,15 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
         // Vanduo – visada perskaičiuoti iš water_log
         if (waterData?.length) {
-          const ww      = waterData.filter(w => w.date >= ci.week_start && w.date <= wEnd);
+          const ww = waterData.filter(w => w.date >= ci.week_start && w.date <= wEnd);
           if (ww.length) {
-            const goalDays = ww.filter(w => w.ml >= (w.goal||2000)).length;
-            result.water_score = Math.max(1, Math.min(5, Math.round((goalDays/7)*4)+1));
+            const daysLogged = ww.length;
+            const avgMl      = ww.reduce((a,w)=>a+(+w.ml||0),0) / daysLogged;
+            const goal       = ww[0]?.goal || 2000;
+            const mlRate     = Math.min(1, avgMl / goal);   // 0–1
+            const consRate   = daysLogged / 7;              // 0–1
+            const combined   = mlRate * 0.6 + consRate * 0.4;
+            result.water_score = Math.max(1, Math.min(5, Math.round(combined * 4) + 1));
           }
         }
 
