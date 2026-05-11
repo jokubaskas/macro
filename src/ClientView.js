@@ -381,13 +381,22 @@ export default function ClientView({ user, onLogout }) {
             {openSection ? (
               /* ── Išskleista sekcija ── */
               <div>
-                <button onClick={()=>setOpenSection(null)} style={{
-                  display:"flex", alignItems:"center", gap:6,
-                  background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.2)",
-                  borderRadius:10, padding:"8px 14px", color:"rgba(255,255,255,0.8)",
-                  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
-                  marginBottom:12,
-                }}>← Grįžti</button>
+                {/* Fiksuotas grįžimo mygtukas apačioje */}
+                <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:200, padding:"12px 16px 24px", background:"linear-gradient(to top, rgba(109,27,59,0.97) 60%, transparent)", pointerEvents:"none" }}>
+                  <button onClick={()=>setOpenSection(null)} style={{
+                    pointerEvents:"all",
+                    width:"100%", maxWidth:480, display:"block", margin:"0 auto",
+                    padding:"14px 0",
+                    background:"rgba(255,255,255,0.15)",
+                    backdropFilter:"blur(10px)",
+                    border:"1.5px solid rgba(255,255,255,0.3)",
+                    borderRadius:16, color:"#fff",
+                    fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                    letterSpacing:"0.02em",
+                  }}>← Grįžti į pagrindinį</button>
+                </div>
+                {/* Tarpas apačioje kad turinys nesidengtų su mygtuku */}
+                <div style={{ height:80 }}/>
 
                 {openSection==="food" && (
                   <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
