@@ -133,10 +133,13 @@ export default function TrainerMeasurements({ clientId, clientName }) {
     if (ciList.length > 0) {
       const oldestWeek = ciList[0].week_start;
 
-      const [{ data: waterData }, { data: foodData }] = await Promise.all([
-        adminDb.from("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek),
+      const [{ data: waterRaw }, { data: foodData }] = await Promise.all([
+        adminDb.from("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek).order("date"),
         adminDb.from("food_log").select("date,kcal,protein").eq("user_id",clientId).gte("date",oldestWeek),
       ]);
+
+      // Normalizuoti water datas (pašalinti laiko komponentą jei yra)
+      const waterData = waterRaw?.map(w => ({ ...w, date: String(w.date).substring(0,10) }));
 
       const wkEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
 
