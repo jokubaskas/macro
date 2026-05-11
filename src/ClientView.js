@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
+import SleepTracker from "./SleepTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
 import FoodSearch from "./FoodSearch";
@@ -420,7 +421,9 @@ export default function ClientView({ user, onLogout }) {
               </div>
             </div>
 
-            <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} />
+            <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
+
+            <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
 
             <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
           </>
