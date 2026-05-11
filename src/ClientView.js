@@ -5,6 +5,7 @@ import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
+import MeasurementReport from "./MeasurementReport";
 import FoodSearch from "./FoodSearch";
 import BarcodeScanner from "./BarcodeScanner";
 
@@ -116,6 +117,8 @@ export default function ClientView({ user, onLogout }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBarcode,     setShowBarcode]     = useState(false);
+  const [hasReport,      setHasReport]      = useState(false);
+  const [showReport,     setShowReport]     = useState(false);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -305,7 +308,31 @@ export default function ClientView({ user, onLogout }) {
           </div>
         ) : (
           <>
-            {/* Motyvacinė žinutė */}
+            {/* Notifikacijos bell */}
+          {hasReport && !showReport && (
+            <button onClick={()=>setShowReport(true)} style={{
+              position:"fixed", bottom:24, right:20, zIndex:500,
+              width:52, height:52, borderRadius:"50%",
+              background:`linear-gradient(135deg,${PK.dark},${PK.mid})`,
+              border:"2px solid rgba(255,255,255,0.3)",
+              boxShadow:"0 4px 20px rgba(173,20,87,0.5)",
+              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:22,
+            }}>
+              📊
+              <div style={{ position:"absolute", top:0, right:0, width:14, height:14, borderRadius:"50%", background:"#FF4444", border:"2px solid #fff", fontSize:8, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:700 }}>1</div>
+            </button>
+          )}
+
+          {/* Ataskaitos modalas */}
+          {showReport && (
+            <MeasurementReport
+              userId={user.id}
+              onClose={()=>{ setShowReport(false); setHasReport(false); }}
+            />
+          )}
+
+          {/* Motyvacinė žinutė */}
             <MotivationalCard userId={user.id} res={res} goalId={profile?.goal} />
 
             {/* Profilis */}
