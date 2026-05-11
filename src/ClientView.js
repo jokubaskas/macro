@@ -131,7 +131,7 @@ function DatePickerModal({ value, minDate, onSelect, onClose }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: propSteps }) {
+export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: _unused }) {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [entries,      setEntries]      = useState([]);
@@ -192,10 +192,19 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     setTodaySleep(sleep?.hours_slept ?? null);
     setTodayWater({ ml: water?.ml || 0, goal: water?.goal || Math.round(parseFloat(profile?.weight||60)*33) });
     setCheckinDone(ci?.is_done ?? false);
-    if (!propSteps) setTodaySteps(stepRow?.steps || 0); // nenaudojame DB jei prop jau turi reikšmę
+    setTodaySteps(stepRow?.steps || 0);
   }, [user.id, selectedDate, profile?.weight]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
+
+  // Atskiras žingsnių krovimas – kad iš karto matytųsi
+  useEffect(() => {
+    const today = todayStr();
+    supabase.from("step_log").select("steps")
+      .eq("user_id", user.id).eq("date", today)
+      .maybeSingle()
+      .then(({ data }) => { if (data?.steps > 0) setTodaySteps(data.steps); });
+  }, [user.id]);
 
   async function addEntry(meal, food) {
     await supabase.from("food_log").insert({
@@ -233,8 +242,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     weight: parseFloat(profile.weight), height: parseFloat(profile.height),
     actId: profile.act, goalId: profile.goal,
   }) : null;
-  const stepsCount     = Math.max(propSteps || 0, todaySteps); // naudojame didesnę reikšmę
-  const extraKcal      = calcStepCalories(stepsCount, parseFloat(profile?.weight||60));
+  const extraKcal      = calcStepCalories(todaySteps, parseFloat(profile?.weight||60));
   const adjustedTarget = hasData ? (res?.target || 0) + extraKcal : 0;
 
   const goalLabel = GOALS.find(g => g.id === profile?.goal)?.label ?? "";
