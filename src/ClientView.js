@@ -192,7 +192,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     setTodaySleep(sleep?.hours_slept ?? null);
     setTodayWater({ ml: water?.ml || 0, goal: water?.goal || Math.round(parseFloat(profile?.weight||60)*33) });
     setCheckinDone(ci?.is_done ?? false);
-    setTodaySteps(stepRow?.steps || 0);
+    if (!propSteps) setTodaySteps(stepRow?.steps || 0); // nenaudojame DB jei prop jau turi reikšmę
   }, [user.id, selectedDate, profile?.weight]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
@@ -233,7 +233,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     weight: parseFloat(profile.weight), height: parseFloat(profile.height),
     actId: profile.act, goalId: profile.goal,
   }) : null;
-  const stepsCount     = propSteps ?? todaySteps;
+  const stepsCount     = Math.max(propSteps || 0, todaySteps); // naudojame didesnę reikšmę
   const extraKcal      = calcStepCalories(stepsCount, parseFloat(profile?.weight||60));
   const adjustedTarget = hasData ? (res?.target || 0) + extraKcal : 0;
 
@@ -408,8 +408,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             />
           )}
 
-          {/* Motyvacinė žinutė */}
-            <MotivationalCard userId={user.id} res={res} goalId={profile?.goal} />
+          {/* Motyvacinė žinutė – tik grid rodinyje */}
+            {!openSection && <MotivationalCard userId={user.id} res={res} goalId={profile?.goal} />}
 
             {/* ── GRID ARBA IŠSKLEISTA SEKCIJA ── */}
             {openSection ? (
@@ -433,7 +433,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 <div style={{ height:70 }}/>
 
                 {openSection==="food" && (
-                  <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
+                  <div style={{ paddingBottom:16, background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                       <p style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)", margin:0 }}>📊 Šiandien surinkta</p>
 
@@ -475,7 +475,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 )}
 
                 {openSection==="targets" && (
-                  <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
+                  <div style={{ paddingBottom:16, background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
                     <p style={{ fontSize:14, fontWeight:700, color:"#fff", textAlign:"center", marginBottom:14 }}>📊 Tavo makro tikslai</p>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
                       {[{l:"BMR",v:res.bmr,s:"bazinis"},{l:"TDEE",v:res.tdee,s:"su aktyvumu"},{l:"Tikslas",v:res.target,s:"per dieną"}].map(item=>(
@@ -517,7 +517,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 )}
 
                 {openSection==="checkin" && (
-                  <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
+                  <div style={{ paddingBottom:16 }}>
+                    <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
+                  </div>
                 )}
               </div>
             ) : (
