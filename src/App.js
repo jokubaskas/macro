@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import Login from "./Login";
 import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
+import ActivityView from "./ActivityView";
 import Onboarding from "./Onboarding";
 
 const ADMIN_EMAILS = (process.env.REACT_APP_ADMIN_EMAILS || "").split(",").map(e => e.trim());
@@ -64,5 +65,45 @@ export default function App() {
     return <Onboarding user={session.user} onComplete={() => loadProfile(session.user.id)} />;
   }
 
-  return <ClientView user={session.user} onLogout={handleLogout} />;
+  // Kliento navigacija
+  const [tab, setTab] = useState("food"); // food | activity
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+
+  function handleDateChange(v) {
+    if (v === "today" || !v) setSelectedDate(new Date().toISOString().split("T")[0]);
+    else setSelectedDate(v);
+  }
+
+  return (
+    <div style={{ position:"relative" }}>
+      {tab==="food"
+        ? <ClientView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
+        : <ActivityView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
+      }
+
+      {/* Apačios navigacija */}
+      <div style={{
+        position:"fixed", bottom:0, left:0, right:0, zIndex:300,
+        background:"#fff", borderTop:"1px solid #FCE4EC",
+        display:"flex", maxWidth:480, margin:"0 auto",
+        boxShadow:"0 -2px 20px rgba(173,20,87,0.12)",
+      }}>
+        {[
+          { id:"food",     emoji:"🍽️", label:"Mityba" },
+          { id:"activity", emoji:"🏃", label:"Aktyvumas" },
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{
+            flex:1, padding:"10px 0 14px",
+            background:"none", border:"none", cursor:"pointer",
+            fontFamily:"inherit", display:"flex", flexDirection:"column",
+            alignItems:"center", gap:3,
+            borderTop: tab===t.id ? "2.5px solid #AD1457" : "2.5px solid transparent",
+          }}>
+            <span style={{ fontSize:22 }}>{t.emoji}</span>
+            <span style={{ fontSize:10, fontWeight:700, color:tab===t.id?"#AD1457":"#B0B0B0" }}>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
