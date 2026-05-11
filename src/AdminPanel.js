@@ -295,36 +295,85 @@ function NewClientForm({ onSave, onCancel }) {
 }
 
 // ── Kliento kortelė sąraše ────────────────────────────────────────────────────
-function ClientCard({ client, onEdit, onDelete, onOpen }) {
-  const age = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
+function ClientCard({ client, onDelete, onOpen }) {
+  const age  = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
   const done = client.onboarding_done;
+  const today = new Date();
+
+  // ── Perspėjimai ──────────────────────────────────────────────────────────
+  const alerts = [];
+
+  // 🎂 Gimtadienis (likus ≤ 7 dienoms)
+  if (client.dob) {
+    const bday = new Date(client.dob);
+    const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
+    if (next < today) next.setFullYear(today.getFullYear() + 1);
+    const d = Math.ceil((next - today) / (1000*60*60*24));
+    if (d === 0) alerts.push({ e:"🎂", t:"Šiandien gimtadienis!", c:"#E91E8C" });
+    else if (d === 1) alerts.push({ e:"🎂", t:"Gimtadienis rytoj!", c:"#E91E8C" });
+    else if (d <= 7) alerts.push({ e:"🎂", t:"Gimtadienis po "+d+" d.", c:"#E91E8C" });
+  }
+
+  // 📏 Matavimai (kas 56 d.)
+  if (client._lastMeasure) {
+    const nextM = new Date(new Date(client._lastMeasure).getTime() + 56*24*60*60*1000);
+    const d = Math.ceil((nextM - today) / (1000*60*60*24));
+    if (d < 0)      alerts.push({ e:"📏", t:"Matavimai pradelsti "+Math.abs(d)+" d.", c:"#e74c3c" });
+    else if (d <= 7) alerts.push({ e:"📏", t:"Matavimai po "+d+" d.", c:"#f39c12" });
+  } else if (done) {
+    alerts.push({ e:"📏", t:"Pirmi matavimai neatlikti", c:"#e74c3c" });
+  }
+
+  // 📋 Check-in
+  if (done && client._checkinDone !== true) alerts.push({ e:"📋", t:"Check-in šią savaitę neatliko", c:"#856404" });
+
+  // 🍽️ Mityba
+  if (done && !client._lastFood) alerts.push({ e:"🍽️", t:"3+ d. nesuvedė mitybos", c:"#c0392b" });
+
+  // ⚠️ Anketa
+  if (!done) alerts.push({ e:"⚠️", t:"Anketa nebaigta", c:"#856404" });
+
   return (
-    <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:10, border:"1px solid "+PK.blush, boxShadow:"0 2px 8px rgba(173,20,87,0.06)" }}>
+    <div style={{
+      background:"#fff", borderRadius:16, padding:"12px 16px", marginBottom:10,
+      border:"1px solid "+(alerts.length?PK.mid:PK.blush),
+      boxShadow: alerts.length?"0 2px 12px rgba(173,20,87,0.12)":"0 2px 8px rgba(173,20,87,0.06)",
+    }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, flex:1 }}>
-          <div style={{ width:42, height:42, borderRadius:"50%", background:done?PK.light:"#f5f5f5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
+          <div style={{ width:42, height:42, borderRadius:"50%", background:done?PK.light:"#f5f5f5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
             {client.gender==="f"?"👩":"👨"}
           </div>
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:14, fontWeight:700, color:PK.dark, marginBottom:2 }}>{client.name || client.email}</p>
-            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-              <p style={{ fontSize:11, color:PK.rose, margin:0 }}>{age ? age+"m." : ""}{client.weight?" · "+client.weight+"kg":""}</p>
-              {!done && <span style={{ fontSize:9, background:"#FFF3CD", color:"#856404", borderRadius:6, padding:"2px 6px", fontWeight:700 }}>Anketa nebaigta</span>}
+            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+              <p style={{ fontSize:14, fontWeight:700, color:PK.dark, margin:0 }}>{client.name||client.email}</p>
+              {alerts.length > 0 && <span style={{ width:7, height:7, borderRadius:"50%", background:"#e74c3c", flexShrink:0 }}/>}
             </div>
+            <p style={{ fontSize:11, color:PK.rose, margin:"2px 0 0" }}>
+              {age?age+"m.":""}{client.weight?" · "+client.weight+"kg":""}
+              {client._lastMeasure?" · mat. "+new Date(client._lastMeasure).toLocaleDateString("lt-LT",{month:"short",day:"numeric"}):""}
+            </p>
           </div>
         </div>
-        <div style={{ display:"flex", gap:6 }}>
-          <button onClick={onOpen} style={{ padding:"6px 10px", borderRadius:10, border:"1px solid "+PK.blush, background:PK.light, color:PK.mid, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            Profilis
-          </button>
+        <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+          <button onClick={onOpen} style={{ padding:"6px 10px", borderRadius:10, border:"1px solid "+PK.blush, background:PK.light, color:PK.mid, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Profilis</button>
           <button onClick={onDelete} style={{ padding:"6px 8px", borderRadius:10, border:"1px solid "+PK.blush, background:"#fff", color:PK.rose, fontSize:12, cursor:"pointer" }}>🗑️</button>
         </div>
       </div>
+      {alerts.length > 0 && (
+        <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:5 }}>
+          {alerts.map((a,i) => (
+            <span key={i} style={{ fontSize:10, fontWeight:600, padding:"3px 8px", borderRadius:8, background:a.c+"18", color:a.c, border:"1px solid "+a.c+"33" }}>
+              {a.e} {a.t}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Pagrindinis admin komponentas ─────────────────────────────────────────────
+
 export default function AdminPanel({ user, onLogout }) {
   const [clients,    setClients]    = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -335,8 +384,42 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function loadClients() {
     setLoading(true);
-    const { data } = await supabase.from("profiles").select("*").eq("role","client").order("name");
-    setClients(data || []);
+    const today = new Date().toISOString().split("T")[0];
+    const weekStart = (() => {
+      const d=new Date(),day=d.getDay();
+      d.setDate(d.getDate()-day+(day===0?-6:1));
+      return d.toISOString().split("T")[0];
+    })();
+
+    const [{ data: profiles }, { data: measures }, { data: checkins }, { data: foodLogs }] = await Promise.all([
+      supabase.from("profiles").select("*").eq("role","client").order("name"),
+      supabase.from("trainer_measurements").select("user_id,measured_at").order("measured_at",{ascending:false}),
+      supabase.from("client_checkins").select("user_id,is_done").eq("week_start",weekStart),
+      supabase.from("food_log").select("user_id,date").gte("date", new Date(Date.now()-3*24*60*60*1000).toISOString().split("T")[0]),
+    ]);
+
+    // Paskutinis matavimas kiekvienam klientui
+    const lastMeasure = {};
+    (measures||[]).forEach(m => { if (!lastMeasure[m.user_id]) lastMeasure[m.user_id] = m.measured_at; });
+
+    // Šios savaitės check-in statusas
+    const checkinDone = {};
+    (checkins||[]).forEach(c => { checkinDone[c.user_id] = c.is_done; });
+
+    // Paskutinė mitybos suvedimo data
+    const lastFood = {};
+    (foodLogs||[]).forEach(f => {
+      if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
+    });
+
+    const enriched = (profiles||[]).map(p => ({
+      ...p,
+      _lastMeasure: lastMeasure[p.id] || null,
+      _checkinDone: checkinDone[p.id] ?? null,
+      _lastFood:    lastFood[p.id]    || null,
+    }));
+
+    setClients(enriched);
     setLoading(false);
   }
 
