@@ -13,6 +13,7 @@ export default function App() {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [tab,          setTab]          = useState("food");
+  const [foodKey,      setFoodKey]      = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function App() {
   return (
     <div style={{ position:"relative" }}>
       {tab==="food"
-        ? <ClientView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
+        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
         : <ActivityView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange} />
       }
 
@@ -91,7 +92,7 @@ export default function App() {
           { id:"food",     emoji:"🍽️", label:"Mityba" },
           { id:"activity", emoji:"🏃", label:"Aktyvumas" },
         ].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{
+          <button key={t.id} onClick={()=>{ if(t.id==="food") setFoodKey(k=>k+1); setTab(t.id); }} style={{
             flex:1, padding:"10px 0 14px",
             background:"none", border:"none", cursor:"pointer",
             fontFamily:"inherit", display:"flex", flexDirection:"column",
