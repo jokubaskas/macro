@@ -16,6 +16,30 @@ const MEALS = [
   { id:"snack",     label:"🍎 Užkandžiai" },
 ];
 
+// ── Išskleidžiama sekcija ─────────────────────────────────────────────────────
+function CollapseSection({ title, subtitle, defaultOpen=false, badge, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ background:"#fff", borderRadius:16, marginBottom:10, border:"1px solid "+PK.blush, overflow:"hidden" }}>
+      <button onClick={()=>setOpen(s=>!s)} style={{
+        width:"100%", padding:"12px 16px", background:"none", border:"none",
+        display:"flex", justifyContent:"space-between", alignItems:"center",
+        cursor:"pointer", fontFamily:"inherit",
+      }}>
+        <div style={{ textAlign:"left" }}>
+          <p style={{ fontSize:13, fontWeight:700, color:PK.dark, margin:0 }}>{title}</p>
+          {subtitle && <p style={{ fontSize:11, color:PK.rose, margin:"2px 0 0" }}>{subtitle}</p>}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {badge}
+          <span style={{ fontSize:16, color:PK.mid, transform:open?"rotate(180deg)":"rotate(0deg)", transition:"transform 0.2s", display:"inline-block" }}>⌄</span>
+        </div>
+      </button>
+      {open && <div style={{ padding:"0 16px 14px" }}>{children}</div>}
+    </div>
+  );
+}
+
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function fmtDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" });
@@ -364,44 +388,40 @@ export default function ClientView({ user, onLogout }) {
               </div>
             </div>
 
-            {/* Dienos planas */}
-            <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:20, marginBottom:12, boxShadow:"0 6px 24px rgba(173,20,87,0.3)" }}>
-              <p style={{ fontSize:14, fontWeight:700, color:"#fff", textAlign:"center", marginBottom:14 }}>✨ Dienos planas</p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-                {[{l:"BMR",v:res.bmr,s:"bazinis"},{l:"TDEE",v:res.tdee,s:"su aktyvumu"},{l:"TIKSLAS",v:res.target,s:"per dieną"}].map(item=>(
-                  <div key={item.l} style={{ background:"rgba(255,255,255,0.13)", borderRadius:12, padding:"10px 6px", textAlign:"center" }}>
-                    <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>{item.v}</div>
-                    <div style={{ fontSize:9, color:PK.blush, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginTop:2 }}>{item.l}</div>
-                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:1 }}>{item.s}</div>
+            {/* Dienos planas – collapsible */}
+            <CollapseSection
+              title="📊 Makro tikslai"
+              subtitle={`${res.target} kcal · B:${res.prot.g}g · R:${res.fat.g}g · A:${res.carb.g}g`}
+              defaultOpen={false}
+            >
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+                {[{l:"BMR",v:res.bmr,s:"bazinis"},{l:"TDEE",v:res.tdee,s:"su aktyvumu"},{l:"Tikslas",v:res.target,s:"per dieną"}].map(item=>(
+                  <div key={item.l} style={{ background:PK.light, borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
+                    <div style={{ fontSize:17, fontWeight:700, color:PK.dark }}>{item.v}</div>
+                    <div style={{ fontSize:8, color:PK.mid, fontWeight:700, textTransform:"uppercase" }}>{item.l}</div>
+                    <div style={{ fontSize:8, color:PK.rose }}>{item.s}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ height:1, background:"rgba(255,255,255,0.15)", marginBottom:14 }} />
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {[
-                  {label:"💪 Baltymai",data:res.prot,color:"#FFB3C6"},
-                  {label:"🥑 Riebalai",data:res.fat,color:"#FF80AB"},
-                  {label:"🍚 Angliavandeniai",data:res.carb,color:"#F48FB1"},
+                  {label:"💪 Baltymai",data:res.prot,color:PK.mid},
+                  {label:"🥑 Riebalai",data:res.fat,color:"#E91E8C"},
+                  {label:"🍚 Angliavandeniai",data:res.carb,color:PK.dark},
                 ].map(macro=>(
                   <div key={macro.label}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-                      <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{macro.label}</span>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                        <span style={{ fontSize:16, fontWeight:700, color:macro.color }}>{macro.data.g}g</span>
-                        <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>{macro.data.kcal} kcal</span>
-                        <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>{macro.data.pct}%</span>
-                      </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                      <span style={{ fontSize:12, fontWeight:600, color:PK.dark }}>{macro.label}</span>
+                      <span style={{ fontSize:12, color:PK.mid }}><strong>{macro.data.g}g</strong> · {macro.data.kcal} kcal · {macro.data.pct}%</span>
                     </div>
-                    <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:99, height:5 }}>
-                      <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:macro.color, transition:"width 0.6s" }} />
+                    <div style={{ background:PK.blush, borderRadius:99, height:5 }}>
+                      <div style={{ width:macro.data.pct+"%", height:"100%", borderRadius:99, background:macro.color }}/>
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:10, padding:"10px 12px", marginTop:14 }}>
-                <p style={{ margin:0, fontSize:11, color:PK.blush, lineHeight:1.6, textAlign:"center" }}>💡 {res.tip}</p>
-              </div>
-            </div>
+            </CollapseSection>
+
 
             {/* Surinkta */}
             <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:18, marginBottom:12, boxShadow:"0 6px 24px rgba(173,20,87,0.3)" }}>
@@ -462,9 +482,22 @@ export default function ClientView({ user, onLogout }) {
 
             <CheckIn userId={user.id} targetKcal={res?.target} targetProtein={res?.prot?.g} age={parseInt(profile?.age)} />
 
-            <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
-
-            <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
+            {/* Miegas + Vanduo – kompaktiškas blokas su išskleidžiamu slankikliu */}
+            <CollapseSection
+              title="😴 Miegas · 💧 Vanduo"
+              subtitle={null}
+              defaultOpen={false}
+              badge={null}
+            >
+              <div style={{ marginBottom:10 }}>
+                <p style={{ fontSize:11, fontWeight:700, color:PK.mid, margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"0.06em" }}>Miegas</p>
+                <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
+              </div>
+              <div>
+                <p style={{ fontSize:11, fontWeight:700, color:PK.mid, margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"0.06em" }}>Vanduo</p>
+                <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
+              </div>
+            </CollapseSection>
           </>
         )}
       </div>
