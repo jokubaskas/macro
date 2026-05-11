@@ -5,7 +5,6 @@ import WaterTracker from "./WaterTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
 import FoodSearch from "./FoodSearch";
-import RecipeSuggestion from "./RecipeSuggestion";
 import BarcodeScanner from "./BarcodeScanner";
 
 const MEALS = [
@@ -116,8 +115,6 @@ export default function ClientView({ user, onLogout }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBarcode,     setShowBarcode]     = useState(false);
-  const [showRecipe,     setShowRecipe]     = useState(false);
-  const [recipeMealId,   setRecipeMealId]   = useState(null);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -226,11 +223,7 @@ export default function ClientView({ user, onLogout }) {
               <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{MEALS.find(m=>m.id===openMeal)?.label}</span>
               {isToday && (
                 <div style={{ display:"flex", gap:6 }}>
-                  <button onClick={() => { setRecipeMealId(openMeal); setShowRecipe(true); }}
-                    style={{ padding:"5px 9px", background:"rgba(255,255,180,0.12)", border:"1px solid rgba(255,255,150,0.4)", borderRadius:8, fontSize:11, fontWeight:700, color:"rgba(255,255,180,0.9)", cursor:"pointer", fontFamily:"inherit" }}>
-                    💡 Receptas
-                  </button>
-                  <button onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
+<button onClick={() => { setActiveMeal(openMeal); setSearching(true); }}
                     style={{ padding:"5px 12px", background:"rgba(255,255,255,0.2)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:8, fontSize:11, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
                     + Pridėti
                   </button>
@@ -268,15 +261,6 @@ export default function ClientView({ user, onLogout }) {
       )}
 
       {/* Maisto paieška */}
-      {showRecipe && remaining && (
-        <RecipeSuggestion
-          mealId={recipeMealId}
-          remaining={remaining}
-          res={res}
-          onClose={() => { setShowRecipe(false); setRecipeMealId(null); }}
-        />
-      )}
-
       {searching && (
         <FoodSearch
           onAdd={food => addEntry(activeMeal, food)}
