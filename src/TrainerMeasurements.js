@@ -127,7 +127,30 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       adminDb.from("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
     ]);
     setMeasures(m||[]);
-    setCheckins(c||[]);
+
+    // Papildomai paskaičiuoti vandens balą iš water_log kiekvienai savaitei
+    const ciList = c || [];
+    if (ciList.length > 0) {
+      const oldestWeek = ciList[0].week_start;
+      const { data: waterData } = await adminDb
+        .from("water_log").select("date,ml,goal")
+        .eq("user_id", clientId)
+        .gte("date", oldestWeek);
+
+      const enriched = ciList.map(ci => {
+        if (ci.water_score != null) return ci; // jau turi išsaugotą
+        if (!waterData?.length) return ci;
+        const weekEnd = (() => { const d=new Date(ci.week_start+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; })();
+        const weekWater = waterData.filter(w => w.date >= ci.week_start && w.date <= weekEnd);
+        if (!weekWater.length) return ci;
+        const goalDays = weekWater.filter(w => w.ml >= (w.goal||2000)).length;
+        const score = Math.max(1, Math.min(5, Math.round((goalDays/7)*4)+1));
+        return { ...ci, water_score: score };
+      });
+      setCheckins(enriched);
+    } else {
+      setCheckins([]);
+    }
   }, [clientId]);
 
   useEffect(() => { load(); }, [load]);
