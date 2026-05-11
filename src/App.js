@@ -18,7 +18,8 @@ export default function App() {
       if (session) loadProfile(session.user.id);
       else setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return; // getSession() jau tvarko
       setSession(session);
       if (session) loadProfile(session.user.id);
       else { setProfile(null); setLoading(false); }
@@ -49,7 +50,17 @@ export default function App() {
   if (isAdmin) return <AdminPanel user={session.user} onLogout={handleLogout} />;
 
   // Klientas – ar baigta registracija?
-  if (!profile?.onboarding_done) {
+  // Jei profilis dar kraunamas – nerodyti anketos (apsauga nuo mirksnio)
+  if (!profile) return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#6D1B3B,#AD1457)" }}>
+      <div style={{ textAlign:"center" }}>
+        <img src="/logo.png" alt="Coach Vilma" style={{ width:80, height:80, objectFit:"contain", marginBottom:12 }}/>
+        <p style={{ color:"#F8BBD9", fontSize:14 }}>Kraunama...</p>
+      </div>
+    </div>
+  );
+
+  if (!profile.onboarding_done) {
     return <Onboarding user={session.user} onComplete={() => loadProfile(session.user.id)} />;
   }
 
