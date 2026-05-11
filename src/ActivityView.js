@@ -58,10 +58,10 @@ function AdjustedMacros({ res, extraKcal, weightKg }) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function ActivityView({ user, onLogout, selectedDate, onDateChange }) {
+export default function ActivityView({ user, onLogout, selectedDate, onDateChange, stepsToday, onStepsChange }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [steps,   setSteps]   = useState(0);
+  const [steps,   setSteps]   = useState(stepsToday || 0);
 
   useEffect(() => {
     if (!user) return;
@@ -121,7 +121,7 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
           userId={user.id}
           weightKg={parseFloat(profile.weight)}
           date={selectedDate}
-          onStepsChange={setSteps}
+          onStepsChange={(s) => { setSteps(s); onStepsChange?.(s); }}
         />
 
         {/* Koreguoti makronutrientai */}
