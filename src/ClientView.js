@@ -180,8 +180,8 @@ export default function ClientView({ user, onLogout }) {
     const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
     const [{ data:food }, { data:sleep }, { data:water }, { data:ci }] = await Promise.all([
       supabase.from("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
-      supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",today).maybeSingle(),
-      supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",today).maybeSingle(),
+      supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
+      supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
       supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
     ]);
     setEntries(food || []);
