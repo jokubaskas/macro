@@ -396,7 +396,7 @@ export default function ClientView({ user, onLogout }) {
                   }}>← Grįžti į pagrindinį</button>
                 </div>
                 {/* Tarpas apačioje kad turinys nesidengtų su mygtuku */}
-                <div style={{ height:80 }}/>
+                <div style={{ height:100 }}/>
 
                 {openSection==="food" && (
                   <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
@@ -476,7 +476,7 @@ export default function ClientView({ user, onLogout }) {
                 )}
 
                 {openSection==="health" && (
-                  <div>
+                  <div style={{ paddingBottom:24 }}>
                     <SleepTracker userId={user.id} age={parseInt(profile.age)} date={selectedDate} />
                     <WaterTracker goal={Math.round(parseFloat(profile.weight)*33)} userId={user.id} date={selectedDate} />
                   </div>
