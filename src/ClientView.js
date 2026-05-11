@@ -146,6 +146,7 @@ export default function ClientView({ user, onLogout }) {
   const [openSection,    setOpenSection]    = useState(null); // null|food|health|checkin|targets
   const [todaySleep,     setTodaySleep]     = useState(null);
   const [todayWater,     setTodayWater]     = useState({ ml:0, goal:2000 });
+  const [checkinDone,    setCheckinDone]    = useState(null); // null|true|false
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
@@ -176,14 +177,17 @@ export default function ClientView({ user, onLogout }) {
 
   const loadEntries = useCallback(async () => {
     const today = todayStr();
-    const [{ data:food }, { data:sleep }, { data:water }] = await Promise.all([
+    const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
+    const [{ data:food }, { data:sleep }, { data:water }, { data:ci }] = await Promise.all([
       supabase.from("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
       supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",today).maybeSingle(),
       supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",today).maybeSingle(),
+      supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
     ]);
     setEntries(food || []);
     setTodaySleep(sleep?.hours_slept ?? null);
     setTodayWater({ ml: water?.ml || 0, goal: water?.goal || Math.round(parseFloat(profile?.weight||60)*33) });
+    setCheckinDone(ci?.is_done ?? false);
   }, [user.id, selectedDate, profile?.weight]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
@@ -337,11 +341,33 @@ export default function ClientView({ user, onLogout }) {
           <h1 style={{ fontSize:19, fontWeight:700, color:"#fff", marginBottom:4 }}>
             Sveika, {profile?.name?.split(" ")[0] ?? ""}!
           </h1>
-          <p style={{ color:PK.blush, fontSize:12, margin:0 }}>Tavo mitybos planas</p>
+          {/* Datos pasirinkimas header'yje */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:8 }}>
+            <button onClick={()=>setShowCalendar(true)} style={{
+              background:"rgba(255,255,255,0.15)",
+              border:"1.5px solid rgba(255,255,255,0.3)",
+              borderRadius:20, padding:"6px 16px",
+              color:"#fff", fontSize:12, fontWeight:700,
+              cursor:"pointer", fontFamily:"inherit",
+              display:"flex", alignItems:"center", gap:6,
+            }}>
+              📅 {isToday
+                ? new Date().toLocaleDateString("lt-LT",{weekday:"short",month:"short",day:"numeric"})
+                : selectedDate}
+              <span style={{ fontSize:9, opacity:0.6 }}>▼</span>
+            </button>
+            {!isToday && (
+              <button onClick={()=>setSelectedDate(todayStr())} style={{
+                background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)",
+                borderRadius:12, padding:"6px 10px", color:PK.blush,
+                fontSize:11, cursor:"pointer", fontFamily:"inherit",
+              }}>← Šiandien</button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div style={{ maxWidth:480, margin:"0 auto", padding:"16px 16px 0" }}>
+      <div style={{ maxWidth:480, margin:"0 auto", padding:"12px 16px 0" }}>
         {!hasData ? (
           <div style={{ background:PK.pale, borderRadius:20, padding:"32px 20px", textAlign:"center", border:"2px dashed "+PK.blush, marginTop:8 }}>
             <div style={{ fontSize:40, marginBottom:10 }}>🌸</div>
@@ -402,7 +428,7 @@ export default function ClientView({ user, onLogout }) {
                   <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                       <p style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)", margin:0 }}>📊 Šiandien surinkta</p>
-                      <button onClick={()=>setShowCalendar(true)} style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.25)", borderRadius:8, padding:"5px 10px", color:"#fff", fontSize:11, cursor:"pointer" }}>📅 {selectedDate}</button>
+
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:14 }}>
                       {[
@@ -523,11 +549,12 @@ export default function ClientView({ user, onLogout }) {
                     },
                     {
                       key:"checkin",
-                      icon:"📋",
+                      icon: checkinDone ? "✅" : "📋",
                       title:"Savaitinis check-in",
-                      main: "Pildyti →",
-                      sub: (() => { const d=new Date(),day=d.getDay(),left=day===0?0:7-day; return left===0?"🔔 Šiandien sekmadienis":"Po "+left+" d. (sekmadienis)"; })(),
-                      pct: null,
+                      main: checkinDone ? "Užpildyta" : "Pildyti →",
+                      sub: (() => { const d=new Date(),day=d.getDay(),left=day===0?0:7-day; return checkinDone ? "Kitas: po "+(left===0?7:left)+" d." : left===0?"🔔 Šiandien sekmadienis":"Po "+left+" d. (sekmadienis)"; })(),
+                      pct: checkinDone ? 100 : null,
+                      barColor:"#7FFFB0",
                     },
                   ].map(card=>(
                     <button key={card.key} onClick={()=>setOpenSection(card.key)} style={{
@@ -556,10 +583,6 @@ export default function ClientView({ user, onLogout }) {
                   ))}
                 </div>
 
-                {/* 📅 datos keitimas */}
-                <button onClick={()=>setShowCalendar(true)} style={{ width:"100%", marginTop:10, padding:"10px 0", background:"rgba(255,255,255,0.08)", border:"1px solid "+PK.blush, borderRadius:12, color:PK.rose, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                  📅 {isToday ? "Šiandien" : selectedDate} · Keisti datą
-                </button>
               </div>
             )}
 
