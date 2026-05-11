@@ -9,9 +9,11 @@ import Onboarding from "./Onboarding";
 const ADMIN_EMAILS = (process.env.REACT_APP_ADMIN_EMAILS || "").split(",").map(e => e.trim());
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session,      setSession]      = useState(null);
+  const [profile,      setProfile]      = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [tab,          setTab]          = useState("food");
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -66,9 +68,6 @@ export default function App() {
   }
 
   // Kliento navigacija
-  const [tab, setTab] = useState("food"); // food | activity
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-
   function handleDateChange(v) {
     if (v === "today" || !v) setSelectedDate(new Date().toISOString().split("T")[0]);
     else setSelectedDate(v);
