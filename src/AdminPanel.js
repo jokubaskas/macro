@@ -397,6 +397,7 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function loadClients() {
     setLoading(true);
+    try {
     const today = new Date().toISOString().split("T")[0];
     const weekStart = (() => {
       const d=new Date(),day=d.getDay();
@@ -425,14 +426,17 @@ export default function AdminPanel({ user, onLogout }) {
       if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
     });
 
-    // Savaitiniai žingsniai ir treniruotės
+    // Savaitiniai žingsniai ir treniruotės (lentelės gali neegzistuoti)
     const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    const [stepResult, workoutResult] = await Promise.all([
-      adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7).then(r => r).catch(() => ({ data: [] })),
-      adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7).then(r => r).catch(() => ({ data: [] })),
-    ]);
-    const stepData    = stepResult?.data    || [];
-    const workoutData = workoutResult?.data || [];
+    let stepData = [], workoutData = [];
+    try {
+      const [sr, wr] = await Promise.all([
+        adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
+        adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
+      ]);
+      stepData    = sr?.data    || [];
+      workoutData = wr?.data    || [];
+    } catch(_) { /* lentelės dar nesukurtos */ }
 
     const weekStepAvg = {};
     (stepData||[]).forEach(s => {
@@ -461,7 +465,11 @@ export default function AdminPanel({ user, onLogout }) {
     }));
 
     setClients(enriched);
-    setLoading(false);
+    } catch(err) {
+      console.error("loadClients error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleDelete(client) {
