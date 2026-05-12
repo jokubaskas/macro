@@ -15,12 +15,12 @@ const MSG = {
   water: {
     great: (d) => pick([
       `Vanduo šią savaitę – puikiai! Net ${d} dieną(-as) pasiekei tikslą 💧`,
-      `Hidratacija idealiai! Kūnas tau dėkoja su kiekvienu gurkšniu 💧`,
+      `Hidratacija idealiai! Kūnas tau dėkoja kiekvienu gurkšniu 💧`,
       `${d} iš 7 dienų – tikra vandens čempionė! 💧`,
     ]),
     ok: () => pick([
       "Vandens šią savaitę – šiek tiek maža, bet beveik! Dar kelios stiklinės 💧",
-      "Vanduo – vidutiniškai. Pabandyk rytoj pradėti dieną didele stikline vandens 💧",
+      "Vanduo – vidutiniškai. Pabandyk rytoj pradėti dieną didelę stikline vandens 💧",
     ]),
     bad: (goal) => pick([
       `Vandens šią savaitę labai trūko – tikslas yra apie ${goal} ml per dieną 💧`,
@@ -53,10 +53,10 @@ const MSG = {
     ]),
     over: (diff) => pick([
       `Kalorijos šiek tiek per didelės – apie ${diff} kcal virš normos per dieną. Nieko baisaus! 📊`,
-      `Kitą savaitę atkreipk dėmesį į porcijų dydžius – kalorijų truputį per daug 📊`,
+      `Kita savaitė atkreipk dėmesį į porcijų dydžius – kalorijos truputį per daug 📊`,
     ]),
     under: (diff) => pick([
-      `Kalorijų per mažai – apie ${diff} kcal mažiau nei tikslas. Nevalgyk per mažai! 🍽️`,
+      `Kalorijos per mažos – apie ${diff} kcal mažiau nei tikslas. Nevalgyk per mažai! 🍽️`,
       `Svarbu valgyti pakankamai – kūnas turi gauti energijos! Dar apie ${diff} kcal trūksta per dieną 🍽️`,
     ]),
   },
@@ -68,11 +68,11 @@ const MSG = {
       `Nuostabiai! ${d} dienas sekei mitybą – toks nuoseklumas duoda rezultatus 🌟`,
     ]),
     ok: (d) => pick([
-      `${d} dienos suvestos – jau gerai, bet kitą savaitę pabandykime kasdien! 📱`,
-      `Maisto žurnalas – vidutiniškai. Kitą savaitę pabandyk suvedinėti kasdien 📝`,
+      `${d} dienos suvestos – jau gerai, bet kita savaitė pabandykime kasdien! 📱`,
+      `Maisto žurnalas – vidutiniškai. Kita savaitė pabandyk suvedinėti kasdien 📝`,
     ]),
     bad: () => pick([
-      "Kitą savaitę pabandyk kasdien suvedinėti, ką valgai – net trumpai 📱",
+      "Kita savaitė pabandyk kasdien suvedinėti, ką valgai – net trumpai 📱",
       "Maisto žurnalo mažai – kuo daugiau suvedi, tuo tikslesnė pagalba iš manęs 📊",
       "Suvedinėk mitybą kasdien – tai geriausias būdas pamatyti, kur slypi spraga 📝",
     ]),
@@ -152,16 +152,16 @@ const SCIENCE = {
     bad:   "💡 Tyrimai rodo: vos 1–2 % dehidratacija mažina susikaupimą ir energiją. Laikyk gertuvę matomoje vietoje – regėjimo zona = vartojimas.",
   },
   protein: {
-    great: "💡 Baltymai sotina ilgiausiai iš visų maisto medžiagų. Pakankamas jų kiekis ryte sumažina dienos kalorinį apetitą iki 25 %.",
+    great: "💡 Baltymai sočina ilgiausiai iš visų maisto medžiagų. Pakankamas jų kiekis ryte sumažina dienos kalorinis apetitas iki 25 %.",
     bad:   "💡 Moksliniai tyrimai rodo: pakankamas baltymų kiekis saugo raumenis net esant kalorijų deficitui. Tikslas – bent 1,6 g/kg kūno svorio.",
   },
   calories: {
-    great: "💡 Reguliarus valgymas tinkamą kalorijų kiekį stabilizuoja insulino lygį – tai tiesiogiai veikia riebalų deginimą ir nuotaiką.",
-    over:  "💡 Tyrimai rodo: lėtas valgymas (bent 20 min. per valgį) padeda suvalgyti vidutiniškai 10 % mažiau – sotumo signalas vėluoja.",
+    great: "💡 Reguliarus valgymas tinkamo kalorijų kiekio stabilizuoja insulino lygį – tai tiesiogiai veikia riebalų deginimą ir nuotaiką.",
+    over:  "💡 Tyrimai rodo: lėtas valgymas (bent 20 min. per valgį) padeda suvalgyti vidutiniškai 10 % mažiau – sočiuomos signalas vėluoja.",
     under: "💡 Per mažas kalorijų kiekis lėtina medžiagų apykaitą – kūnas pereina į 'taupymo režimą'. Reguliarus valgymas ją palaiko aktyvią.",
   },
   consistency: {
-    great: "💡 Nuoseklus maisto žurnalas didina tikimybę pasiekti tikslą net 2 kartus. Sąmoningumas – vienas stipriausių įrankių.",
+    great: "💡 Nuoseklus maisto žurnalas didina tikimybę pasiekti tikslą net 2 kartus, rodo tyrimai. Sąmoningumas – vienas stipriausių įrankių.",
     bad:   "💡 Tyrimai rodo: žmonės, vedantys maisto žurnalą, vidutiniškai suvalgo 15 % mažiau – vien sąmoningumas keičia pasirinkimus.",
   },
   sleep: {
@@ -331,7 +331,7 @@ export default function MotivationalCard({ userId, res, goalId }) {
   const today = new Date().toLocaleDateString("lt-LT", { weekday:"long", month:"long", day:"numeric" });
 
   return (
-    <div style={{ background:style.bg, borderRadius:20, padding:"16px 18px", marginBottom:12, boxShadow:"0 4px 20px rgba(0,0,0,0.25)", border:"1px solid "+style.border }}>
+    <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:20, padding:"16px 18px", marginBottom:12, boxShadow:"0 4px 20px rgba(0,0,0,0.25)", border:"1px solid rgba(255,255,255,0.15)" }}>
 
       {/* Data */}
       <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:"0 0 10px", textTransform:"capitalize", letterSpacing:"0.05em" }}>
