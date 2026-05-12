@@ -330,26 +330,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               </div>
             )}
 
-            {openSection==="targets" && (
-              <div style={{paddingBottom:20}}>
-                <p style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 14px"}}>🎯 Makro tikslai</p>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
-                  {[{l:"BMR",v:res?.bmr,s:"bazinis"},{l:"TDEE",v:res?.tdee,s:"su aktyvumu"},{l:"Tikslas",v:adjTarget,s:"šiandien"}].map(m=>(
-                    <div key={m.l} style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 8px",textAlign:"center",border:"1px solid rgba(255,255,255,0.12)"}}>
-                      <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{m.v}</div>
-                      <div style={{fontSize:8,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",marginTop:2}}>{m.l}</div>
-                      <div style={{fontSize:8,color:"rgba(255,255,255,0.35)"}}>{m.s}</div>
-                    </div>
-                  ))}
-                </div>
-                {extraKcal>0 && <div style={{background:"rgba(127,255,176,0.12)",borderRadius:12,padding:"8px 14px",marginBottom:14,border:"1px solid rgba(127,255,176,0.2)"}}>
-                  <p style={{fontSize:12,color:"#7FFFB0",margin:0,fontWeight:600}}>🚶 +{extraKcal} kcal iš žingsnių</p>
-                </div>}
-                <MacroBar label="💪 Baltymai" cur={Math.round(totals.protein)} tgt={res?.prot?.g||0} color="#FFB3C6"/>
-                <MacroBar label="🥑 Riebalai" cur={Math.round(totals.fat)} tgt={res?.fat?.g||0} color="#FF80AB"/>
-                <MacroBar label="🍚 Angliavandeniai" cur={Math.round(totals.carbs)} tgt={res?.carb?.g||0} color="#F48FB1"/>
-              </div>
-            )}
 
             {openSection==="health" && (
               <div style={{paddingBottom:20}}>
@@ -384,38 +364,66 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             <Sep/>
 
             {/* Profilio eilutė */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}>
+            {/* Profilio eilutė su statiniais makro tikslais */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
+                <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
                   {profile?.gender==="f"?"👩":"👨"}
                 </div>
                 <div>
-                  <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:0}}>{profile?.name}</p>
-                  <p style={{fontSize:10,color:"rgba(255,255,255,0.5)",margin:0}}>{profile?.age}m. · {profile?.weight}kg</p>
+                  <p style={{fontSize:12,fontWeight:700,color:"#fff",margin:0}}>{profile?.name}</p>
+                  <p style={{fontSize:9,color:"rgba(255,255,255,0.45)",margin:0}}>{profileAge}m. · {profile?.weight}kg · {goalLabel}</p>
                 </div>
               </div>
-              <p style={{fontSize:10,color:"rgba(255,255,255,0.5)",margin:0,textAlign:"right"}}>{res?.target} kcal / d.</p>
+              {res && (
+                <div style={{textAlign:"right"}}>
+                  <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.8)",margin:"0 0 2px"}}>{res.target} kcal</p>
+                  <p style={{fontSize:9,color:"rgba(255,255,255,0.4)",margin:0}}>{res.prot.g}g B · {res.fat.g}g R · {res.carb.g}g A</p>
+                </div>
+              )}
             </div>
 
             <Sep/>
             <div style={{height:12}}/>
 
-            {/* 2x2 Grid */}
+            {/* ── Full-width mitybos widget ── */}
+            <button onClick={()=>setOpenSection("food")} style={{width:"100%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",marginBottom:10,backdropFilter:"blur(10px)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                <div>
+                  <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:600}}>🍽️ MITYBA ŠIANDIEN</span>
+                  <p style={{fontSize:26,fontWeight:800,color:"#fff",margin:"4px 0 0",lineHeight:1}}>{Math.round(totals.kcal)} kcal</p>
+                  <p style={{fontSize:10,color:extraKcal>0?"#7FFFB0":"rgba(255,255,255,0.4)",margin:"3px 0 0"}}>{extraKcal>0?`Tikslas: ${adjTarget} kcal (+${extraKcal} aktyvumas)`:`Tikslas: ${res?.target||0} kcal`}</p>
+                </div>
+                <span style={{fontSize:22,opacity:0.7}}>{"→"}</span>
+              </div>
+              {res && (
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {[
+                    {l:"🍗 Baltymai",  got:Math.round(totals.protein), need:res.prot.g,  adj:extraKcal>0?Math.round(res.prot.g+extraKcalWorkout*0.3/4+extraKcalSteps*0.2/4):null, color:"#FFB3C6"},
+                    {l:"🍚 Angliavandeniai", got:Math.round(totals.carbs), need:res.carb.g, adj:extraKcal>0?Math.round(res.carb.g+extraKcalWorkout*0.5/4+extraKcalSteps*0.6/4):null, color:"#F48FB1"},
+                    {l:"🥑 Riebalai",  got:Math.round(totals.fat),     need:res.fat.g,  adj:extraKcal>0?Math.round(res.fat.g+extraKcalWorkout*0.2/9+extraKcalSteps*0.2/9):null,  color:"#FF80AB"},
+                  ].map(m=>{
+                    const target = m.adj||m.need;
+                    const pct = target>0?Math.min(100,Math.round(m.got/target*100)):0;
+                    return (
+                      <div key={m.l}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                          <span style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>{m.l}</span>
+                          <span style={{fontSize:10,fontWeight:700,color:m.color}}>{m.got}g <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>/ {target}g</span></span>
+                        </div>
+                        <div style={{background:"rgba(255,255,255,0.12)",borderRadius:99,height:5}}>
+                          <div style={{width:pct+"%",height:"100%",borderRadius:99,background:m.color,transition:"width 0.4s"}}/>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </button>
+
+            {/* ── 2 kortelės: Sveikata + Check-in ── */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
               {[
-                {
-                  key:"food", icon:"🍽️", title:"Mityba šiandien",
-                  main:Math.round(totals.kcal)+" kcal",
-                  sub:extraKcal>0?`iš ${adjTarget} kcal (🚶+${extraKcal})`:`iš ${res?.target||0} kcal`,
-                  pct:adjTarget?Math.min(100,Math.round(totals.kcal/adjTarget*100)):0,
-                  barColor:totals.kcal>(adjTarget||0)?"#FFD700":"rgba(255,255,255,0.7)",
-                },
-                {
-                  key:"targets", icon:"🎯", title:"Makro tikslai",
-                  main:(adjTarget||res?.target||0)+" kcal",
-                  sub:`B:${res?.prot?.g||0}g · R:${res?.fat?.g||0}g · A:${res?.carb?.g||0}g`,
-                  pct:null,
-                },
                 {
                   key:"health", icon:"😴", title:"Miegas & Vanduo",
                   main:todaySleep!=null?todaySleep+"h":"–",
@@ -426,27 +434,20 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 {
                   key:"checkin", icon:checkinDone?"✅":"📋", title:"Savaitinis check-in",
                   main:checkinDone?"Užpildyta":"Pildyti →",
-                  sub:(()=>{const d=new Date(),day=d.getDay(),left=day===0?0:7-day;return checkinDone?`Kitas po ${left===0?7:left} d.`:left===0?"🔔 Šiandien sekmadienis":`Po ${left} d.`;})(),
+                  sub:(()=>{const d=new Date(),day=d.getDay(),left=day===0?0:7-day;return checkinDone?"Iki kito: "+left+"d.":"Sekmadieniais";})(  ),
                   pct:checkinDone?100:null, barColor:"#7FFFB0",
                 },
               ].map(card=>(
-                <button key={card.key} onClick={()=>setOpenSection(card.key)} style={{
-                  background:"rgba(255,255,255,0.1)",
-                  border:"1px solid rgba(255,255,255,0.15)",
-                  borderRadius:20,padding:"18px 14px",cursor:"pointer",
-                  fontFamily:"inherit",textAlign:"left",minHeight:150,
-                  display:"flex",flexDirection:"column",justifyContent:"space-between",
-                  backdropFilter:"blur(10px)",
-                }}>
+                <button key={card.key} onClick={()=>setOpenSection(card.key)} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"18px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",minHeight:140,display:"flex",flexDirection:"column",justifyContent:"space-between",backdropFilter:"blur(10px)"}}>
                   <span style={{fontSize:26}}>{card.icon}</span>
                   <div>
                     <p style={{fontSize:20,fontWeight:800,color:"#fff",margin:"8px 0 2px",lineHeight:1}}>{card.main}</p>
                     <p style={{fontSize:10,color:"rgba(255,255,255,0.6)",margin:0}}>{card.title}</p>
-                    <p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:"3px 0 0",lineHeight:1.3}}>{card.sub}</p>
+                    <p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:"3px 0 0"}}>{card.sub}</p>
                   </div>
-                  {card.pct!=null && (
-                    <div style={{background:"rgba(255,255,255,0.15)",borderRadius:99,height:4,marginTop:8}}>
-                      <div style={{width:card.pct+"%",height:"100%",borderRadius:99,background:card.barColor,transition:"width 0.5s"}}/>
+                  {card.pct!=null&&(
+                    <div style={{background:"rgba(255,255,255,0.15)",borderRadius:99,height:4,marginTop:10}}>
+                      <div style={{width:card.pct+"%",height:"100%",borderRadius:99,background:card.barColor}}/>
                     </div>
                   )}
                 </button>
