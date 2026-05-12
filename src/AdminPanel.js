@@ -324,8 +324,8 @@ function ClientCard({ client, onDelete, onOpen }) {
     alerts.push({ e:"📏", t:"Pirmi matavimai neatlikti", c:"#e74c3c" });
   }
 
-  // 📋 Check-in
-  if (done && client._checkinDone !== true) alerts.push({ e:"📋", t:"Check-in šią savaitę neatliko", c:"#856404" });
+  // (Check-in rodomas atskirame tab'e)
+  // c:"#856404" });
 
   // 🍽️ Mityba
   if (done && !client._lastFood) alerts.push({ e:"🍽️", t:"3+ d. nesuvedė mitybos", c:"#c0392b" });
@@ -365,6 +365,14 @@ function ClientCard({ client, onDelete, onOpen }) {
           <button onClick={onDelete} style={{ padding:"6px 8px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer" }}>🗑️</button>
         </div>
       </div>
+      {/* Savaitinės treniruotės */}
+      {(workouts.strength > 0 || workouts.cardio > 0 || stepAvg > 0) && (
+        <div style={{ marginTop:8, paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.1)", display:"flex", gap:8, flexWrap:"wrap" }}>
+          {stepAvg > 0 && <span style={{ fontSize:10, color:"rgba(255,255,255,0.6)", background:"rgba(255,255,255,0.08)", borderRadius:8, padding:"3px 8px" }}>🚶 {stepAvg.toLocaleString()} žingsnių/d.</span>}
+          {workouts.strength > 0 && <span style={{ fontSize:10, color:"#FFB3C6", background:"rgba(255,179,198,0.12)", borderRadius:8, padding:"3px 8px" }}>🏋️ {workouts.strength}× jėgos</span>}
+          {workouts.cardio > 0 && <span style={{ fontSize:10, color:"#89CFF0", background:"rgba(137,207,240,0.12)", borderRadius:8, padding:"3px 8px" }}>🏃 {workouts.cardio}× kardio</span>}
+        </div>
+      )}
       {alerts.length > 0 && (
         <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:5 }}>
           {alerts.map((a,i) => (
