@@ -511,7 +511,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
         </div>
       )}
 
-      {/* ── MATAVIMO FORMA ── */}}
+      {/* ── MATAVIMO FORMA ── */}
       {tab==="form" && (
         <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
           <p style={{ fontSize:13, fontWeight:700, color:"#fff", marginBottom:4 }}>
