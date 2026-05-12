@@ -42,28 +42,28 @@ export default function Login() {
 
   const inp = {
     width:"100%", padding:"13px 14px",
-    border:"2px solid "+PK.blush, borderRadius:14,
-    fontSize:16, color:PK.dark, background:PK.pale,
+    border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:14,
+    fontSize:16, color:"#fff", background:"rgba(255,255,255,0.07)",
     outline:"none", fontFamily:"inherit", WebkitAppearance:"none",
   };
-  const lbl = { display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, marginBottom:6 };
+  const lbl = { display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:6 };
 
   return (
     <div style={{
       minHeight:"100vh",
-      background:"linear-gradient(160deg,"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)",
+      background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding:"0 20px",
     }}>
       <div style={{ textAlign:"center", marginBottom:28 }}>
         <img src="/logo.png" alt="Coach Vilma" style={{ width:90, height:90, objectFit:"contain", borderRadius:18, marginBottom:14 }} />
-        <h1 style={{ fontSize:22, fontWeight:700, color:PK.dark, marginBottom:4 }}>Coach Vilma</h1>
-        <p style={{ fontSize:13, color:PK.rose }}>
+        <h1 style={{ fontSize:22, fontWeight:700, color:"#fff", marginBottom:4 }}>Coach Vilma</h1>
+        <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>
           {mode === "login" ? "Prisijunk prie savo paskyros" : "Sukurk naują paskyrą"}
         </p>
       </div>
 
-      <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:24, padding:"28px 24px", border:"1px solid "+PK.blush, boxShadow:"0 4px 24px rgba(173,20,87,0.1)" }}>
+      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,0.08)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.15)", boxShadow:"0 4px 24px rgba(173,20,87,0.1)" }}>
         <div style={{ display:"flex", gap:8, marginBottom:24 }}>
           {[{id:"login",l:"Prisijungti"},{id:"register",l:"Registruotis"}].map(t => (
             <button key={t.id} onClick={() => { setMode(t.id); setError(""); setSuccess(""); }}
@@ -105,7 +105,7 @@ export default function Login() {
             </div>
           )}
 
-          {error   && <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:10, padding:"10px 14px", fontSize:13, color:PK.mid, marginBottom:16 }}>{error}</div>}
+          {error   && <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:10, padding:"10px 14px", fontSize:13, color:"rgba(255,255,255,0.75)", marginBottom:16 }}>{error}</div>}
           {success && <div style={{ background:"#F0FFF4", border:"1px solid #9AE6B4", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#276749", marginBottom:16 }}>{success}</div>}
 
           <button type="submit" disabled={loading} style={{
@@ -119,7 +119,7 @@ export default function Login() {
           </button>
 
           {mode === "register" && (
-            <p style={{ fontSize:11, color:PK.rose, textAlign:"center", marginTop:12, lineHeight:1.5 }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginTop:12, lineHeight:1.5 }}>
               Po registracijos užpildysi trumpą anketą apie save 🌸
             </p>
           )}
