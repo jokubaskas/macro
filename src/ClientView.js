@@ -122,6 +122,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [todayWater,   setTodayWater]   = useState({ ml:0, goal:2000 });
   const [checkinDone,  setCheckinDone]  = useState(null);
   const [todaySteps,   setTodaySteps]   = useState(0);
+  const [todayWorkouts, setTodayWorkouts] = useState([]);
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
