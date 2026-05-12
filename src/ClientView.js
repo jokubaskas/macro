@@ -188,8 +188,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     </div>
   );
 
-  const hasData       = profile?.weight && profile?.height && profile?.age;
-  const res           = hasData ? calcMacros({ gender:profile.gender, age:parseInt(profile.age), weight:parseFloat(profile.weight), height:parseFloat(profile.height), actId:profile.act, goalId:profile.goal }) : null;
+  const profileAge    = profile?.dob ? Math.floor((new Date()-new Date(profile.dob))/(365.25*24*60*60*1000)) : parseInt(profile?.age||30);
+  const hasData       = profile?.weight && profile?.height && profileAge;
+  const res           = hasData ? calcMacros({ gender:profile.gender||"f", age:profileAge, weight:parseFloat(profile.weight), height:parseFloat(profile.height), actId:profile.act||profile.activity||2, goalId:profile.goal||"lose" }) : null;
   const extraKcal     = calcStepCalories(Math.max(todaySteps, propSteps||0), parseFloat(profile?.weight||60));
   const adjTarget     = hasData ? (res?.target||0) + extraKcal : 0;
   const goalLabel     = GOALS.find(g=>g.id===profile?.goal)?.label ?? "";
@@ -269,11 +270,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           })}
         </div>
 
-        {isToday && !showMeals && (
-          <button onClick={()=>setShowMeals(true)} style={{width:"100%",marginTop:10,padding:"12px 0",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:14,color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-            🍽️ Pridėti maisto +
-          </button>
-        )}
       </div>
     );
   }
@@ -296,21 +292,21 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {/* Header */}
       <div style={{padding:"16px 20px 14px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <img src="/logo.png" alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:8}}/>
+          {/* Logo + vardas */}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <img src="/logo.png" alt="" style={{width:34,height:34,objectFit:"contain",borderRadius:8}}/>
             <div>
-              <p style={{fontSize:16,fontWeight:700,color:"#fff",margin:0}}>{profile?.name?.split(" ")[0]}</p>
-              <p style={{fontSize:10,color:"rgba(255,255,255,0.5)",margin:0}}>{goalLabel}</p>
+              <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0}}>{profile?.name?.split(" ")[0]}</p>
+              <p style={{fontSize:9,color:"rgba(255,255,255,0.5)",margin:0}}>{goalLabel}</p>
             </div>
           </div>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <button onClick={()=>setShowCalendar(true)} style={{background:"rgba(255,255,255,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:20,padding:"6px 14px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
-              📅 {isToday?fmtDate(todayStr()):selectedDate} <span style={{fontSize:9,opacity:0.6}}>▼</span>
-            </button>
-            {!isToday && (
-              <button onClick={()=>setSelectedDate(todayStr())} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"6px 10px",color:"rgba(255,255,255,0.6)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Šiandien</button>
-            )}
-          </div>
+          {/* Kalendorius centre */}
+          <button onClick={()=>setShowCalendar(true)} style={{background:"rgba(255,255,255,0.12)",border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 14px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+            📅 {isToday?new Date().toLocaleDateString("lt-LT",{month:"short",day:"numeric"}):selectedDate}
+            <span style={{fontSize:9,opacity:0.6}}>▼</span>
+          </button>
+          {/* Atsijungti */}
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"7px 12px",color:"rgba(255,255,255,0.7)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Išeiti</button>
         </div>
         <div style={{borderBottom:"1px solid rgba(255,255,255,0.1)"}}/>
       </div>
