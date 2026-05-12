@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { foodDatabase } from "./foodDatabase";
+import { ALL_FOODS as foodDatabase } from "./foodDatabase";
 import { PK } from "./constants";
 
 const RECENT_KEY = "cv_recent_foods";
