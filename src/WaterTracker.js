@@ -132,7 +132,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
 
   return (
     <div style={{
-      background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+      background:"rgba(0,0,0,0.2)",
       borderRadius:20, padding:"16px 16px",
       boxShadow:"0 6px 24px rgba(173,20,87,0.3)",
     }}>
