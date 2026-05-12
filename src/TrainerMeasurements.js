@@ -340,7 +340,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
           {/* Paskutinis matavimas */}
           {last && (
-            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
+            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                 <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>
                   📏 Matavimas #{last.cycle_number} · {fmt(last.measured_at)}
@@ -368,7 +368,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
           )}
 
           {/* Kliento paskutiniai check-in'ai */}
-          <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
               Kliento savaitiniai check-in'ai
             </p>
@@ -513,7 +513,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
       {/* ── MATAVIMO FORMA ── */}}
       {tab==="form" && (
-        <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
           <p style={{ fontSize:13, fontWeight:700, color:"#fff", marginBottom:4 }}>
             {editId ? "✏️ Redaguoti matavimus" : `📏 Matavimas #${(last?.cycle_number||0)+1}`}
           </p>
@@ -572,7 +572,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Dar nėra duomenų grafikams 📊</p>
             </div>
           ) : (
-            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
               <DualChart clientData={checkins} trainerData={measures}
                 cKey="weight_self" tKey="weight_measured"
                 label="Svoris (kg)" cColor={PK.blush} tColor={PK.mid} unit="kg"/>
