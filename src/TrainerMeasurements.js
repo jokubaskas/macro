@@ -458,8 +458,8 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                         if (v==null) return null;
                         const isScore = !m.suffix || m.suffix==="";
                         const displayV = m.suffix ? v+m.suffix : v+"/5";
-                        const bg = m.k==="workouts_done"||m.k==="weight_self" ? PK.pale : scoreColor(v)+"22";
-                        const col = m.k==="workouts_done"||m.k==="weight_self" ? PK.dark : scoreColor(v);
+                        const bg = scoreColor(v)+"33";
+                        const col = m.k==="workouts_done"||m.k==="weight_self" ? "#fff" : scoreColor(v);
                         return (
                           <div key={m.k} style={{ background:bg, borderRadius:10, padding:"9px 6px", textAlign:"center", border:"1px solid "+(col+"44") }}>
                             <div style={{ fontSize:18 }}>{m.e}</div>
@@ -557,7 +557,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
             <button onClick={()=>{setTab("overview");setEditId(null);}} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"2px solid "+PK.blush, background:"#fff", color:"rgba(255,255,255,0.75)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
               Atšaukti
             </button>
-            <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"11px 0", borderRadius:12, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"11px 0", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
               {saving?"Saugoma...":"💾 Išsaugoti"}
             </button>
           </div>
