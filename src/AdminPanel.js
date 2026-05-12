@@ -397,7 +397,6 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function loadClients() {
     setLoading(true);
-    try {
     const today = new Date().toISOString().split("T")[0];
     const weekStart = (() => {
       const d=new Date(),day=d.getDay();
@@ -405,6 +404,7 @@ export default function AdminPanel({ user, onLogout }) {
       return d.toISOString().split("T")[0];
     })();
 
+    // Pagrindiniai duomenys
     const [{ data: profiles }, { data: measures }, { data: checkins }, { data: foodLogs }] = await Promise.all([
       supabase.from("profiles").select("*").eq("role","client").order("name"),
       supabase.from("trainer_measurements").select("user_id,measured_at").order("measured_at",{ascending:false}),
@@ -412,32 +412,26 @@ export default function AdminPanel({ user, onLogout }) {
       supabase.from("food_log").select("user_id,date").gte("date", new Date(Date.now()-3*24*60*60*1000).toISOString().split("T")[0]),
     ]);
 
-    // Paskutinis matavimas kiekvienam klientui
     const lastMeasure = {};
     (measures||[]).forEach(m => { if (!lastMeasure[m.user_id]) lastMeasure[m.user_id] = m.measured_at; });
 
-    // Šios savaitės check-in statusas
     const checkinDone = {};
     (checkins||[]).forEach(c => { checkinDone[c.user_id] = c.is_done; });
 
-    // Paskutinė mitybos suvedimo data
     const lastFood = {};
     (foodLogs||[]).forEach(f => {
       if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
     });
 
-    // Savaitiniai žingsniai ir treniruotės
+    // Aktivumo duomenys — atskiri awaits, klaidos ignoruojamos
     const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    const [srRes, wrRes] = await Promise.allSettled([
-      adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
-      adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
-    ]);
-    const stepData    = (srRes.status==="fulfilled" && srRes.value?.data) || [];
-    const workoutData = (wrRes.status==="fulfilled" && wrRes.value?.data) || [];
-    console.log("[Admin] steps:", stepData.length, "workouts:", workoutData.length);
+    const srRes = await adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7);
+    const wrRes = await adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7);
+    const stepData    = srRes.error ? [] : (srRes.data || []);
+    const workoutData = wrRes.error ? [] : (wrRes.data || []);
 
     const weekStepAvg = {};
-    (stepData||[]).forEach(s => {
+    stepData.forEach(s => {
       if (!weekStepAvg[s.user_id]) weekStepAvg[s.user_id] = [];
       weekStepAvg[s.user_id].push(s.steps);
     });
@@ -447,7 +441,7 @@ export default function AdminPanel({ user, onLogout }) {
     });
 
     const weekWorkouts = {};
-    (workoutData||[]).forEach(w => {
+    workoutData.forEach(w => {
       if (!weekWorkouts[w.user_id]) weekWorkouts[w.user_id] = { strength:0, cardio:0 };
       if (w.type==="strength") weekWorkouts[w.user_id].strength++;
       else weekWorkouts[w.user_id].cardio++;
@@ -455,22 +449,18 @@ export default function AdminPanel({ user, onLogout }) {
 
     const enriched = (profiles||[]).map(p => ({
       ...p,
-      _lastMeasure:    lastMeasure[p.id]    || null,
-      _checkinDone:    checkinDone[p.id]    ?? null,
-      _lastFood:       lastFood[p.id]       || null,
-      _weekStepAvg:    weekStepAvg[p.id]    || 0,
-      _weekWorkouts:   weekWorkouts[p.id]   || { strength:0, cardio:0 },
+      _lastMeasure:  lastMeasure[p.id]  || null,
+      _checkinDone:  checkinDone[p.id]  ?? null,
+      _lastFood:     lastFood[p.id]     || null,
+      _weekStepAvg:  weekStepAvg[p.id]  || 0,
+      _weekWorkouts: weekWorkouts[p.id] || { strength:0, cardio:0 },
     }));
 
     setClients(enriched);
-    } catch(err) {
-      console.error("loadClients error:", err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }
 
-  async function handleDelete(client) {
+    async function handleDelete(client) {
     if (!window.confirm("Ištrinti " + (client.name||client.email) + "?")) return;
     await supabase.from("profiles").delete().eq("id", client.id);
     await fetch(SUPABASE_URL+"/auth/v1/admin/users/"+client.id, {
