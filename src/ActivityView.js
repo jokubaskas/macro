@@ -18,7 +18,7 @@ function AdjustedMacros({ res, extraKcal, weightKg }) {
   };
 
   return (
-    <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px", marginBottom:12, boxShadow:"0 4px 16px rgba(173,20,87,0.25)" }}>
+    <div style={{ background:`linear-gradient(160deg,#2d0a1a,${PK.dark},${PK.mid})`, borderRadius:20, padding:"16px", marginBottom:12, boxShadow:"0 4px 16px rgba(173,20,87,0.25)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <p style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.85)", margin:0 }}>
           🎯 Šiandien galima suvalgyti
@@ -70,7 +70,7 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
   }, [user.id]);
 
   if (loading || !profile) return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:`linear-gradient(135deg,${PK.dark},${PK.mid})` }}>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:`linear-gradient(160deg,#2d0a1a,${PK.dark},${PK.mid})` }}>
       <p style={{ color:PK.blush, fontSize:14 }}>Kraunama...</p>
     </div>
   );
@@ -86,10 +86,10 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
   const isToday   = selectedDate === todayStr();
 
   return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg,${PK.pale} 0%,#fff 55%,${PK.light} 100%)`, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom:80 }}>
+    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg,#2d0a1a 0%,${PK.dark} 40%,${PK.mid} 100%)`, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom:80 }}>
 
       {/* Header */}
-      <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, padding:"16px 20px 20px" }}>
+      <div style={{ background:`linear-gradient(160deg,#2d0a1a,${PK.dark},${PK.mid})`, padding:"16px 20px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <img src="/logo.png" alt="Coach Vilma" style={{ width:38, height:38, objectFit:"contain", borderRadius:8 }}/>
@@ -131,8 +131,8 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
 
         {/* Jei neaktyvus – bazinė info */}
         {res && extraKcal === 0 && (
-          <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:12, border:`1px solid ${PK.blush}` }}>
-            <p style={{ fontSize:12, fontWeight:700, color:PK.dark, margin:"0 0 6px" }}>📊 Bazinis tikslas</p>
+          <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:16, padding:"14px 16px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
+            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 6px" }}>📊 Bazinis tikslas</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
               {[
                 { l:"Kalorijos", v:res.target, u:"kcal" },
@@ -140,14 +140,14 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
                 { l:"Riebalai",  v:res.fat.g,  u:"g" },
                 { l:"Angliav.",  v:res.carb.g, u:"g" },
               ].map(m=>(
-                <div key={m.l} style={{ background:PK.light, borderRadius:10, padding:"8px 4px", textAlign:"center" }}>
-                  <div style={{ fontSize:14, fontWeight:700, color:PK.dark }}>{m.v}</div>
+                <div key={m.l} style={{ background:"rgba(255,255,255,0.1)", borderRadius:10, padding:"8px 4px", textAlign:"center" }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>{m.v}</div>
                   <div style={{ fontSize:8, color:PK.rose }}>{m.u}</div>
                   <div style={{ fontSize:8, color:PK.rose }}>{m.l}</div>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize:10, color:PK.rose, margin:"8px 0 0", textAlign:"center" }}>
+            <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:"8px 0 0", textAlign:"center" }}>
               Suvesk žingsnių skaičių — tikslas koreguosis automatiškai 🚶
             </p>
           </div>
