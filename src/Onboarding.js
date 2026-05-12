@@ -68,8 +68,8 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
   return (
     <button onClick={onClick} style={{
       width:"100%", padding:"12px 14px", textAlign:"left",
-      border:"2px solid " + (selected ? PK.mid : PK.blush),
-      borderRadius:14, background: selected ? PK.light : "#fff",
+      border:"2px solid " + (selected ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)"),
+      borderRadius:14, background: selected ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
       cursor:"pointer", fontFamily:"inherit", marginBottom:8,
       display:"flex", justifyContent:"space-between", alignItems:"center",
       transition:"all 0.15s",
@@ -111,9 +111,9 @@ function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
     <label style={{ display:"block", cursor:"pointer" }}>
       <input type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display:"none" }} />
       <div style={{
-        border:"2px dashed " + (value ? PK.mid : PK.blush),
+        border:"2px dashed " + (value ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)"),
         borderRadius:16, overflow:"hidden", position:"relative",
-        background: value ? "transparent" : PK.pale,
+        background: value ? "transparent" : "rgba(255,255,255,0.07)",
         aspectRatio:"3/4", display:"flex", flexDirection:"column",
         alignItems:"center", justifyContent:"center", gap:8,
       }}>
