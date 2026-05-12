@@ -51,7 +51,7 @@ export default function Login() {
   return (
     <div style={{
       minHeight:"100vh",
-      background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)",
+      background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",#fff 55%,"+PK.light+" 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding:"0 20px",
     }}>
@@ -110,7 +110,7 @@ export default function Login() {
 
           <button type="submit" disabled={loading} style={{
             width:"100%", padding:"14px 0",
-            background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+            background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)","+PK.mid+")",
             color:"#fff", border:"none", borderRadius:14,
             fontSize:15, fontWeight:700, cursor:"pointer",
             fontFamily:"inherit", opacity:loading?0.7:1,
