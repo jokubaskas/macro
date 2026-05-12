@@ -224,10 +224,10 @@ export default function Onboarding({ user, onComplete }) {
   const age = calcAge(form.dob);
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
 
       {/* Header */}
-      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"20px 20px 24px" }}>
+      <div style={{ background:"linear-gradient(135deg,#6D1B3B,#AD1457)"+PK.mid+")", padding:"20px 20px 24px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
           <img src="/logo.png" alt="Coach Vilma" style={{ width:40, height:40, objectFit:"contain", borderRadius:10 }} />
           <div>
@@ -428,7 +428,7 @@ export default function Onboarding({ user, onComplete }) {
         {step < steps.length - 1 ? (
           <button onClick={() => setStep(s => s+1)} disabled={!canNext()} style={{
             flex:2, padding:"14px 0", border:"none",
-            borderRadius:14, background: canNext() ? "linear-gradient(135deg,"+PK.dark+","+PK.mid+")" : PK.blush,
+            borderRadius:14, background: canNext() ? "linear-gradient(135deg,#6D1B3B,#AD1457)"+PK.mid+")" : PK.blush,
             color:"#fff", fontSize:14, fontWeight:700,
             cursor: canNext() ? "pointer" : "default", fontFamily:"inherit",
             transition:"background 0.2s",
@@ -436,7 +436,7 @@ export default function Onboarding({ user, onComplete }) {
         ) : (
           <button onClick={handleFinish} disabled={saving} style={{
             flex:2, padding:"14px 0", border:"none",
-            borderRadius:14, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+            borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)"+PK.mid+")",
             color:"#fff", fontSize:14, fontWeight:700,
             cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1,
           }}>{saving ? "Saugoma..." : "✓ Baigti registraciją"}</button>
