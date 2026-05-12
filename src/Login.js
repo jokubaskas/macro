@@ -110,7 +110,7 @@ export default function Login() {
 
           <button type="submit" disabled={loading} style={{
             width:"100%", padding:"14px 0",
-            background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)","+PK.mid+")",
+            background:"linear-gradient(135deg,#6D1B3B,#AD1457)",
             color:"#fff", border:"none", borderRadius:14,
             fontSize:15, fontWeight:700, cursor:"pointer",
             fontFamily:"inherit", opacity:loading?0.7:1,
