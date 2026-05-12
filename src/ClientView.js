@@ -5,7 +5,7 @@ import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
 import CheckIn from "./CheckIn";
 import MotivationalCard from "./MotivationalCard";
-import { calcStepCalories } from "./StepTracker";
+import { calcStepCalories, calcWorkoutCalories } from "./StepTracker";
 import MeasurementReport from "./MeasurementReport";
 import FoodSearch from "./FoodSearch";
 import BarcodeScanner from "./BarcodeScanner";
@@ -159,6 +159,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
       supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
       supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
+      supabase.from("workout_log").select("type,duration_min").eq("user_id",user.id).eq("date",selectedDate),
     ]);
     setEntries(food||[]);
     setTodaySleep(sleep?.hours_slept ?? null);
@@ -191,7 +192,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const profileAge    = profile?.dob ? Math.floor((new Date()-new Date(profile.dob))/(365.25*24*60*60*1000)) : parseInt(profile?.age||30);
   const hasData       = profile?.weight && profile?.height && profileAge;
   const res           = hasData ? calcMacros({ gender:profile.gender||"f", age:profileAge, weight:parseFloat(profile.weight), height:parseFloat(profile.height), actId:profile.act||profile.activity||2, goalId:profile.goal||"lose" }) : null;
-  const extraKcal     = calcStepCalories(Math.max(todaySteps, propSteps||0), parseFloat(profile?.weight||60));
+  const _wt            = parseFloat(profile?.weight||60);
+  const extraKcalSteps   = calcStepCalories(Math.max(todaySteps, propSteps||0), _wt);
+  const extraKcalWorkout = calcWorkoutCalories(todayWorkouts, _wt);
+  const extraKcal        = extraKcalSteps + extraKcalWorkout;
   const adjTarget     = hasData ? (res?.target||0) + extraKcal : 0;
   const goalLabel     = GOALS.find(g=>g.id===profile?.goal)?.label ?? "";
   const totals        = entries.reduce((a,e)=>({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }),{ kcal:0,protein:0,fat:0,carbs:0 });
