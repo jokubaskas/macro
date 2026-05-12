@@ -433,7 +433,7 @@ export default function AdminPanel({ user, onLogout }) {
   }
 
   if (view === "new") return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={()=>setView("list")} style={{ background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Naujas klientas</h1>
@@ -445,7 +445,7 @@ export default function AdminPanel({ user, onLogout }) {
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
 
       {openClient && (
         <ClientProfile
