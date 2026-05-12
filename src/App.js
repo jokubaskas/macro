@@ -15,6 +15,7 @@ export default function App() {
   const [tab,          setTab]          = useState("food");
   const [foodKey,      setFoodKey]      = useState(0);
   const [stepsToday,   setStepsToday]   = useState(0);
+  const [workoutsToday, setWorkoutsToday] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
@@ -34,12 +35,14 @@ export default function App() {
 
   async function loadProfile(userId) {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: prof }, { data: steps }] = await Promise.all([
+    const [{ data: prof }, { data: steps }, { data: wrkts }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
       supabase.from("step_log").select("steps").eq("user_id", userId).eq("date", today).maybeSingle(),
+      supabase.from("workout_log").select("type,duration_min").eq("user_id", userId).eq("date", today),
     ]);
     setProfile(prof);
     if (steps?.steps) setStepsToday(steps.steps);
+    if (wrkts?.length) setWorkoutsToday(wrkts);
     setLoading(false);
   }
 
@@ -83,8 +86,10 @@ export default function App() {
   return (
     <div style={{ position:"relative" }}>
       {tab==="food"
-        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} stepsToday={stepsToday} selectedDate={selectedDate} onDateChange={handleDateChange} />
-        : <ActivityView user={session.user} onLogout={handleLogout} stepsToday={stepsToday} onStepsChange={setStepsToday} selectedDate={selectedDate} onDateChange={handleDateChange} />
+        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} stepsToday={stepsToday} workoutsToday={workoutsToday} selectedDate={selectedDate} onDateChange={handleDateChange}
+          onActivityChange={(st,wt)=>{ setStepsToday(st); setWorkoutsToday(wt); }} />
+        : <ActivityView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange}
+          onActivityChange={(st,wt)=>{ setStepsToday(st); setWorkoutsToday(wt); }} />
       }
 
       {/* Apačios navigacija */}

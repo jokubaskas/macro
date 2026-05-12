@@ -105,7 +105,7 @@ function MacroBar({label,cur,tgt,color}) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: propSteps }) {
+export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: propSteps, workoutsToday: propWorkouts }) {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [entries,      setEntries]      = useState([]);
@@ -192,10 +192,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   const profileAge    = profile?.dob ? Math.floor((new Date()-new Date(profile.dob))/(365.25*24*60*60*1000)) : parseInt(profile?.age||30);
   const hasData       = profile?.weight && profile?.height && profileAge;
-  const res           = hasData ? calcMacros({ gender:profile.gender||"f", age:profileAge, weight:parseFloat(profile.weight), height:parseFloat(profile.height), actId:profile.act||profile.activity||2, goalId:profile.goal||"lose" }) : null;
+  const res           = hasData ? calcMacros({ gender:profile.gender||"f", age:profileAge, weight:parseFloat(profile.weight), height:parseFloat(profile.height), actId:Number(profile.act||profile.activity||2), goalId:profile.goal||"lose" }) : null;
   const _wt            = parseFloat(profile?.weight||60);
   const extraKcalSteps   = calcStepCalories(Math.max(todaySteps, propSteps||0), _wt);
-  const extraKcalWorkout = calcWorkoutCalories(todayWorkouts, _wt);
+  const extraKcalWorkout = calcWorkoutCalories(propWorkouts?.length ? propWorkouts : todayWorkouts, _wt);
   const extraKcal        = extraKcalSteps + extraKcalWorkout;
   const adjTarget     = hasData ? (res?.target||0) + extraKcal : 0;
   const goalLabel     = GOALS.find(g=>g.id===profile?.goal)?.label ?? "";
