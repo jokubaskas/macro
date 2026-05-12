@@ -5,6 +5,20 @@ import { PK } from "./constants";
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 // ── Formulė: papildomos kalorijos iš žingsnių ────────────────────────────────
+// ── Kalorijos iš treniruočių (MET metodas) ────────────────────────────────────
+export function calcWorkoutCalories(workouts, weightKg) {
+  if (!workouts?.length || !weightKg) return 0;
+  let total = 0;
+  for (const w of workouts) {
+    const hours = (w.duration_min || 0) / 60;
+    // MET: kardio 8.0 (vidutinis bėgimas), jėgos 5.5 (vidutinė treniruotė)
+    const met   = w.type === "cardio" ? 8.0 : 5.5;
+    total      += (met - 1.0) * weightKg * hours; // neto (minus poilsio metabolizmas)
+  }
+  return Math.round(total);
+}
+
+// ── Kalorijos iš žingsnių (MET metodas) ──────────────────────────────────────
 export function calcStepCalories(steps, weightKg) {
   if (!steps || !weightKg || steps <= 0) return 0;
   // MET metodas: walking MET=3.5, resting MET=1.0, neto=2.5
