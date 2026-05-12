@@ -51,7 +51,7 @@ export default function Login() {
   return (
     <div style={{
       minHeight:"100vh",
-      background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",#fff 55%,"+PK.light+" 100%)",
+      background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding:"0 20px",
     }}>
