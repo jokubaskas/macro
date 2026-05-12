@@ -177,7 +177,7 @@ function ClientProfile({ client, onClose, onSaved }) {
 
           {/* Makro rezultatai */}
           {res && (
-            <Card style={{ marginBottom:12, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")" }}>
+            <Card style={{ marginBottom:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)" }}>
               <SectionLabel><span style={{ color:"rgba(255,255,255,0.7)" }}>Apskaičiuoti makro</span></SectionLabel>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
                 {[{l:"Kalorijos",v:res.target,u:"kcal"},{l:"Baltymai",v:res.prot.g,u:"g"},{l:"Riebalai",v:res.fat.g,u:"g"},{l:"Angliavandeniai",v:res.carb.g,u:"g"}].map(m => (
@@ -286,7 +286,7 @@ function NewClientForm({ onSave, onCancel }) {
 
       <div style={{ display:"flex", gap:10 }}>
         <button onClick={onCancel} style={{ flex:1, padding:"13px 0", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
-        <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px 0", borderRadius:14, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
+        <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px 0", borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
           {saving?"Kuriama...":"Sukurti klientą"}
         </button>
       </div>
@@ -433,7 +433,7 @@ export default function AdminPanel({ user, onLogout }) {
   }
 
   if (view === "new") return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={()=>setView("list")} style={{ background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Naujas klientas</h1>
@@ -445,7 +445,7 @@ export default function AdminPanel({ user, onLogout }) {
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
 
       {openClient && (
         <ClientProfile
@@ -475,7 +475,7 @@ export default function AdminPanel({ user, onLogout }) {
         {/* Statistika */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
           {[
-            { v:clients.length,                                       l:"Klientai iš viso",   bg:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", c:"#fff", sc:PK.blush },
+            { v:clients.length,                                       l:"Klientai iš viso",   bg:"linear-gradient(135deg,#6D1B3B,#AD1457)", c:"#fff", sc:PK.blush },
             { v:clients.filter(c=>c.onboarding_done).length,         l:"Anketa baigta",      bg:"#fff", c:PK.mid, sc:PK.rose },
             { v:clients.filter(c=>!c.onboarding_done).length,        l:"Anketa nebaigta",    bg:"#fff", c:"#856404", sc:"#B7791F" },
           ].map((s,i) => (
@@ -486,7 +486,7 @@ export default function AdminPanel({ user, onLogout }) {
           ))}
         </div>
 
-        <button onClick={() => setView("new")} style={{ width:"100%", padding:"14px 0", marginBottom:16, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:16, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+        <button onClick={() => setView("new")} style={{ width:"100%", padding:"14px 0", marginBottom:16, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", borderRadius:16, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
           + Naujas klientas
         </button>
 
