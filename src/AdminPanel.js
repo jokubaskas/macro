@@ -23,19 +23,19 @@ async function adminCreateUser(email, password) {
 }
 
 function Card({ children, style }) {
-  return <div style={{ background:"#fff", borderRadius:18, padding:"16px", border:"1px solid "+PK.blush, boxShadow:"0 2px 10px rgba(173,20,87,0.06)", ...style }}>{children}</div>;
+  return <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:18, padding:"16px", border:"1px solid rgba(255,255,255,0.15)", boxShadow:"0 2px 10px rgba(173,20,87,0.06)", ...style }}>{children}</div>;
 }
 
 function SectionLabel({ children }) {
-  return <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:PK.mid, marginBottom:10 }}>{children}</p>;
+  return <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:10 }}>{children}</p>;
 }
 
 function InfoRow({ label, value }) {
   if (!value) return null;
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", padding:"7px 0", borderBottom:"1px solid "+PK.light }}>
-      <span style={{ fontSize:11, color:PK.rose, minWidth:120 }}>{label}</span>
-      <span style={{ fontSize:12, color:PK.dark, fontWeight:500, textAlign:"right", flex:1, marginLeft:10 }}>{value}</span>
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", padding:"7px 0", borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+      <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", minWidth:120 }}>{label}</span>
+      <span style={{ fontSize:12, color:"#fff", fontWeight:500, textAlign:"right", flex:1, marginLeft:10 }}>{value}</span>
     </div>
   );
 }
@@ -69,9 +69,9 @@ function ClientProfile({ client, onClose, onSaved }) {
     onSaved();
   }
 
-  const btnBase = { border:"2px solid "+PK.blush, borderRadius:10, cursor:"pointer", fontSize:12, fontWeight:700, fontFamily:"inherit" };
-  const active  = { borderColor:PK.mid, background:PK.light, color:PK.dark };
-  const inactive= { background:"#fff", color:PK.rose };
+  const btnBase = { border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:10, cursor:"pointer", fontSize:12, fontWeight:700, fontFamily:"inherit" };
+  const active  = { borderColor:PK.mid, background:"rgba(255,255,255,0.1)", color:"#fff" };
+  const inactive= { background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)" };
   const age = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
 
   const hasData = client.weight && client.height && (age||client.age);
@@ -82,8 +82,8 @@ function ClientProfile({ client, onClose, onSaved }) {
   }) : null;
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", maxHeight:"92vh", background:"#fff", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"flex-end" }}>
+      <div style={{ width:"100%", maxHeight:"92vh", background:"rgba(255,255,255,0.08)", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
 
         {/* Header */}
         <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", borderRadius:"20px 20px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
@@ -93,7 +93,7 @@ function ClientProfile({ client, onClose, onSaved }) {
             </div>
             <div>
               <p style={{ color:"#fff", fontWeight:700, fontSize:15, margin:0 }}>{client.name}</p>
-              <p style={{ color:PK.blush, fontSize:11, margin:0 }}>{client.email}</p>
+              <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, margin:0 }}>{client.email}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)",border:"none",borderRadius:8,padding:"7px 12px",color:"#fff",cursor:"pointer",fontSize:14 }}>✕</button>
@@ -119,14 +119,14 @@ function ClientProfile({ client, onClose, onSaved }) {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   {[{l:"Svoris (kg)",k:"weight",ph:"70"},{l:"Ūgis (cm)",k:"height",ph:"168"}].map(f => (
                     <div key={f.k}>
-                      <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
+                      <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
                       <input type="number" value={form[f.k]} onChange={e=>set(f.k)(e.target.value)} placeholder={f.ph}
-                        style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:14, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit" }} />
+                        style={{ width:"100%", padding:"9px 12px", border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:10, fontSize:14, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit" }} />
                     </div>
                   ))}
                 </div>
                 <div>
-                  <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:6 }}>Tikslas</label>
+                  <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:6 }}>Tikslas</label>
                   <div style={{ display:"flex", gap:6 }}>
                     {GOALS.map(g => (
                       <button key={g.id} onClick={() => set("goal")(g.id)}
@@ -137,19 +137,19 @@ function ClientProfile({ client, onClose, onSaved }) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:6 }}>Aktyvumas</label>
+                  <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:6 }}>Aktyvumas</label>
                   <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
                     {ACTIVITY.map(a => (
                       <button key={a.id} onClick={() => set("act")(a.id)}
                         style={{ ...btnBase, padding:"8px 12px", textAlign:"left", display:"flex", justifyContent:"space-between", ...(form.act===a.id?active:inactive) }}>
                         <span>{a.label}</span>
-                        <span style={{ fontSize:10, color:PK.rose, fontWeight:400 }}>{a.desc}</span>
+                        <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>{a.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:6 }}>Savijauta (1–5)</label>
+                  <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:6 }}>Savijauta (1–5)</label>
                   <div style={{ display:"flex", gap:6 }}>
                     {[1,2,3,4,5].map(n => (
                       <button key={n} onClick={() => set("wellbeing")(n)} style={{
@@ -212,8 +212,8 @@ function ClientProfile({ client, onClose, onSaved }) {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
                 {[{label:"Priekis",url:client.photo_front},{label:"Šonas",url:client.photo_side},{label:"Nugara",url:client.photo_back}].map(p => p.url && (
                   <div key={p.label}>
-                    <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", textAlign:"center", marginBottom:5 }}>{p.label}</p>
-                    <img src={p.url} alt={p.label} style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid "+PK.blush }} />
+                    <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", textAlign:"center", marginBottom:5 }}>{p.label}</p>
+                    <img src={p.url} alt={p.label} style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
                   </div>
                 ))}
               </div>
@@ -221,7 +221,7 @@ function ClientProfile({ client, onClose, onSaved }) {
           )}
           {/* Check-in sekcija */}
           <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Check-in & Progresas</p>
+            <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Check-in & Progresas</p>
             <TrainerMeasurements clientId={client.id} clientName={client.name} />
           </div>
         </div>
@@ -255,13 +255,13 @@ function NewClientForm({ onSave, onCancel }) {
     const [f,setF] = useState(false);
     return <input type={t} value={v} placeholder={ph} onChange={e=>fn(e.target.value)}
       onFocus={()=>setF(true)} onBlur={()=>setF(false)}
-      style={{ width:"100%", padding:"10px 12px", border:"2px solid "+(f?PK.mid:PK.blush), borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit" }} />;
+      style={{ width:"100%", padding:"10px 12px", border:"2px solid "+(f?PK.mid:PK.blush), borderRadius:12, fontSize:15, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit" }} />;
   };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <div style={{ background:"#fff", borderRadius:18, padding:"16px", border:"1px solid "+PK.blush }}>
-        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:PK.mid, marginBottom:12 }}>Prisijungimo duomenys</p>
+      <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:18, padding:"16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:12 }}>Prisijungimo duomenys</p>
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {[
             { l:"Vardas Pavardė", k:"name",     t:"text",     ph:"Emilija Šerkšnaitė" },
@@ -269,14 +269,14 @@ function NewClientForm({ onSave, onCancel }) {
             { l:"Slaptažodis",    k:"password", t:"password", ph:"min. 6 simboliai" },
           ].map(f => (
             <div key={f.k}>
-              <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
+              <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
               <input type={f.t} value={form[f.k]} placeholder={f.ph} onChange={e=>set(f.k)(e.target.value)}
-                style={{ width:"100%", padding:"10px 12px", border:"2px solid "+PK.blush, borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit" }} />
+                style={{ width:"100%", padding:"10px 12px", border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:12, fontSize:15, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit" }} />
             </div>
           ))}
         </div>
-        <div style={{ background:PK.pale, borderRadius:10, padding:"10px 12px", marginTop:12 }}>
-          <p style={{ fontSize:11, color:PK.rose, margin:0, lineHeight:1.5 }}>
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px", marginTop:12 }}>
+          <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
             💡 Klientas pirmą kartą prisijungęs užpildys išsamią anketą (tikslai, gyvensena, nuotraukos ir t.t.)
           </p>
         </div>
@@ -285,7 +285,7 @@ function NewClientForm({ onSave, onCancel }) {
       {error && <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:10, padding:"10px 14px", fontSize:13, color:PK.mid }}>{error}</div>}
 
       <div style={{ display:"flex", gap:10 }}>
-        <button onClick={onCancel} style={{ flex:1, padding:"13px 0", borderRadius:14, border:"2px solid "+PK.blush, background:"#fff", color:PK.rose, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
+        <button onClick={onCancel} style={{ flex:1, padding:"13px 0", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
         <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px 0", borderRadius:14, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
           {saving?"Kuriama...":"Sukurti klientą"}
         </button>
@@ -335,7 +335,7 @@ function ClientCard({ client, onDelete, onOpen }) {
 
   return (
     <div style={{
-      background:"#fff", borderRadius:16, padding:"12px 16px", marginBottom:10,
+      background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"12px 16px", marginBottom:10,
       border:"1px solid "+(alerts.length?PK.mid:PK.blush),
       boxShadow: alerts.length?"0 2px 12px rgba(173,20,87,0.12)":"0 2px 8px rgba(173,20,87,0.06)",
     }}>
@@ -346,18 +346,18 @@ function ClientCard({ client, onDelete, onOpen }) {
           </div>
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-              <p style={{ fontSize:14, fontWeight:700, color:PK.dark, margin:0 }}>{client.name||client.email}</p>
+              <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>{client.name||client.email}</p>
               {alerts.length > 0 && <span style={{ width:7, height:7, borderRadius:"50%", background:"#e74c3c", flexShrink:0 }}/>}
             </div>
-            <p style={{ fontSize:11, color:PK.rose, margin:"2px 0 0" }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"2px 0 0" }}>
               {age?age+"m.":""}{client.weight?" · "+client.weight+"kg":""}
               {client._lastMeasure?" · mat. "+new Date(client._lastMeasure).toLocaleDateString("lt-LT",{month:"short",day:"numeric"}):""}
             </p>
           </div>
         </div>
         <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-          <button onClick={onOpen} style={{ padding:"6px 10px", borderRadius:10, border:"1px solid "+PK.blush, background:PK.light, color:PK.mid, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Profilis</button>
-          <button onClick={onDelete} style={{ padding:"6px 8px", borderRadius:10, border:"1px solid "+PK.blush, background:"#fff", color:PK.rose, fontSize:12, cursor:"pointer" }}>🗑️</button>
+          <button onClick={onOpen} style={{ padding:"6px 10px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.75)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Profilis</button>
+          <button onClick={onDelete} style={{ padding:"6px 8px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer" }}>🗑️</button>
         </div>
       </div>
       {alerts.length > 0 && (
@@ -433,7 +433,7 @@ export default function AdminPanel({ user, onLogout }) {
   }
 
   if (view === "new") return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={()=>setView("list")} style={{ background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Naujas klientas</h1>
@@ -445,7 +445,7 @@ export default function AdminPanel({ user, onLogout }) {
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
 
       {openClient && (
         <ClientProfile
@@ -462,7 +462,7 @@ export default function AdminPanel({ user, onLogout }) {
             <img src="/logo.png" alt="Coach Vilma" style={{ width:38, height:38, objectFit:"contain", borderRadius:8 }} />
             <div>
               <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Admin panelė</h1>
-              <p style={{ fontSize:11, color:PK.blush, margin:0 }}>{user.email}</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>{user.email}</p>
             </div>
           </div>
           <button onClick={onLogout} style={{ background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
@@ -490,14 +490,14 @@ export default function AdminPanel({ user, onLogout }) {
           + Naujas klientas
         </button>
 
-        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:PK.mid, marginBottom:10 }}>Klientai</p>
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:10 }}>Klientai</p>
 
         {loading ? (
-          <p style={{ textAlign:"center", color:PK.rose, padding:"24px 0" }}>Kraunama...</p>
+          <p style={{ textAlign:"center", color:"rgba(255,255,255,0.5)", padding:"24px 0" }}>Kraunama...</p>
         ) : clients.length === 0 ? (
-          <div style={{ background:PK.pale, borderRadius:16, padding:"32px 20px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"32px 20px", textAlign:"center", border:"2px dashed "+PK.blush }}>
             <div style={{ fontSize:36, marginBottom:10 }}>🌸</div>
-            <p style={{ color:PK.rose, fontSize:14 }}>Dar nėra klientų</p>
+            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:14 }}>Dar nėra klientų</p>
           </div>
         ) : clients.map(client => (
           <ClientCard key={client.id} client={client}
