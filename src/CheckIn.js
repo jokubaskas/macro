@@ -236,7 +236,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
 
   return (
     <div style={{
-      background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")",
+      background:"rgba(0,0,0,0.2)",
       borderRadius:20, marginBottom:12,
       boxShadow:"0 6px 24px rgba(173,20,87,0.3)",
       overflow:"hidden",
