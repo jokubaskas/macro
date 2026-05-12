@@ -101,7 +101,7 @@ export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
   const days  = ["P","A","T","K","Pn","Š","S"];
 
   return (
-    <div style={{ background:`linear-gradient(135deg,${PK.dark},${PK.mid})`, borderRadius:20, padding:"18px 16px", boxShadow:"0 6px 24px rgba(173,20,87,0.3)", marginBottom:12 }}>
+    <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:20, padding:"18px 16px", border:"1px solid rgba(255,255,255,0.15)", marginBottom:12 }}>
 
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
