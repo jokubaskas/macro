@@ -424,10 +424,10 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
             // Spalva pagal vertę (1-5 skalė)
             function scoreColor(v) {
-              if (v==null) return PK.blush;
-              if (v>=4) return "#27ae60";
-              if (v>=3) return "#f39c12";
-              return "#e74c3c";
+              if (v==null) return "rgba(255,255,255,0.3)";
+              if (v>=4) return "#7FFFB0";
+              if (v>=3) return "#FFD700";
+              return "#FF8C69";
             }
 
             return (
@@ -458,8 +458,8 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                         if (v==null) return null;
                         const isScore = !m.suffix || m.suffix==="";
                         const displayV = m.suffix ? v+m.suffix : v+"/5";
-                        const bg = scoreColor(v)+"33";
-                        const col = m.k==="workouts_done"||m.k==="weight_self" ? "#fff" : scoreColor(v);
+                        const bg = m.suffix ? "rgba(255,255,255,0.1)" : scoreColor(v)+"33";
+                        const col = "#fff";
                         return (
                           <div key={m.k} style={{ background:bg, borderRadius:10, padding:"9px 6px", textAlign:"center", border:"1px solid "+(col+"44") }}>
                             <div style={{ fontSize:18 }}>{m.e}</div>
