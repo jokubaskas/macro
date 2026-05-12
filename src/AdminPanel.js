@@ -426,17 +426,15 @@ export default function AdminPanel({ user, onLogout }) {
       if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
     });
 
-    // Savaitiniai žingsniai ir treniruotės (lentelės gali neegzistuoti)
+    // Savaitiniai žingsniai ir treniruotės
     const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    let stepData = [], workoutData = [];
-    try {
-      const [sr, wr] = await Promise.all([
-        adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
-        adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
-      ]);
-      stepData    = sr?.data    || [];
-      workoutData = wr?.data    || [];
-    } catch(_) { /* lentelės dar nesukurtos */ }
+    const [srRes, wrRes] = await Promise.allSettled([
+      adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
+      adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
+    ]);
+    const stepData    = (srRes.status==="fulfilled" && srRes.value?.data) || [];
+    const workoutData = (wrRes.status==="fulfilled" && wrRes.value?.data) || [];
+    console.log("[Admin] steps:", stepData.length, "workouts:", workoutData.length);
 
     const weekStepAvg = {};
     (stepData||[]).forEach(s => {
