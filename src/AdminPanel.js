@@ -427,10 +427,12 @@ export default function AdminPanel({ user, onLogout }) {
 
     // Savaitiniai žingsniai ir treniruotės
     const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    const [{ data: stepData }, { data: workoutData }] = await Promise.all([
-      adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
-      adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
+    const [stepResult, workoutResult] = await Promise.all([
+      adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7).then(r => r).catch(() => ({ data: [] })),
+      adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7).then(r => r).catch(() => ({ data: [] })),
     ]);
+    const stepData    = stepResult?.data    || [];
+    const workoutData = workoutResult?.data || [];
 
     const weekStepAvg = {};
     (stepData||[]).forEach(s => {
