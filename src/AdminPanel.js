@@ -333,6 +333,11 @@ function ClientCard({ client, onDelete, onOpen }) {
   // ⚠️ Anketa
   if (!done) alerts.push({ e:"⚠️", t:"Anketa nebaigta", c:"#856404" });
 
+  // 📊 Savaitiniai duomenys
+  const stepAvg  = client._weekStepAvg  || 0;
+  const workouts = client._weekWorkouts || { strength:0, cardio:0 };
+  const totalWorkouts = workouts.strength + workouts.cardio;
+
   return (
     <div style={{
       background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"12px 16px", marginBottom:10,
@@ -412,11 +417,37 @@ export default function AdminPanel({ user, onLogout }) {
       if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
     });
 
+    // Savaitiniai žingsniai ir treniruotės
+    const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
+    const [{ data: stepData }, { data: workoutData }] = await Promise.all([
+      supabase.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
+      supabase.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
+    ]);
+
+    const weekStepAvg = {};
+    (stepData||[]).forEach(s => {
+      if (!weekStepAvg[s.user_id]) weekStepAvg[s.user_id] = [];
+      weekStepAvg[s.user_id].push(s.steps);
+    });
+    Object.keys(weekStepAvg).forEach(uid => {
+      const arr = weekStepAvg[uid];
+      weekStepAvg[uid] = Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+    });
+
+    const weekWorkouts = {};
+    (workoutData||[]).forEach(w => {
+      if (!weekWorkouts[w.user_id]) weekWorkouts[w.user_id] = { strength:0, cardio:0 };
+      if (w.type==="strength") weekWorkouts[w.user_id].strength++;
+      else weekWorkouts[w.user_id].cardio++;
+    });
+
     const enriched = (profiles||[]).map(p => ({
       ...p,
-      _lastMeasure: lastMeasure[p.id] || null,
-      _checkinDone: checkinDone[p.id] ?? null,
-      _lastFood:    lastFood[p.id]    || null,
+      _lastMeasure:    lastMeasure[p.id]    || null,
+      _checkinDone:    checkinDone[p.id]    ?? null,
+      _lastFood:       lastFood[p.id]       || null,
+      _weekStepAvg:    weekStepAvg[p.id]    || 0,
+      _weekWorkouts:   weekWorkouts[p.id]   || { strength:0, cardio:0 },
     }));
 
     setClients(enriched);
