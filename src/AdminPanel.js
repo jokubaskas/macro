@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import TrainerMeasurements from "./TrainerMeasurements";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SERVICE_KEY  = process.env.REACT_APP_SERVICE_ROLE_KEY;
+const adminDb = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SERVICE_ROLE_KEY
+);
 
 const STEPS_LABELS = {
   "under5k":"Iki 5 000 žingsnių","5k-8k":"5 000–8 000",
@@ -427,10 +432,10 @@ export default function AdminPanel({ user, onLogout }) {
 
     // Savaitiniai žingsniai ir treniruotės
     const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    const [{ data: stepData }, { data: workoutData }] = await Promise.all([
-      supabase.from("step_log").select("user_id,steps,date").gte("date",weekAgo7),
-      supabase.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7),
-    ]);
+    const srRes = await adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7);
+    const wrRes = await adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7);
+    const stepData    = srRes.error ? [] : (srRes.data || []);
+    const workoutData = wrRes.error ? [] : (wrRes.data || []);
 
     const weekStepAvg = {};
     (stepData||[]).forEach(s => {
