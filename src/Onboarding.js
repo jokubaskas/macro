@@ -428,7 +428,7 @@ export default function Onboarding({ user, onComplete }) {
         {step < steps.length - 1 ? (
           <button onClick={() => setStep(s => s+1)} disabled={!canNext()} style={{
             flex:2, padding:"14px 0", border:"none",
-            borderRadius:14, background: canNext() ? "linear-gradient(135deg,#6D1B3B,#AD1457)",
+            borderRadius:14, background: canNext() ? "linear-gradient(135deg,#6D1B3B,#AD1457)" : "rgba(255,255,255,0.2)",
             color:"#fff", fontSize:14, fontWeight:700,
             cursor: canNext() ? "pointer" : "default", fontFamily:"inherit",
             transition:"background 0.2s",
