@@ -86,7 +86,7 @@ function ClientProfile({ client, onClose, onSaved }) {
       <div style={{ width:"100%", maxHeight:"92vh", background:"rgba(255,255,255,0.08)", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
 
         {/* Header */}
-        <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", borderRadius:"20px 20px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+        <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", borderRadius:"20px 20px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>
               {client.gender==="f"?"👩":"👨"}
@@ -434,7 +434,7 @@ export default function AdminPanel({ user, onLogout }) {
 
   if (view === "new") return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
-      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", alignItems:"center", gap:12 }}>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={()=>setView("list")} style={{ background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Naujas klientas</h1>
       </div>
@@ -456,7 +456,7 @@ export default function AdminPanel({ user, onLogout }) {
       )}
 
       {/* Header */}
-      <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px 20px" }}>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <img src="/logo.png" alt="Coach Vilma" style={{ width:38, height:38, objectFit:"contain", borderRadius:8 }} />
