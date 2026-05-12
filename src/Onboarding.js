@@ -33,16 +33,16 @@ function calcAge(dob) {
 const inp = (focused) => ({
   width:"100%", padding:"13px 14px",
   border:"2px solid " + (focused ? PK.mid : PK.blush),
-  borderRadius:14, fontSize:15, color:PK.dark,
-  background:"#fff", outline:"none", fontFamily:"inherit",
+  borderRadius:14, fontSize:15, color:"#fff",
+  background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit",
   WebkitAppearance:"none", transition:"border-color 0.2s",
 });
 
 function Field({ label, hint, children }) {
   return (
     <div style={{ marginBottom:18 }}>
-      <label style={{ display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, marginBottom:6 }}>{label}</label>
-      {hint && <p style={{ fontSize:11, color:PK.rose, marginBottom:8, lineHeight:1.4 }}>{hint}</p>}
+      <label style={{ display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:6 }}>{label}</label>
+      {hint && <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginBottom:8, lineHeight:1.4 }}>{hint}</p>}
       {children}
     </div>
   );
@@ -75,7 +75,7 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
       transition:"all 0.15s",
     }}>
       <span style={{ fontSize:14, fontWeight:700, color:selected?PK.dark:PK.mid }}>{label}</span>
-      {desc && <span style={{ fontSize:11, color:PK.rose, marginLeft:10, textAlign:"right", maxWidth:140 }}>{desc}</span>}
+      {desc && <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginLeft:10, textAlign:"right", maxWidth:140 }}>{desc}</span>}
     </button>
   );
 }
@@ -122,7 +122,7 @@ function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
         ) : (
           <>
             <span style={{ fontSize:32 }}>{emoji}</span>
-            <span style={{ fontSize:11, fontWeight:700, color:PK.mid, textAlign:"center", padding:"0 8px" }}>{label}</span>
+            <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textAlign:"center", padding:"0 8px" }}>{label}</span>
           </>
         )}
         {loading && (
@@ -224,7 +224,7 @@ export default function Onboarding({ user, onComplete }) {
   const age = calcAge(form.dob);
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)"+PK.pale+" 0%,#fff 55%,"+PK.light+" 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
 
       {/* Header */}
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"20px 20px 24px" }}>
@@ -232,7 +232,7 @@ export default function Onboarding({ user, onComplete }) {
           <img src="/logo.png" alt="Coach Vilma" style={{ width:40, height:40, objectFit:"contain", borderRadius:10 }} />
           <div>
             <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Sveiki atvykę!</h1>
-            <p style={{ fontSize:11, color:PK.blush, margin:0 }}>Užpildykite anketą – tai užtruks ~3 min.</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Užpildykite anketą – tai užtruks ~3 min.</p>
           </div>
         </div>
 
@@ -279,7 +279,7 @@ export default function Onboarding({ user, onComplete }) {
                 <TextInput type="date" value={form.dob} onChange={set("dob")}
                   placeholder="1990-01-15" />
                 {age && (
-                  <div style={{ marginTop:6, fontSize:12, color:PK.mid, fontWeight:600 }}>
+                  <div style={{ marginTop:6, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600 }}>
                     ✓ Amžius: {age} metai
                   </div>
                 )}
@@ -371,7 +371,7 @@ export default function Onboarding({ user, onComplete }) {
                 ))}
               </div>
               {form.wellbeing && (
-                <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:PK.mid, fontWeight:600 }}>
+                <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600 }}>
                   {["","😞 Labai blogai","😕 Blogai","😐 Vidutiniškai","😊 Gerai","🌟 Puikiai"][form.wellbeing]}
                 </p>
               )}
@@ -382,33 +382,33 @@ export default function Onboarding({ user, onComplete }) {
         {/* ── 5 žingsnis: Nuotraukos ── */}
         {step === 4 && (
           <div>
-            <div style={{ background:PK.pale, borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid "+PK.blush }}>
-              <p style={{ fontSize:13, color:PK.dark, fontWeight:600, marginBottom:4 }}>📸 Pirminės nuotraukos</p>
-              <p style={{ fontSize:12, color:PK.rose, margin:0, lineHeight:1.5 }}>
+            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid rgba(255,255,255,0.15)" }}>
+              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4 }}>📸 Pirminės nuotraukos</p>
+              <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
                 Nuotraukos reikalingos progresui stebėti. Jos matomos tik man kaip treneriai. Galima įkelti vėliau.
               </p>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
               <div>
-                <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Priekis</p>
+                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Priekis</p>
                 <PhotoUpload label="Priekio nuotrauka" emoji="🧍" field="front"
                   value={form.photo_front} onChange={set("photo_front")} userId={user.id} />
               </div>
               <div>
-                <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Šonas</p>
+                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Šonas</p>
                 <PhotoUpload label="Šono nuotrauka" emoji="🚶" field="side"
                   value={form.photo_side} onChange={set("photo_side")} userId={user.id} />
               </div>
               <div>
-                <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Nugara</p>
+                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Nugara</p>
                 <PhotoUpload label="Nugaros nuotrauka" emoji="🔙" field="back"
                   value={form.photo_back} onChange={set("photo_back")} userId={user.id} />
               </div>
             </div>
 
             {error && (
-              <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:12, padding:"12px 14px", fontSize:13, color:PK.mid, marginBottom:16 }}>
+              <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:12, padding:"12px 14px", fontSize:13, color:"rgba(255,255,255,0.75)", marginBottom:16 }}>
                 {error}
               </div>
             )}
@@ -417,11 +417,11 @@ export default function Onboarding({ user, onComplete }) {
       </div>
 
       {/* Mygtukai apačioje */}
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#fff", borderTop:"1px solid "+PK.blush, padding:"12px 20px", display:"flex", gap:10, maxWidth:480, margin:"0 auto" }}>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"rgba(255,255,255,0.07)", borderTop:"1px solid rgba(255,255,255,0.1)", padding:"12px 20px", display:"flex", gap:10, maxWidth:480, margin:"0 auto" }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s-1)} style={{
-            flex:1, padding:"14px 0", border:"2px solid "+PK.blush,
-            borderRadius:14, background:"#fff", color:PK.mid,
+            flex:1, padding:"14px 0", border:"1.5px solid rgba(255,255,255,0.2)",
+            borderRadius:14, background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.75)",
             fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
           }}>← Atgal</button>
         )}
