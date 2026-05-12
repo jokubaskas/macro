@@ -62,7 +62,7 @@ function DualChart({ clientData, trainerData, cKey, tKey, label, cColor, tColor,
   return (
     <div style={{ marginBottom:16 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-        <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", margin:0 }}>{label}</p>
+        <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", margin:0 }}>{label}</p>
         <div style={{ display:"flex", gap:10 }}>
           {cPts.length>0&&<span style={{ fontSize:9, color:cColor, display:"flex", alignItems:"center", gap:3 }}>
             <svg width="14" height="4"><line x1="0" y1="2" x2="14" y2="2" stroke={cColor} strokeWidth="1.5" strokeDasharray="3,2"/></svg>Kliento
@@ -332,7 +332,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                isDue ? "⏰ Matavimo laikas atėjo!" :
                `🗓️ Kitas matavimas po ${weeksLeft} sav.`}
             </p>
-            <p style={{ fontSize:11, color:PK.rose, margin:0 }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0 }}>
               {!last ? 'Įvesk pirmus matavimus mygtuku "+ Matuoti"' :
                `Paskutinis: ${fmtFull(last.measured_at)} · ${weeksAgo(last.measured_at)} sav. atgal`}
             </p>
@@ -340,27 +340,27 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
           {/* Paskutinis matavimas */}
           {last && (
-            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", marginBottom:12, border:"1px solid "+PK.blush }}>
+            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                <p style={{ fontSize:12, fontWeight:700, color:PK.dark, margin:0 }}>
+                <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>
                   📏 Matavimas #{last.cycle_number} · {fmt(last.measured_at)}
                 </p>
-                <button onClick={()=>openForm(last)} style={{ fontSize:11, color:PK.mid, background:"none", border:"none", cursor:"pointer" }}>✏️</button>
+                <button onClick={()=>openForm(last)} style={{ fontSize:11, color:"rgba(255,255,255,0.75)", background:"none", border:"none", cursor:"pointer" }}>✏️</button>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
                 {MEASURES_FIELDS.filter(f=>last[f.k]!=null).map(f=>(
-                  <div key={f.k} style={{ background:PK.pale, borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
+                  <div key={f.k} style={{ background:"rgba(255,255,255,0.07)", borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ display:"flex", justifyContent:"center", alignItems:"baseline", gap:2 }}>
                       <span style={{ fontSize:15, fontWeight:700, color:PK.dark }}>{last[f.k]}</span>
                       <span style={{ fontSize:10, color:PK.rose }}>{f.u}</span>
                       <DiffBadge d={diff(f.k)} invertGood={f.invertGood}/>
                     </div>
-                    <div style={{ fontSize:9, color:PK.rose, marginTop:2 }}>{f.l}</div>
+                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{f.l}</div>
                   </div>
                 ))}
               </div>
               {last.trainer_note && (
-                <p style={{ fontSize:12, color:PK.dark, marginTop:10, padding:"8px 10px", background:PK.pale, borderRadius:8, margin:"10px 0 0" }}>
+                <p style={{ fontSize:12, color:"#fff", marginTop:10, padding:"8px 10px", background:"rgba(255,255,255,0.07)", borderRadius:8, margin:"10px 0 0" }}>
                   💬 {last.trainer_note}
                 </p>
               )}
@@ -368,15 +368,15 @@ export default function TrainerMeasurements({ clientId, clientName }) {
           )}
 
           {/* Kliento paskutiniai check-in'ai */}
-          <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid "+PK.blush }}>
-            <p style={{ fontSize:11, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
+          <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
               Kliento savaitiniai check-in'ai
             </p>
             {recentCheckins.length===0 ? (
-              <p style={{ color:PK.rose, fontSize:12 }}>Dar nėra savaitinių check-in'ų</p>
+              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:12 }}>Dar nėra savaitinių check-in'ų</p>
             ) : recentCheckins.map(ci=>(
               <div key={ci.id} style={{ padding:"8px 0", borderBottom:"1px solid "+PK.light, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:12, color:PK.dark, fontWeight:600 }}>{fmt(ci.week_start)}</span>
+                <span style={{ fontSize:12, color:"#fff", fontWeight:600 }}>{fmt(ci.week_start)}</span>
                 <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                   {[
                     { e:"😴", v:ci.sleep_quality },
@@ -391,7 +391,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               </div>
             ))}
             {recentCheckins.length>0&&checkins.length>4&&(
-              <p style={{ fontSize:11, color:PK.rose, margin:"8px 0 0", textAlign:"center" }}>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"8px 0 0", textAlign:"center" }}>
                 Iš viso savaitinių: {checkins.length}
               </p>
             )}
@@ -403,9 +403,9 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       {tab==="checkins" && (
         <div>
           {checkins.length===0 ? (
-            <div style={{ background:PK.pale, borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+            <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
               <p style={{ fontSize:32, marginBottom:8 }}>📋</p>
-              <p style={{ color:PK.rose, fontSize:13 }}>Klientė dar neatliko nė vieno check-in'o</p>
+              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Klientė dar neatliko nė vieno check-in'o</p>
             </div>
           ) : [...checkins].reverse().map((ci) => {
             const weekEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
@@ -432,17 +432,17 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
             return (
               <div key={ci.id} style={{
-                background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:12,
+                background:"rgba(255,255,255,0.07)", borderRadius:16, padding:"14px 16px", marginBottom:12,
                 border:"2px solid "+(isThisWeek?PK.mid:PK.blush),
                 boxShadow: isThisWeek?"0 2px 16px rgba(173,20,87,0.15)":"none",
               }}>
                 {/* Savaitės header */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                   <div>
-                    <p style={{ fontSize:13, fontWeight:700, color:PK.dark, margin:"0 0 2px" }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>
                       {isThisWeek ? "🟢 Ši savaitė" : fmtD(ci.week_start)+" – "+fmtD(weekEnd(ci.week_start))}
                     </p>
-                    {!isThisWeek && <p style={{ fontSize:10, color:PK.rose, margin:0 }}>{ci.week_start}</p>}
+                    {!isThisWeek && <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:0 }}>{ci.week_start}</p>}
                   </div>
                   {ci.is_done
                     ? <span style={{ fontSize:11, background:"#F0FFF4", color:"#276749", borderRadius:8, padding:"3px 10px", fontWeight:700 }}>✅ Užpildyta</span>
@@ -464,7 +464,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                           <div key={m.k} style={{ background:bg, borderRadius:10, padding:"9px 6px", textAlign:"center", border:"1px solid "+(col+"44") }}>
                             <div style={{ fontSize:18 }}>{m.e}</div>
                             <div style={{ fontSize:14, fontWeight:700, color:col }}>{displayV}</div>
-                            <div style={{ fontSize:9, color:PK.rose, marginTop:1 }}>{m.l}</div>
+                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:1 }}>{m.l}</div>
                             {/* Progreso juosta (tik 1-5 metrikos) */}
                             {!m.suffix && (
                               <div style={{ width:"100%", height:3, borderRadius:99, background:"rgba(0,0,0,0.08)", marginTop:5 }}>
@@ -496,9 +496,9 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
                     {/* Pastaba */}
                     {ci.client_note && (
-                      <div style={{ background:PK.pale, borderRadius:10, padding:"8px 12px", border:"1px solid "+PK.blush }}>
-                        <p style={{ fontSize:10, fontWeight:700, color:PK.mid, margin:"0 0 3px", textTransform:"uppercase" }}>Klientės pastaba</p>
-                        <p style={{ fontSize:12, color:PK.dark, margin:0, lineHeight:1.5, fontStyle:"italic" }}>{ci.client_note}</p>
+                      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:10, padding:"8px 12px", border:"1px solid rgba(255,255,255,0.15)" }}>
+                        <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", margin:"0 0 3px", textTransform:"uppercase" }}>Klientės pastaba</p>
+                        <p style={{ fontSize:12, color:"#fff", margin:0, lineHeight:1.5, fontStyle:"italic" }}>{ci.client_note}</p>
                       </div>
                     )}
                   </>
@@ -513,11 +513,11 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
       {/* ── MATAVIMO FORMA ── */}}
       {tab==="form" && (
-        <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid "+PK.blush }}>
-          <p style={{ fontSize:13, fontWeight:700, color:PK.dark, marginBottom:4 }}>
+        <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+          <p style={{ fontSize:13, fontWeight:700, color:"#fff", marginBottom:4 }}>
             {editId ? "✏️ Redaguoti matavimus" : `📏 Matavimas #${(last?.cycle_number||0)+1}`}
           </p>
-          <p style={{ fontSize:11, color:PK.rose, marginBottom:14 }}>
+          <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginBottom:14 }}>
             {editId ? `Matavimo data: ${fmtFull(last?.measured_at)}` : `Data: ${fmtFull(new Date().toISOString().split("T")[0])}`}
           </p>
 
@@ -532,12 +532,12 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               { l:"Šlaunys (cm)",      k:"thighs_cm",        ph:"55"   },
             ].map(f=>(
               <div key={f.k} style={{ gridColumn: f.k==="thighs_cm"?"1 / -1":undefined }}>
-                <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
+                <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
                 <input type="number" step="0.1" value={form[f.k]} placeholder={f.ph} onChange={e=>set(f.k)(e.target.value)}
-                  style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:14, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}/>
+                  style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:14, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}/>
                 {/* Rodyti skirtumą nuo paskutinio matavimo */}
                 {last&&last[f.k]&&form[f.k]&&!isNaN(parseFloat(form[f.k]))&&(
-                  <p style={{ fontSize:10, color:PK.rose, margin:"3px 0 0" }}>
+                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:"3px 0 0" }}>
                     Ankstesnis: {last[f.k]}{f.l.includes("kg")?"kg":f.l.includes("%")?"%":"cm"}
                     {" → "}{+(parseFloat(form[f.k])-last[f.k]).toFixed(1)>0?"+":""}{+(parseFloat(form[f.k])-last[f.k]).toFixed(1)}
                   </p>
@@ -547,14 +547,14 @@ export default function TrainerMeasurements({ clientId, clientName }) {
           </div>
 
           <div style={{ marginTop:12, marginBottom:14 }}>
-            <label style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", display:"block", marginBottom:4 }}>Komentaras klientei</label>
+            <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>Komentaras klientei</label>
             <textarea value={form.trainer_note} onChange={e=>set("trainer_note")(e.target.value)} rows={3}
               placeholder="Progresas, rekomendacijos kitai savaitei, pokyčiai plane..."
-              style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:13, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit", resize:"vertical", boxSizing:"border-box" }}/>
+              style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:13, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit", resize:"vertical", boxSizing:"border-box" }}/>
           </div>
 
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>{setTab("overview");setEditId(null);}} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"2px solid "+PK.blush, background:"#fff", color:PK.mid, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            <button onClick={()=>{setTab("overview");setEditId(null);}} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"2px solid "+PK.blush, background:"#fff", color:"rgba(255,255,255,0.75)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
               Atšaukti
             </button>
             <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"11px 0", borderRadius:12, background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
@@ -568,11 +568,11 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       {tab==="charts" && (
         <div>
           {measures.length===0&&checkins.length===0 ? (
-            <div style={{ background:PK.pale, borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
-              <p style={{ color:PK.rose, fontSize:13 }}>Dar nėra duomenų grafikams 📊</p>
+            <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Dar nėra duomenų grafikams 📊</p>
             </div>
           ) : (
-            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid "+PK.blush }}>
+            <div style={{ background:"#fff", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
               <DualChart clientData={checkins} trainerData={measures}
                 cKey="weight_self" tKey="weight_measured"
                 label="Svoris (kg)" cColor={PK.blush} tColor={PK.mid} unit="kg"/>
@@ -595,7 +595,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               {checkins.length>=2&&(
                 <>
                   <div style={{ borderTop:"1px solid "+PK.light, paddingTop:14, marginTop:6 }}>
-                    <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Kliento savijauta (savaitiniai)</p>
+                    <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Kliento savijauta (savaitiniai)</p>
                     {[
                       { k:"sleep_quality",  l:"😴 Miegas",   c:"#89CFF0" },
                       { k:"energy",         l:"⚡ Energija", c:"#FFD700" },
@@ -617,24 +617,24 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       {tab==="history" && (
         <div>
           {measures.length===0 ? (
-            <p style={{ color:PK.rose, fontSize:13, textAlign:"center", padding:"20px 0" }}>Dar nėra matavimų istorijos</p>
+            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Dar nėra matavimų istorijos</p>
           ) : [...measures].reverse().map((m,i)=>(
-            <div key={m.id} style={{ background:"#fff", borderRadius:14, padding:"12px 14px", marginBottom:8, border:"1px solid "+PK.blush }}>
+            <div key={m.id} style={{ background:"#fff", borderRadius:14, padding:"12px 14px", marginBottom:8, border:"1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div>
                   <span style={{ fontSize:12, fontWeight:700, color:PK.dark }}>Matavimas #{m.cycle_number}</span>
-                  <span style={{ fontSize:11, color:PK.rose, marginLeft:8 }}>{fmtFull(m.measured_at)}</span>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginLeft:8 }}>{fmtFull(m.measured_at)}</span>
                 </div>
-                <button onClick={()=>openForm(m)} style={{ fontSize:11, color:PK.mid, background:"none", border:"none", cursor:"pointer" }}>✏️</button>
+                <button onClick={()=>openForm(m)} style={{ fontSize:11, color:"rgba(255,255,255,0.75)", background:"none", border:"none", cursor:"pointer" }}>✏️</button>
               </div>
               <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
                 {MEASURES_FIELDS.filter(f=>m[f.k]!=null).map(f=>(
-                  <span key={f.k} style={{ fontSize:12, color:PK.dark, background:PK.pale, borderRadius:8, padding:"3px 8px" }}>
+                  <span key={f.k} style={{ fontSize:12, color:"#fff", background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"3px 8px" }}>
                     {f.l}: <strong>{m[f.k]}{f.u}</strong>
                   </span>
                 ))}
               </div>
-              {m.trainer_note&&<p style={{ fontSize:11, color:PK.rose, margin:"8px 0 0", fontStyle:"italic" }}>💬 {m.trainer_note}</p>}
+              {m.trainer_note&&<p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"8px 0 0", fontStyle:"italic" }}>💬 {m.trainer_note}</p>}
             </div>
           ))}
         </div>
