@@ -90,23 +90,25 @@ export default function App() {
       {/* Apačios navigacija */}
       <div style={{
         position:"fixed", bottom:0, left:0, right:0, zIndex:300,
-        background:"#fff", borderTop:"1px solid #FCE4EC",
-        display:"flex", maxWidth:480, margin:"0 auto",
-        boxShadow:"0 -2px 20px rgba(173,20,87,0.12)",
+        background:"rgba(20,4,12,0.92)",
+        backdropFilter:"blur(16px)",
+        borderTop:"1px solid rgba(255,255,255,0.12)",
+        display:"flex",
       }}>
         {[
           { id:"food",     emoji:"🍽️", label:"Mityba" },
           { id:"activity", emoji:"🏃", label:"Aktyvumas" },
         ].map(t=>(
           <button key={t.id} onClick={()=>{ if(t.id==="food") setFoodKey(k=>k+1); setTab(t.id); }} style={{
-            flex:1, padding:"10px 0 14px",
+            flex:1, padding:"10px 0 18px",
             background:"none", border:"none", cursor:"pointer",
             fontFamily:"inherit", display:"flex", flexDirection:"column",
-            alignItems:"center", gap:3,
-            borderTop: tab===t.id ? "2.5px solid #AD1457" : "2.5px solid transparent",
+            alignItems:"center", gap:4,
+            borderTop: tab===t.id ? "2px solid rgba(255,255,255,0.8)" : "2px solid transparent",
+            transition:"all 0.15s",
           }}>
-            <span style={{ fontSize:22 }}>{t.emoji}</span>
-            <span style={{ fontSize:10, fontWeight:700, color:tab===t.id?"#AD1457":"#B0B0B0" }}>{t.label}</span>
+            <span style={{ fontSize:22, opacity: tab===t.id?1:0.4 }}>{t.emoji}</span>
+            <span style={{ fontSize:10, fontWeight:700, color:tab===t.id?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.3)", letterSpacing:"0.03em" }}>{t.label}</span>
           </button>
         ))}
       </div>
