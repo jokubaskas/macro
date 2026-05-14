@@ -11,6 +11,14 @@ function getRecommended(age) {
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 const MAX_H = 12;
 
+// ── Laiko formatavimas ────────────────────────────────────────────────────────
+function fmtHours(val) {
+  if (val == null) return "–";
+  const h = Math.floor(val);
+  const m = Math.round((val % 1) * 60);
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
 // ── Slankiklis ────────────────────────────────────────────────────────────────
 function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
   const trackRef = useRef(null);
@@ -27,25 +35,28 @@ function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
     onChange(calcHours(e.touches ? e.touches[0].clientX : e.clientX));
   }
   useEffect(() => {
-    function onMove(e) { if (!dragging.current) return; onChange(calcHours(e.touches ? e.touches[0].clientX : e.clientX)); }
+    function onMove(e) {
+      if (!dragging.current) return;
+      onChange(calcHours(e.touches ? e.touches[0].clientX : e.clientX));
+    }
     function onEnd() { dragging.current = false; }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup",   onEnd);
-    window.addEventListener("touchmove", onMove, { passive:true });
-    window.addEventListener("touchend",  onEnd);
+    window.addEventListener("mousemove",  onMove);
+    window.addEventListener("mouseup",    onEnd);
+    window.addEventListener("touchmove",  onMove, { passive:true });
+    window.addEventListener("touchend",   onEnd);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup",   onEnd);
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("touchend",  onEnd);
+      window.removeEventListener("mousemove",  onMove);
+      window.removeEventListener("mouseup",    onEnd);
+      window.removeEventListener("touchmove",  onMove);
+      window.removeEventListener("touchend",   onEnd);
     };
   }, []);
 
-  const pct       = v => (v / MAX_H) * 100;
-  const handlePct = pct(value ?? 0);
-  const recMinPct = pct(recMin);
-  const recMaxPct = pct(recMax);
-  const inRange   = value >= recMin && value <= recMax;
+  const pct         = v => (v / MAX_H) * 100;
+  const handlePct   = pct(value ?? 0);
+  const recMinPct   = pct(recMin);
+  const recMaxPct   = pct(recMax);
+  const inRange     = value >= recMin && value <= recMax;
   const handleColor = inRange ? "#7FFFB0" : value < recMin ? "#FFD700" : "#89CFF0";
 
   return (
@@ -57,7 +68,7 @@ function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
         {value !== null && (
           <div style={{ position:"absolute", top:"50%", left:handlePct+"%", transform:"translate(-50%,-50%)", zIndex:3 }}>
             <div style={{ position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)", background:handleColor, color:"#1a0a12", borderRadius:10, padding:"4px 9px", fontSize:13, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 2px 8px rgba(0,0,0,0.3)" }}>
-              {value}h
+              {fmtHours(value)}
               <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"5px solid "+handleColor }} />
             </div>
             <div style={{ width:26, height:26, borderRadius:"50%", background:handleColor, border:"3px solid rgba(0,0,0,0.25)", boxShadow:"0 2px 10px rgba(0,0,0,0.35)", cursor:readOnly?"default":"grab" }} />
@@ -79,56 +90,56 @@ function TimePicker({ value, onChange, readOnly }) {
   const m = Math.round(((value ?? 7) % 1) * 60);
 
   function set(newH, newM) {
-    const cH = Math.max(0, Math.min(12, newH));
-    const cM = Math.max(0, Math.min(55, newM));
-    onChange(Math.round((cH + cM / 60) * 100) / 100);
+    if (readOnly) return;
+    onChange(Math.round((Math.max(0, Math.min(12, newH)) + Math.max(0, Math.min(55, newM)) / 60) * 100) / 100);
   }
 
-  const colStyle = { display:"flex", flexDirection:"column", alignItems:"center", gap:6 };
-  const numStyle = { fontSize:48, fontWeight:800, color:"#fff", lineHeight:1, minWidth:60, textAlign:"center", fontVariantNumeric:"tabular-nums" };
-  const arrowBtn = (onClick) => ({
-    background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)",
-    borderRadius:10, width:44, height:36, cursor:readOnly?"default":"pointer",
-    color:readOnly?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.8)", fontSize:16, lineHeight:"1",
-    display:"flex", alignItems:"center", justifyContent:"center",
-    fontFamily:"inherit",
-  });
-  const minBtn = (active, onClick) => ({
-    padding:"7px 0", flex:1, borderRadius:10, fontSize:13, fontWeight:700,
-    cursor:readOnly?"default":"pointer", fontFamily:"inherit",
-    border:`1.5px solid ${active ? "rgba(127,255,176,0.8)" : "rgba(255,255,255,0.2)"}`,
-    background: active ? "rgba(127,255,176,0.15)" : "rgba(255,255,255,0.07)",
-    color: active ? "#7FFFB0" : "rgba(255,255,255,0.6)",
+  const arrowStyle = {
+    background: readOnly ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    borderRadius:10, width:46, height:38, cursor:readOnly?"default":"pointer",
+    color: readOnly ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.8)",
+    fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit",
+  };
+  const minBtnStyle = (active) => ({
+    flex:1, padding:"8px 0", borderRadius:10, fontSize:13, fontWeight:700,
+    cursor: readOnly ? "default" : "pointer", fontFamily:"inherit",
+    border: `1.5px solid ${active ? "rgba(127,255,176,0.8)" : "rgba(255,255,255,0.15)"}`,
+    background: active ? "rgba(127,255,176,0.15)" : "rgba(255,255,255,0.05)",
+    color: active ? "#7FFFB0" : readOnly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.6)",
   });
 
   return (
-    <div style={{ padding:"12px 8px 8px" }}>
-      {/* Pagrindinis rodytuvas */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:16, marginBottom:16 }}>
+    <div style={{ padding:"4px 8px 12px" }}>
+      {/* Dideli skaičiai */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12, marginBottom:16 }}>
         {/* Valandos */}
-        <div style={colStyle}>
-          <button style={arrowBtn(() => set(h+1, m))} onClick={() => !readOnly && set(h+1, m)}>▲</button>
-          <div style={numStyle}>{String(h).padStart(2,"0")}</div>
-          <button style={arrowBtn(() => set(h-1, m))} onClick={() => !readOnly && set(h-1, m)}>▼</button>
-          <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:2 }}>val.</span>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+          <button style={arrowStyle} onClick={() => set(h+1, m)}>▲</button>
+          <div style={{ fontSize:52, fontWeight:800, color:"#fff", lineHeight:1, minWidth:64, textAlign:"center", fontVariantNumeric:"tabular-nums" }}>
+            {String(h).padStart(2,"0")}
+          </div>
+          <button style={arrowStyle} onClick={() => set(h-1, m)}>▼</button>
+          <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>val.</span>
         </div>
 
-        {/* Dvitaškis */}
-        <div style={{ fontSize:42, fontWeight:800, color:"rgba(255,255,255,0.4)", marginBottom:16 }}>:</div>
+        <div style={{ fontSize:46, fontWeight:800, color:"rgba(255,255,255,0.3)", paddingBottom:24 }}>:</div>
 
         {/* Minutės */}
-        <div style={colStyle}>
-          <button style={arrowBtn(() => set(h, m+5))} onClick={() => !readOnly && set(h, m+5)}>▲</button>
-          <div style={numStyle}>{String(m).padStart(2,"0")}</div>
-          <button style={arrowBtn(() => set(h, m-5))} onClick={() => !readOnly && set(h, m-5)}>▼</button>
-          <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:2 }}>min.</span>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+          <button style={arrowStyle} onClick={() => set(h, m+5)}>▲</button>
+          <div style={{ fontSize:52, fontWeight:800, color:"#fff", lineHeight:1, minWidth:64, textAlign:"center", fontVariantNumeric:"tabular-nums" }}>
+            {String(m).padStart(2,"0")}
+          </div>
+          <button style={arrowStyle} onClick={() => set(h, m-5)}>▼</button>
+          <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>min.</span>
         </div>
       </div>
 
-      {/* Greitieji minutių mygtukai */}
+      {/* Greiti minutių mygtukai */}
       <div style={{ display:"flex", gap:6 }}>
         {[0, 15, 30, 45].map(min => (
-          <button key={min} style={minBtn(m === min)} onClick={() => !readOnly && set(h, min)}>
+          <button key={min} style={minBtnStyle(m === min)} onClick={() => set(h, min)}>
             :{String(min).padStart(2,"0")}
           </button>
         ))}
@@ -150,7 +161,7 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
   const [inputMode,  setInputMode]  = useState("slider"); // "slider" | "time"
 
   const [recMin, recMax] = getRecommended(age);
-  const isLocked    = savedHours !== null;
+  const isLocked     = savedHours !== null;
   const displayHours = isLocked ? savedHours : (localHours ?? 7);
 
   useEffect(() => {
@@ -192,7 +203,7 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
         <div style={{ flex:1 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
             <span style={{ fontSize:11, color:"#333", fontWeight:600 }}>
-              {savedHours !== null ? savedHours+"h" : "Nesuvedė"}
+              {savedHours !== null ? fmtHours(savedHours) : "Nesuvedė"}
             </span>
             <span style={{ fontSize:10, color:statusColor, fontWeight:700 }}>Rek. {recMin}–{recMax}h</span>
           </div>
@@ -218,12 +229,7 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
   const statusColor = !isLocked ? "rgba(255,255,255,0.45)"
     : inRange ? "#7FFFB0" : "#FFD700";
 
-  // Formatuoti miego laiką: "7h 30min" arba "7h"
-  function fmtHours(val) {
-    const h = Math.floor(val);
-    const m = Math.round((val % 1) * 60);
-    return m > 0 ? `${h}h ${m}min` : `${h}h`;
-  }
+  const canEdit = isToday && !isLocked;
 
   const tabBtn = (active) => ({
     flex:1, padding:"7px 0", border:"none", borderRadius:10, fontSize:11, fontWeight:700,
@@ -239,15 +245,12 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)" }}>😴 Miegas</span>
-          {isLocked && (
-            <>
-              <span style={{ fontSize:22, fontWeight:700, color:statusColor }}>{fmtHours(savedHours)}</span>
-              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>🔒</span>
-            </>
+          {(isLocked || hasUnsaved) && (
+            <span style={{ fontSize:22, fontWeight:700, color:statusColor }}>
+              {fmtHours(isLocked ? savedHours : localHours)}
+            </span>
           )}
-          {hasUnsaved && (
-            <span style={{ fontSize:22, fontWeight:700, color:"rgba(255,255,255,0.7)" }}>{fmtHours(localHours)}</span>
-          )}
+          {isLocked && <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>🔒</span>}
         </div>
         <div style={{ textAlign:"right" }}>
           {weekAvg && <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>7 d. vid.: {fmtHours(weekAvg)}</p>}
@@ -258,38 +261,36 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
       {/* Statusas */}
       <p style={{ fontSize:11, color:statusColor, margin:"0 0 10px", fontWeight:isLocked?600:400 }}>{statusText}</p>
 
-      {/* Režimo perjungimas (tik jei šiandien ir neišsaugota) */}
-      {isToday && !isLocked && (
-        <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.07)", borderRadius:12, padding:3, marginBottom:12 }}>
-          <button style={tabBtn(inputMode==="slider")} onClick={() => setInputMode("slider")}>≈ Slankiklis</button>
-          <button style={tabBtn(inputMode==="time")}   onClick={() => setInputMode("time")}>🕐 Tiksliai</button>
-        </div>
-      )}
+      {/* Tabai — VISADA matomi (ne tik kai !isLocked) */}
+      <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.07)", borderRadius:12, padding:3, marginBottom:12 }}>
+        <button style={tabBtn(inputMode==="slider")} onClick={() => setInputMode("slider")}>≈ Slankiklis</button>
+        <button style={tabBtn(inputMode==="time")}   onClick={() => setInputMode("time")}>🕐 Tiksliai</button>
+      </div>
 
       {/* Slankiklio režimas */}
-      {(inputMode === "slider" || isLocked || !isToday) && (
+      {inputMode === "slider" && (
         <SleepSlider
           value={displayHours}
-          onChange={isToday && !isLocked ? setLocalHours : ()=>{}}
+          onChange={canEdit ? setLocalHours : ()=>{}}
           recMin={recMin} recMax={recMax}
-          readOnly={isLocked || !isToday}
+          readOnly={!canEdit}
         />
       )}
 
-      {/* Laiko pasirinkimo režimas */}
-      {inputMode === "time" && isToday && !isLocked && (
+      {/* Laiko selekctorius */}
+      {inputMode === "time" && (
         <TimePicker
           value={displayHours}
-          onChange={setLocalHours}
-          readOnly={false}
+          onChange={canEdit ? setLocalHours : ()=>{}}
+          readOnly={!canEdit}
         />
       )}
 
-      {/* Išsaugoti mygtukas */}
-      {isToday && !isLocked && (
+      {/* Išsaugoti — tik jei šiandien ir neišsaugota */}
+      {canEdit && (
         <button onClick={handleSave} disabled={saving || localHours === null}
           style={{
-            width:"100%", padding:"11px 0", marginTop:10, marginBottom:8,
+            width:"100%", padding:"11px 0", marginTop:8, marginBottom:8,
             border:`1.5px solid rgba(255,255,255,${hasUnsaved?"0.5":"0.2"})`,
             borderRadius:12,
             background: hasUnsaved ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.06)",
