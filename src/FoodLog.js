@@ -2,39 +2,22 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import Quagga from "@ericblade/quagga2";
 import { supabase } from "./supabase";
 import { ALL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
+import FoodSearch from "./FoodSearch";
 
-
-// ── VERTIMAS Į LIETUVIŲ KALBĄ ──────────────────────────────────────────────
 const translateCache = {};
-
 async function translateToLT(text) {
   if (!text || text.length < 2) return text;
-
-  // Tikriname ar jau išversta
   if (translateCache[text]) return translateCache[text];
-
-  // Jei tekstas jau lietuviškas arba labai trumpas - neverčiame
   const ltPattern = /[ąčęėįšųūž]/i;
   if (ltPattern.test(text)) return text;
-
-  // Jei tik skaičiai/simboliai - neverčiame
   if (/^[0-9\s\-\.,\%\+]+$/.test(text)) return text;
-
   try {
-    const res = await fetch(
-      "https://api.mymemory.translated.net/get?q=" +
-      encodeURIComponent(text.substring(0, 200)) +
-      "&langpair=en|lt"
-    );
+    const res = await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(text.substring(0,200))+"&langpair=en|lt");
     const data = await res.json();
-    const translated = data?.responseData?.translatedText;
-    if (translated && translated !== text && !translated.includes("MYMEMORY")) {
-      translateCache[text] = translated;
-      return translated;
-    }
+    const t = data?.responseData?.translatedText;
+    if (t && t !== text && !t.includes("MYMEMORY")) { translateCache[text] = t; return t; }
   } catch(e) {}
-
-  return text; // Nepavyko - grąžiname originalą
+  return text;
 }
 
 const PK = {
@@ -65,55 +48,36 @@ function getNutrients(food, grams) {
 
 function BarcodeScanner({ onResult, onClose }) {
   const scannerRef = useRef(null);
-  const [started,   setStarted]   = useState(false);
-  const [msg,       setMsg]       = useState("Paleidžiama kamera...");
-  const [manual,    setManual]    = useState("");
-  const [searching, setSearching] = useState(false);
+  const [started,   setStarted]  = useState(false);
+  const [msg,       setMsg]      = useState("Paleidžiama kamera...");
+  const [manual,    setManual]   = useState("");
+  const [searching, setSearching]= useState(false);
   const detectedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
-
     Quagga.init({
       inputStream: {
         type: "LiveStream",
         target: scannerRef.current,
         constraints: {
-          width:  { min: 640, ideal: 1280 },
-          height: { min: 480, ideal: 720 },
+          width:  { min:640, ideal:1280 },
+          height: { min:480, ideal:720 },
           facingMode: "environment",
-          aspectRatio: { ideal: 1.5 },
+          aspectRatio: { ideal:1.5 },
         },
-        area: {
-          top:    "20%",
-          right:  "10%",
-          left:   "10%",
-          bottom: "20%",
-        },
+        area: { top:"20%", right:"10%", left:"10%", bottom:"20%" },
       },
-      locator: {
-        patchSize: "medium",
-        halfSample: true,
-      },
+      locator: { patchSize:"medium", halfSample:true },
       numOfWorkers: 2,
       frequency: 10,
       decoder: {
-        readers: [
-          "ean_reader",
-          "ean_8_reader",
-          "upc_reader",
-          "upc_e_reader",
-          "code_128_reader",
-          "code_39_reader",
-        ],
+        readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader"],
       },
       locate: true,
     }, (err) => {
       if (!active) return;
-      if (err) {
-        setMsg("Nepavyko pasiekti kameros: " + err);
-        return;
-      }
+      if (err) { setMsg("Nepavyko pasiekti kameros: " + err); return; }
       Quagga.start();
       setStarted(true);
       setMsg("Nukreipk kamerą į barkodą");
@@ -123,14 +87,9 @@ function BarcodeScanner({ onResult, onClose }) {
       if (!active || detectedRef.current) return;
       const code = data?.codeResult?.code;
       if (!code) return;
-
-      // Filtruojame neaiškius rezultatus
-      const errors = data?.codeResult?.decodedCodes
-        ?.filter(c => c.error !== undefined)
-        ?.map(c => c.error) || [];
+      const errors = data?.codeResult?.decodedCodes?.filter(c => c.error !== undefined)?.map(c => c.error) || [];
       const avgError = errors.length ? errors.reduce((a,b) => a+b, 0) / errors.length : 1;
-      if (avgError > 0.25) return; // per daug klaidų
-
+      if (avgError > 0.25) return;
       detectedRef.current = true;
       Quagga.stop();
       setStarted(false);
@@ -153,7 +112,6 @@ function BarcodeScanner({ onResult, onClose }) {
       if (data.status === 1 && data.product) {
         const p = data.product;
         const n = p.nutriments || {};
-        // Pavadinimas: pirma lietuviškas, jei nėra - verčiame
         let name = p.product_name_lt || p.product_name || p.product_name_en || "Nežinomas produktas";
         name = await translateToLT(name);
         onResult({
@@ -186,35 +144,24 @@ function BarcodeScanner({ onResult, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:300, background:"#000", display:"flex", flexDirection:"column" }}>
-      {/* Header */}
       <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
         <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>📷 Barkodo skenavimas</h3>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"8px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
       </div>
-
-      {/* Kameros rodinys */}
       <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
-        <div
-          ref={scannerRef}
-          style={{ width:"100%", height:"100%", position:"relative" }}
-        >
+        <div ref={scannerRef} style={{ width:"100%", height:"100%", position:"relative" }}>
           <canvas className="drawingBuffer" style={{ position:"absolute", inset:0, width:"100%", height:"100%", zIndex:1 }} />
         </div>
-
-        {/* Taikinys */}
         <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:2, pointerEvents:"none" }}>
           <div style={{ width:"80%", maxWidth:300, height:100, position:"relative" }}>
             <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 2000px rgba(0,0,0,0.5)", borderRadius:8 }} />
             <div style={{ position:"absolute", inset:0, border:"3px solid "+(started?PK.rose:"rgba(255,255,255,0.3)"), borderRadius:8, transition:"border-color 0.3s" }}>
-              {/* Kampai */}
               {[{top:0,left:0,bt:"3px 0 0 3px"},{top:0,right:0,bt:"3px 3px 0 0"},{bottom:0,left:0,bt:"0 0 3px 3px"},{bottom:0,right:0,bt:"0 3px 3px 0"}].map((s,i) => (
                 <div key={i} style={{ position:"absolute", width:20, height:20, borderStyle:"solid", borderColor:PK.mid, borderWidth:s.bt, ...s }} />
               ))}
             </div>
           </div>
         </div>
-
-        {/* Statusas */}
         <div style={{ position:"absolute", bottom:120, left:0, right:0, display:"flex", justifyContent:"center", zIndex:3, padding:"0 20px" }}>
           <div style={{ background:"rgba(0,0,0,0.75)", borderRadius:12, padding:"10px 20px", textAlign:"center" }}>
             <p style={{ color:searching?PK.coral:started?PK.blush:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>
@@ -223,19 +170,12 @@ function BarcodeScanner({ onResult, onClose }) {
           </div>
         </div>
       </div>
-
-      {/* Rankinis įvedimas */}
       <div style={{ background:"rgba(0,0,0,0.9)", padding:"16px 20px", flexShrink:0 }}>
         <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, textAlign:"center", marginBottom:10 }}>arba įvesk barkodą rankiniu būdu</p>
         <div style={{ display:"flex", gap:8 }}>
-          <input
-            type="number"
-            value={manual}
-            onChange={e => setManual(e.target.value)}
-            onKeyDown={e => e.key==="Enter" && handleManual()}
+          <input type="number" value={manual} onChange={e => setManual(e.target.value)} onKeyDown={e => e.key==="Enter" && handleManual()}
             placeholder="pvz. 4008400175478"
-            style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }}
-          />
+            style={{ flex:1, padding:"12px 14px", border:"none", borderRadius:12, fontSize:14, color:PK.dark, background:"rgba(255,255,255,0.92)", outline:"none", fontFamily:"inherit" }} />
           <button onClick={handleManual} disabled={searching}
             style={{ padding:"12px 16px", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
             Ieškoti
@@ -243,201 +183,6 @@ function BarcodeScanner({ onResult, onClose }) {
         </div>
       </div>
     </div>
-  );
-}
-
-
-function FoodSearch({ onAdd, onClose, onBarcode, barcodeFood, clearBarcodeFood }) {
-  const [query,       setQuery]       = useState("");
-  const [localRes,    setLocalRes]    = useState(ALL_FOODS.slice(0, 15));
-  const [onlineRes,   setOnlineRes]   = useState([]);
-  const [usdaRes,     setUsdaRes]     = useState([]);
-  const [loading,     setLoading]     = useState(false);
-  const [selected,    setSelected]    = useState(null);
-  const [amount,      setAmount]      = useState("100");
-  const [unit,        setUnit]        = useState(null);
-  const [category,    setCategory]    = useState("Visi");
-  // barkodas valdomas iš FoodLog lygio
-
-  useEffect(() => {
-    if (!query) {
-      setLocalRes(category === "Visi" ? ALL_FOODS.slice(0,15) : ALL_FOODS.filter(f => f.category === category).slice(0,15));
-    } else {
-      setLocalRes(searchLocalFoods(query));
-    }
-  }, [query, category]);
-
-  // Kai gaunamas barkodo rezultatas iš viršaus
-  useEffect(() => {
-    if (barcodeFood) {
-      setSelected({ id:"bc_"+Date.now(), ...barcodeFood, units:[] });
-      setUnit(null);
-      setAmount("100");
-      clearBarcodeFood();
-    }
-  }, [barcodeFood]);
-
-  useEffect(() => {
-    if (!query || query.length < 2) { setOnlineRes([]); setUsdaRes([]); return; }
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(query)+"&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,brands,code");
-        const data = await res.json();
-        const offProducts = (data.products||[]).filter(p => p.product_name && p.nutriments?.["energy-kcal_100g"]);
-        const offMapped = await Promise.all(offProducts.map(async p => ({
-          id:"off_"+p.code,
-          name: await translateToLT(p.product_name_lt || p.product_name || p.product_name_en || p.product_name),
-          brand:p.brands||"", category:"Supakuoti",
-          kcal:p.nutriments["energy-kcal_100g"]||0, protein:p.nutriments["proteins_100g"]||0,
-          fat:p.nutriments["fat_100g"]||0, carbs:p.nutriments["carbohydrates_100g"]||0, units:[], source:"off",
-        })));
-        setOnlineRes(offMapped);
-      } catch(e) { setOnlineRes([]); }
-      try {
-        const KEY = process.env.REACT_APP_USDA_KEY;
-        const res = await fetch("https://api.nal.usda.gov/fdc/v1/foods/search?api_key="+KEY+"&query="+encodeURIComponent(query)+"&pageSize=6&dataType=SR%20Legacy,Foundation,Branded");
-        const data = await res.json();
-        const usdaItems = data.foods || [];
-        const usdaMapped = await Promise.all(usdaItems.map(async f => {
-          const get = name => { const n=(f.foodNutrients||[]).find(x=>x.nutrientName===name||x.nutrientName?.startsWith(name)); return Math.round((n?.value||0)*10)/10; };
-          return {
-            id:"usda_"+f.fdcId,
-            name: await translateToLT(f.description),
-            brand: f.brandOwner || "",
-            category:"USDA",
-            kcal:get("Energy"), protein:get("Protein"), fat:get("Total lipid"), carbs:get("Carbohydrate"),
-            units:[], source:"usda"
-          };
-        }));
-        setUsdaRes(usdaMapped);
-      } catch(e) { setUsdaRes([]); }
-      setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  function selectFood(food) { setSelected(food); setUnit(food.units?.length ? food.units[0] : null); setAmount("100"); }
-  function getGrams() { return unit ? unit.grams : (parseFloat(amount) || 100); }
-  function handleAdd() {
-    if (!selected) return;
-    const g = getGrams();
-    const n = getNutrients(selected, g);
-    onAdd({ name:selected.name, brand:selected.brand||"", amount:g, ...n });
-  }
-
-  const inp = { width:"100%", padding:"11px 14px", border:"2px solid "+PK.blush, borderRadius:12, fontSize:15, color:PK.dark, background:PK.pale, outline:"none", fontFamily:"inherit", boxSizing:"border-box" };
-
-  function FoodBtn({ food }) {
-    return (
-      <button onClick={() => selectFood(food)} style={{ padding:"12px 14px", border:"2px solid "+PK.blush, borderRadius:14, background:"#fff", textAlign:"left", cursor:"pointer", fontFamily:"inherit", width:"100%", display:"block", marginBottom:0 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-          <div style={{ flex:1 }}>
-            <p style={{ margin:"0 0 2px", fontSize:13, fontWeight:700, color:PK.dark }}>{food.name}</p>
-            {food.brand && <p style={{ margin:"0 0 2px", fontSize:11, color:PK.rose }}>{food.brand}</p>}
-            <p style={{ margin:0, fontSize:11, color:PK.mid }}>{Math.round(food.kcal)} kcal · B:{Math.round(food.protein)}g · R:{Math.round(food.fat)}g · A:{Math.round(food.carbs)}g <span style={{ color:PK.rose }}>/100g</span></p>
-          </div>
-          {food.source==="usda" && <span style={{ fontSize:9, background:"#ECFDF5", color:"#059669", borderRadius:6, padding:"2px 6px", fontWeight:700, marginLeft:8, flexShrink:0 }}>USDA</span>}
-          {food.source==="off"  && <span style={{ fontSize:9, background:"#EEF2FF", color:"#4F46E5", borderRadius:6, padding:"2px 6px", fontWeight:700, marginLeft:8, flexShrink:0 }}>OFF</span>}
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <>
-
-      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:200, display:"flex", alignItems:"flex-end" }}>
-        <div style={{ width:"100%", maxHeight:"92vh", background:"#fff", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
-          <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, borderRadius:"20px 20px 0 0" }}>
-            <h3 style={{ color:"#fff", margin:0, fontSize:16, fontWeight:700 }}>Ieskoti maisto</h3>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={onBarcode} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:16 }}>📷</button>
-              <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
-            </div>
-          </div>
-          <div style={{ overflowY:"auto", flex:1, padding:"16px" }}>
-            <div style={{ position:"relative", marginBottom:12 }}>
-              <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16 }}>🔍</span>
-              <input style={{ ...inp, paddingLeft:36 }} value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} placeholder="Ieskoti produkto..." />
-              {loading && <span style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:PK.rose }}>⏳</span>}
-            </div>
-            {!query && (
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-                {["Visi",...CATEGORIES].map(cat => (
-                  <button key={cat} onClick={() => setCategory(cat)} style={{ padding:"5px 10px", borderRadius:20, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", border:"1px solid "+(category===cat?PK.mid:PK.blush), background:category===cat?PK.light:"#fff", color:category===cat?PK.dark:PK.rose }}>{cat}</button>
-                ))}
-              </div>
-            )}
-            {selected && (
-              <div style={{ background:PK.pale, borderRadius:16, padding:16, marginBottom:14, border:"1px solid "+PK.blush }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                  <div style={{ flex:1 }}>
-                    <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.08em" }}>Pavadinimas (galima redaguoti)</p>
-                    <input
-                      value={selected.name}
-                      onChange={e => setSelected(prev => ({ ...prev, name: e.target.value }))}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:13, color:PK.dark, background:"#fff", outline:"none", fontFamily:"inherit", boxSizing:"border-box", marginBottom:4 }}
-                    />
-                    {selected.brand && <p style={{ margin:0, fontSize:11, color:PK.rose }}>{selected.brand}</p>}
-                    <p style={{ margin:"4px 0 0", fontSize:11, color:PK.mid }}>{Math.round(selected.kcal)} kcal · B:{Math.round(selected.protein)}g · R:{Math.round(selected.fat)}g · A:{Math.round(selected.carbs)}g / 100g</p>
-                  </div>
-                  <button onClick={() => setSelected(null)} style={{ background:"none", border:"none", color:PK.rose, fontSize:18, cursor:"pointer", marginLeft:8 }}>✕</button>
-                </div>
-                {selected.units?.length > 0 && (
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
-                    {selected.units.map((u,i) => (
-                      <button key={i} onClick={() => { setUnit(u); setAmount(""); }}
-                        style={{ padding:"7px 12px", borderRadius:10, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", border:"2px solid "+(unit===u?PK.mid:PK.blush), background:unit===u?PK.light:"#fff", color:unit===u?PK.dark:PK.rose }}>
-                        {u.label}
-                      </button>
-                    ))}
-                    <button onClick={() => { setUnit(null); setAmount("100"); }}
-                      style={{ padding:"7px 12px", borderRadius:10, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", border:"2px solid "+(!unit?PK.mid:PK.blush), background:!unit?PK.light:"#fff", color:!unit?PK.dark:PK.rose }}>
-                      Gramai
-                    </button>
-                  </div>
-                )}
-                {!unit && (
-                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ ...inp, width:100, padding:"8px 12px" }} placeholder="100" />
-                    <span style={{ fontSize:13, color:PK.mid, fontWeight:600 }}>gramu</span>
-                  </div>
-                )}
-                {(() => {
-                  const g = getGrams();
-                  const n = getNutrients(selected, g);
-                  return (
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-                      {[{l:"Kalorijos",v:n.kcal,u:"kcal",c:PK.dark},{l:"Baltymai",v:n.protein,u:"g",c:PK.mid},{l:"Riebalai",v:n.fat,u:"g",c:PK.bright},{l:"Angliavandeniai",v:n.carbs,u:"g",c:PK.rose}].map(item => (
-                        <div key={item.l} style={{ background:"#fff", borderRadius:10, padding:"8px 4px", textAlign:"center", border:"1px solid "+PK.blush }}>
-                          <div style={{ fontSize:16, fontWeight:700, color:item.c }}>{item.v}<span style={{ fontSize:9 }}>{item.u}</span></div>
-                          <div style={{ fontSize:9, color:PK.rose, marginTop:1 }}>{item.l}</div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-                <button onClick={handleAdd}
-                  style={{ width:"100%", padding:"13px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:14, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                  Prideti i zurnala
-                </button>
-              </div>
-            )}
-            {!selected && (
-              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {localRes.length > 0 && (<>{query && <p style={{ fontSize:10, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0" }}>Musu duomenu baze</p>}{localRes.map(f => <FoodBtn key={f.id} food={f} />)}</>)}
-                {onlineRes.length > 0 && (<><p style={{ fontSize:10, fontWeight:700, color:"#4F46E5", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>Open Food Facts</p>{onlineRes.map(f => <FoodBtn key={f.id} food={f} />)}</>)}
-                {usdaRes.length > 0 && (<><p style={{ fontSize:10, fontWeight:700, color:"#059669", textTransform:"uppercase", letterSpacing:"0.1em", margin:"8px 0 4px" }}>USDA (400,000+ produktu)</p>{usdaRes.map(f => <FoodBtn key={f.id} food={f} />)}</>)}
-                {query && localRes.length===0 && onlineRes.length===0 && usdaRes.length===0 && !loading && (
-                  <p style={{ textAlign:"center", color:PK.rose, padding:"20px 0", fontSize:13 }}>Nerasta produktu</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -458,12 +203,12 @@ function MealSection({ entries, onAdd, onRemove }) {
                 <span style={{ fontSize:14, fontWeight:700, color:PK.dark }}>{meal.label}</span>
                 {me.length > 0 && <span style={{ fontSize:11, color:PK.rose }}>{Math.round(mT.kcal)} kcal · B:{Math.round(mT.protein)}g · R:{Math.round(mT.fat)}g · A:{Math.round(mT.carbs)}g</span>}
               </button>
-              <button onClick={() => onAdd(meal.id)} style={{ padding:"6px 12px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:10, fontSize:12, fontWeight:700, color:PK.mid, cursor:"pointer", flexShrink:0, fontFamily:"inherit" }}>+ Prideti</button>
+              <button onClick={() => onAdd(meal.id)} style={{ padding:"6px 12px", background:PK.light, border:"1px solid "+PK.blush, borderRadius:10, fontSize:12, fontWeight:700, color:PK.mid, cursor:"pointer", flexShrink:0, fontFamily:"inherit" }}>+ Pridėti</button>
             </div>
             {isOpen && (
               <div style={{ borderTop:"1px solid "+PK.light }}>
                 {me.length === 0 ? (
-                  <p style={{ margin:0, padding:"10px 16px", fontSize:12, color:PK.blush, fontStyle:"italic" }}>Dar nieko nera</p>
+                  <p style={{ margin:0, padding:"10px 16px", fontSize:12, color:PK.blush, fontStyle:"italic" }}>Dar nieko nėra</p>
                 ) : me.map(e => (
                   <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 16px", borderBottom:"1px solid "+PK.light }}>
                     <div style={{ flex:1 }}>
@@ -479,6 +224,23 @@ function MealSection({ entries, onAdd, onRemove }) {
         );
       })}
     </>
+  );
+}
+
+function DaySummary({ dateStr, dayEntries }) {
+  const t = dayEntries.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }), { kcal:0,protein:0,fat:0,carbs:0 });
+  return (
+    <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:10, border:"1px solid "+PK.blush }}>
+      <p style={{ fontSize:13, fontWeight:700, color:PK.dark, marginBottom:10 }}>{formatDate(dateStr)}</p>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
+        {[{l:"Kalorijos",v:Math.round(t.kcal),u:"kcal",c:PK.dark},{l:"Baltymai",v:Math.round(t.protein),u:"g",c:PK.mid},{l:"Riebalai",v:Math.round(t.fat),u:"g",c:PK.bright},{l:"Angliavandeniai",v:Math.round(t.carbs),u:"g",c:PK.rose}].map(item => (
+          <div key={item.l} style={{ background:PK.pale, borderRadius:10, padding:"8px 4px", textAlign:"center" }}>
+            <div style={{ fontSize:15, fontWeight:700, color:item.c }}>{item.v}<span style={{ fontSize:9 }}>{item.u}</span></div>
+            <div style={{ fontSize:9, color:PK.rose, marginTop:1 }}>{item.l}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -508,15 +270,18 @@ export default function FoodLog({ userId, targetMacros }) {
   useEffect(() => { loadEntries(); }, [loadEntries]);
   useEffect(() => { if (tab === "history") loadHistory(); }, [tab, loadHistory]);
 
+  // ── BUG FIX: uždaryti modalą PRIEŠ await, try/catch ──────────────────────
   async function addEntry(meal, food) {
-    await supabase.from("food_log").insert({
-      user_id:userId, date, meal,
-      name:food.name, brand:food.brand||"", amount:food.amount,
-      kcal:food.kcal, protein:food.protein, fat:food.fat, carbs:food.carbs,
-    });
     setSearching(false);
     setActiveMeal(null);
-    loadEntries();
+    try {
+      await supabase.from("food_log").insert({
+        user_id:userId, date, meal,
+        name:food.name, brand:food.brand||"", amount:food.amount,
+        kcal:food.kcal, protein:food.protein, fat:food.fat, carbs:food.carbs,
+      });
+      loadEntries();
+    } catch(e) { console.error("addEntry:", e); }
   }
 
   async function removeEntry(id) {
@@ -529,31 +294,11 @@ export default function FoodLog({ userId, targetMacros }) {
   const weekHistory = Object.entries(historyByDate).filter(([d]) => isWithinWeek(d) && d !== todayStr());
   const oldHistory  = Object.entries(historyByDate).filter(([d]) => !isWithinWeek(d));
 
-  function DaySummary({ dateStr, dayEntries }) {
-    const t = dayEntries.reduce((a,e) => ({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }), { kcal:0,protein:0,fat:0,carbs:0 });
-    return (
-      <div style={{ background:"#fff", borderRadius:16, padding:"14px 16px", marginBottom:10, border:"1px solid "+PK.blush }}>
-        <p style={{ fontSize:13, fontWeight:700, color:PK.dark, marginBottom:10 }}>{formatDate(dateStr)}</p>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
-          {[{l:"Kalorijos",v:Math.round(t.kcal),u:"kcal",c:PK.dark},{l:"Baltymai",v:Math.round(t.protein),u:"g",c:PK.mid},{l:"Riebalai",v:Math.round(t.fat),u:"g",c:PK.bright},{l:"Angliavandeniai",v:Math.round(t.carbs),u:"g",c:PK.rose}].map(item => (
-            <div key={item.l} style={{ background:PK.pale, borderRadius:10, padding:"8px 4px", textAlign:"center" }}>
-              <div style={{ fontSize:15, fontWeight:700, color:item.c }}>{item.v}<span style={{ fontSize:9 }}>{item.u}</span></div>
-              <div style={{ fontSize:9, color:PK.rose, marginTop:1 }}>{item.l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{ paddingBottom:24 }}>
       {showBarcode && (
         <BarcodeScanner
-          onResult={food => {
-            setShowBarcode(false);
-            setBarcodeFood(food);
-          }}
+          onResult={food => { setShowBarcode(false); setBarcodeFood(food); }}
           onClose={() => setShowBarcode(false)}
         />
       )}
@@ -566,14 +311,16 @@ export default function FoodLog({ userId, targetMacros }) {
           clearBarcodeFood={() => setBarcodeFood(null)}
         />
       )}
+
       <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-        {[{id:"today",l:"Siandien"},{id:"history",l:"Istorija"}].map(t => (
+        {[{id:"today",l:"Šiandien"},{id:"history",l:"Istorija"}].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ flex:1, padding:"10px 0", borderRadius:12, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", border:"2px solid "+(tab===t.id?PK.mid:PK.blush), background:tab===t.id?PK.light:"#fff", color:tab===t.id?PK.dark:PK.rose }}>
             {t.l}
           </button>
         ))}
       </div>
+
       {tab === "today" && (
         <>
           <div style={{ background:"#fff", borderRadius:16, padding:"12px 16px", marginBottom:12, border:"1px solid "+PK.blush, display:"flex", alignItems:"center", gap:10 }}>
@@ -581,9 +328,10 @@ export default function FoodLog({ userId, targetMacros }) {
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               style={{ border:"none", background:"none", fontSize:14, color:PK.dark, fontFamily:"inherit", outline:"none", flex:1 }} />
           </div>
+
           {targetMacros && (
             <div style={{ background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", borderRadius:20, padding:16, marginBottom:12 }}>
-              <p style={{ color:"#fff", fontSize:13, fontWeight:700, marginBottom:12, textAlign:"center" }}>Dienos pazanga</p>
+              <p style={{ color:"#fff", fontSize:13, fontWeight:700, marginBottom:12, textAlign:"center" }}>Dienos pažanga</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
                 {[{l:"Kalorijos",cur:Math.round(totals.kcal),tgt:targetMacros.target,c:"#fff"},{l:"Baltymai",cur:Math.round(totals.protein),tgt:targetMacros.prot.g,c:PK.blush},{l:"Riebalai",cur:Math.round(totals.fat),tgt:targetMacros.fat.g,c:PK.coral},{l:"Angliavandeniai",cur:Math.round(totals.carbs),tgt:targetMacros.carb.g,c:PK.rose}].map(item => {
                   const pct = item.tgt ? Math.min(100, Math.round(item.cur/item.tgt*100)) : 0;
@@ -603,22 +351,25 @@ export default function FoodLog({ userId, targetMacros }) {
               </div>
             </div>
           )}
+
           {loading ? <p style={{ textAlign:"center", color:PK.rose, padding:"20px 0" }}>Kraunama...</p> : (
             <MealSection entries={entries} onAdd={mealId => { setActiveMeal(mealId); setSearching(true); }} onRemove={removeEntry} />
           )}
         </>
       )}
+
       {tab === "history" && (
         <>
           {weekHistory.length===0 && oldHistory.length===0 ? (
             <div style={{ background:PK.pale, borderRadius:16, padding:"32px 20px", textAlign:"center", border:"2px dashed "+PK.blush }}>
-              <div style={{ fontSize:36, marginBottom:10 }}>Dar nera istorijos</div>
+              <div style={{ fontSize:36, marginBottom:10 }}>🌸</div>
+              <p style={{ color:PK.rose, fontSize:14 }}>Dar nėra istorijos</p>
             </div>
           ) : (
             <>
               {weekHistory.length > 0 && (
                 <>
-                  <p style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, marginBottom:10 }}>Si savaite</p>
+                  <p style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, marginBottom:10 }}>Ši savaitė</p>
                   {weekHistory.map(([d,ents]) => (
                     <div key={d}>
                       <DaySummary dateStr={d} dayEntries={ents} />
@@ -633,7 +384,7 @@ export default function FoodLog({ userId, targetMacros }) {
               )}
               {oldHistory.length > 0 && (
                 <>
-                  <p style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, margin:"16px 0 10px" }}>Senesne istorija</p>
+                  <p style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:PK.mid, margin:"16px 0 10px" }}>Senesnė istorija</p>
                   {oldHistory.map(([d,ents]) => <DaySummary key={d} dateStr={d} dayEntries={ents} />)}
                 </>
               )}
