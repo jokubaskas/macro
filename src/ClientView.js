@@ -164,7 +164,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
   // Perkrauti duomenis grizus i pagrindinį meniu (po miego/vandens ivedimo)
-  useEffect(() => { if (openSection === null) loadEntries(); }, [openSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, loadEntries]);
 
   // FIX: uždaryti modalą PRIEŠ await + amount laukas + try/catch
   async function addEntry(meal, food) {
