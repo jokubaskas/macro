@@ -42,10 +42,9 @@ function FoodSearch({ onAdd, onClose }) {
   const [selected,   setSelected]   = useState(null);
   const [isLocal,    setIsLocal]    = useState(true);
   const [amount,     setAmount]     = useState("");
-  const [unit,       setUnit]       = useState(null); // null = gramai
+  const [unit,       setUnit]       = useState(null);
   const [category,   setCategory]   = useState("Visi");
 
-  // Vietinė paieška
   useEffect(() => {
     if (!query) {
       setLocalRes(category === "Visi" ? LOCAL_FOODS.slice(0, 12) : LOCAL_FOODS.filter(f => f.category === category).slice(0, 12));
@@ -94,11 +93,13 @@ function FoodSearch({ onAdd, onClose }) {
     return parseFloat(amount) || 100;
   }
 
+  // FIX: uždaryti modalą iškart + amount laukas
   function handleAdd() {
     if (!selected) return;
     const g = getGrams();
     const n = getNutrients(selected, g);
     onAdd({ name: selected.name, brand: selected.brand || "", amount: g, ...n });
+    onClose(); // FIX: uždaryti iškart, nesaugant laukimo
   }
 
   const inp = {
@@ -143,7 +144,7 @@ function FoodSearch({ onAdd, onClose }) {
             </button>
           </div>
 
-          {/* Kategorijos (tik vietinei) */}
+          {/* Kategorijos */}
           {isLocal && !query && (
             <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
               {["Visi", ...CATEGORIES].map(cat => (
@@ -155,7 +156,7 @@ function FoodSearch({ onAdd, onClose }) {
             </div>
           )}
 
-          {/* Pasaulinė paieška mygtuko paspaudimas */}
+          {/* Pasaulinė paieška */}
           {!isLocal && (
             <button onClick={searchOnline} style={{ width:"100%", padding:"11px 0", background:"linear-gradient(135deg,"+PK.dark+","+PK.mid+")", color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
               {loading ? "Ieškoma..." : "🔍 Ieškoti internete"}
@@ -174,10 +175,8 @@ function FoodSearch({ onAdd, onClose }) {
                 <button onClick={()=>setSelected(null)} style={{ background:"none", border:"none", color:PK.rose, fontSize:18, cursor:"pointer", marginLeft:8 }}>✕</button>
               </div>
 
-              {/* Kiekio pasirinkimas */}
               <p style={{ fontSize:11, fontWeight:700, color:PK.mid, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Kiekis</p>
 
-              {/* Vienetai jei yra */}
               {selected.units?.length > 0 && (
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
                   {selected.units.map((u, i) => (
@@ -193,7 +192,6 @@ function FoodSearch({ onAdd, onClose }) {
                 </div>
               )}
 
-              {/* Gramų įvedimas */}
               {!unit && (
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
                   <input type="number" value={amount} onChange={e=>setAmount(e.target.value)}
@@ -202,7 +200,6 @@ function FoodSearch({ onAdd, onClose }) {
                 </div>
               )}
 
-              {/* Apskaičiuota */}
               {(() => {
                 const g = getGrams();
                 const n = getNutrients(selected, g);
@@ -282,7 +279,6 @@ export default function FoodLog({ userId, targetMacros }) {
   }, [userId, date]);
 
   const loadHistory = useCallback(async () => {
-    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     const { data } = await supabase.from("food_log").select("*").eq("user_id", userId)
       .order("date", { ascending:false }).order("created_at");
     setHistory(data || []);
@@ -291,10 +287,23 @@ export default function FoodLog({ userId, targetMacros }) {
   useEffect(() => { loadEntries(); }, [loadEntries]);
   useEffect(() => { if (tab==="history") loadHistory(); }, [tab, loadHistory]);
 
+  // FIX: uždaryti iškart + try/catch
   async function addEntry(meal, food) {
-    await supabase.from("food_log").insert({ user_id:userId, date, meal, ...food });
-    setSearching(false); setActiveMeal(null);
-    loadEntries();
+    setSearching(false);
+    setActiveMeal(null);
+    try {
+      await supabase.from("food_log").insert({
+        user_id:userId, date, meal,
+        name:    food.name,
+        brand:   food.brand    || "",
+        amount:  food.amount   || 100,
+        kcal:    food.kcal     || 0,
+        protein: food.protein  || 0,
+        fat:     food.fat      || 0,
+        carbs:   food.carbs    || 0,
+      });
+      loadEntries();
+    } catch(e) { console.error("addEntry:", e); }
   }
 
   async function removeEntry(id) {

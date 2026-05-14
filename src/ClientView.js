@@ -82,12 +82,10 @@ function DatePickerModal({ value, minDate, onSelect, onClose }) {
   );
 }
 
-// ── Separator linija ──────────────────────────────────────────────────────────
 function Sep() {
   return <div style={{borderBottom:"1px solid rgba(255,255,255,0.1)",margin:"2px 0"}}/>;
 }
 
-// ── Macro progress bar ────────────────────────────────────────────────────────
 function MacroBar({label,cur,tgt,color}) {
   const pct = tgt ? Math.min(100,Math.round(cur/tgt*100)) : 0;
   const over = cur > tgt;
@@ -104,7 +102,6 @@ function MacroBar({label,cur,tgt,color}) {
   );
 }
 
-// ── Pagrindinis komponentas ───────────────────────────────────────────────────
 export default function ClientView({ user, onLogout, selectedDate: propDate, onDateChange, stepsToday: propSteps, workoutsToday: propWorkouts }) {
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
@@ -126,11 +123,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [barcodeFood,  setBarcodeFood]  = useState(null);
   const [minDate,      setMinDate]      = useState(null);
 
-  const selectedDate   = propDate || todayStr();
+  const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : undefined;
-  const isToday        = selectedDate === todayStr();
+  const isToday         = selectedDate === todayStr();
 
-  // Profilis
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from("profiles").select("*").eq("id",user.id).single();
@@ -143,15 +139,12 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       }
     }
     load();
-    // Neperskaityta ataskaita
     supabase.from("trainer_measurements").select("id").eq("user_id",user.id).is("client_read_at",null).limit(1)
       .then(({ data }) => { if (data?.length) { setHasReport(true); setShowReport(true); } });
-    // Žingsniai
     supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",todayStr()).maybeSingle()
       .then(({ data }) => { if (data?.steps > 0) setTodaySteps(data.steps); });
   }, [user.id]);
 
-  // Maisto įrašai + kiti šios dienos duomenys
   const loadEntries = useCallback(async () => {
     const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
     const [{ data:food },{ data:sleep },{ data:water },{ data:ci },{ data:stepRow }] = await Promise.all([
@@ -160,7 +153,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
       supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
       supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-      supabase.from("workout_log").select("type,duration_min").eq("user_id",user.id).eq("date",selectedDate),
     ]);
     setEntries(food||[]);
     setTodaySleep(sleep?.hours_slept ?? null);
@@ -172,10 +164,27 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
+  // FIX: uždaryti modalą PRIEŠ await + amount laukas + try/catch
   async function addEntry(meal, food) {
-    await supabase.from("food_log").insert({ user_id:user.id, date:selectedDate, meal, name:food.name, brand:food.brand||"", kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
-    loadEntries();
+    setSearching(false);
+    setActiveMeal(null);
+    try {
+      await supabase.from("food_log").insert({
+        user_id: user.id,
+        date:    selectedDate,
+        meal,
+        name:    food.name,
+        brand:   food.brand    || "",
+        amount:  food.amount   || food.grams || 100,  // FIX: food.grams iš naujo FoodSearch
+        kcal:    food.kcal     || 0,
+        protein: food.protein  || 0,
+        fat:     food.fat      || 0,
+        carbs:   food.carbs    || 0,
+      });
+      loadEntries();
+    } catch(e) { console.error("addEntry:", e); }
   }
+
   async function removeEntry(id) { await supabase.from("food_log").delete().eq("id",id); loadEntries(); }
   function toggleMeal(id) { setOpenMeal(p=>p===id?null:id); }
   function closeMeals() { setShowMeals(false); setOpenMeal(null); }
@@ -202,11 +211,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const totals        = entries.reduce((a,e)=>({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }),{ kcal:0,protein:0,fat:0,carbs:0 });
   const remaining     = res ? { kcal:Math.max(0,adjTarget-totals.kcal), protein:Math.max(0,res.prot.g-totals.protein), fat:Math.max(0,res.fat.g-totals.fat), carbs:Math.max(0,res.carb.g-totals.carbs) } : null;
 
-  // Meal section render
   function MealSection() {
     return (
       <div>
-        {/* Macro summary */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16}}>
           {[
             {l:"kcal",cur:Math.round(totals.kcal),tgt:adjTarget},
@@ -230,7 +237,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         </div>
         <Sep/>
 
-        {/* Meals grid */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
           {MEALS.map(meal=>{
             const me=entries.filter(e=>e.meal===meal.id);
@@ -274,7 +280,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             );
           })}
         </div>
-
       </div>
     );
   }
@@ -291,13 +296,20 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{position:"absolute",top:0,right:0,width:14,height:14,borderRadius:"50%",background:"#FF4444",border:"2px solid #fff",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700}}>1</div>
         </button>
       )}
-      {searching && <FoodSearch meal={activeMeal} onAdd={food=>{addEntry(activeMeal,food);setSearching(false);}} onClose={()=>setSearching(false)} onBarcode={()=>{setSearching(false);setShowBarcode(true);}} initialFood={barcodeFood}/>}
+      {searching && (
+        <FoodSearch
+          meal={activeMeal}
+          onAdd={food => addEntry(activeMeal, food)}
+          onClose={() => { setSearching(false); setActiveMeal(null); }}
+          onBarcode={() => { setSearching(false); setShowBarcode(true); }}
+          initialFood={barcodeFood}
+        />
+      )}
       {showBarcode && <BarcodeScanner onFound={food=>{setBarcodeFood(food);setShowBarcode(false);setSearching(true);}} onClose={()=>setShowBarcode(false)}/>}
 
       {/* Header */}
       <div style={{padding:"16px 20px 14px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          {/* Logo + vardas */}
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <img src="/logo.png" alt="" style={{width:34,height:34,objectFit:"contain",borderRadius:8}}/>
             <div>
@@ -305,12 +317,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               <p style={{fontSize:9,color:"rgba(255,255,255,0.5)",margin:0}}>{goalLabel}</p>
             </div>
           </div>
-          {/* Kalendorius centre */}
           <button onClick={()=>setShowCalendar(true)} style={{background:"rgba(255,255,255,0.12)",border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 14px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
             📅 {isToday?new Date().toLocaleDateString("lt-LT",{month:"short",day:"numeric"}):selectedDate}
             <span style={{fontSize:9,opacity:0.6}}>▼</span>
           </button>
-          {/* Atsijungti */}
           <button onClick={onLogout} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"7px 12px",color:"rgba(255,255,255,0.7)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Išeiti</button>
         </div>
         <div style={{borderBottom:"1px solid rgba(255,255,255,0.1)"}}/>
@@ -319,17 +329,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       <div style={{maxWidth:480,margin:"0 auto",padding:"0 16px"}}>
 
         {openSection ? (
-          /* ── Išskleista sekcija ── */
           <div>
-            {!openSection.startsWith("__") && !openSection && <MotivationalCard userId={user.id} res={res} goalId={profile?.goal}/>}
-
             {openSection==="food" && (
               <div style={{paddingBottom:20}}>
                 <p style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 14px"}}>🍽️ Mityba · {selectedDate}</p>
                 <MealSection/>
               </div>
             )}
-
 
             {openSection==="health" && (
               <div style={{paddingBottom:20}}>
@@ -345,7 +351,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               </div>
             )}
 
-            {/* Fiksuotas grįžti mygtukas */}
             <div style={{position:"fixed",bottom:70,left:0,right:0,zIndex:200,padding:"8px 16px",background:"rgba(58,10,32,0.95)",borderTop:"1px solid rgba(255,255,255,0.1)"}}>
               <button onClick={()=>setOpenSection(null)} style={{width:"100%",maxWidth:448,display:"block",margin:"0 auto",padding:"13px 0",background:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:14,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                 ← Grįžti
@@ -354,17 +359,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           </div>
 
         ) : (
-          /* ── Grid rodinys ── */
           <div>
-            {/* Motyvacinė žinutė */}
             <div style={{marginBottom:16}}>
               <MotivationalCard userId={user.id} res={res} goalId={profile?.goal}/>
             </div>
 
             <Sep/>
 
-            {/* Profilio eilutė */}
-            {/* Profilio eilutė su statiniais makro tikslais */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
@@ -386,7 +387,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             <Sep/>
             <div style={{height:12}}/>
 
-            {/* ── Full-width mitybos widget ── */}
+            {/* Mitybos widget */}
             <button onClick={()=>setOpenSection("food")} style={{width:"100%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",marginBottom:10,backdropFilter:"blur(10px)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                 <div>
@@ -421,7 +422,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               )}
             </button>
 
-            {/* ── 2 kortelės: Sveikata + Check-in ── */}
+            {/* 2 kortelės */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
               {[
                 {
@@ -434,7 +435,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 {
                   key:"checkin", icon:checkinDone?"✅":"📋", title:"Savaitinis check-in",
                   main:checkinDone?"Užpildyta":"Pildyti →",
-                  sub:(()=>{const d=new Date(),day=d.getDay(),left=day===0?0:7-day;return checkinDone?"Iki kito: "+left+"d.":"Sekmadieniais";})(  ),
+                  sub:(()=>{const d=new Date(),day=d.getDay(),left=day===0?0:7-day;return checkinDone?"Iki kito: "+left+"d.":"Sekmadieniais";})(),
                   pct:checkinDone?100:null, barColor:"#7FFFB0",
                 },
               ].map(card=>(

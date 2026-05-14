@@ -20,7 +20,6 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
   const [kbHeight, setKbHeight] = useState(0);
   const inputRef = useRef(null);
 
-  // ── Klaviatūros aukščio stebėjimas (iOS + Android) ──────────────────────────
   useEffect(() => {
     function onResize() {
       const vv = window.visualViewport;
@@ -37,12 +36,10 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
     };
   }, []);
 
-  // Autofocus
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 120);
   }, []);
 
-  // ── Paieška ───────────────────────────────────────────────────────────────
   const search = useCallback((q) => {
     if (!q.trim()) { setResults([]); return; }
     const lower = q.toLowerCase();
@@ -54,13 +51,13 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
 
   useEffect(() => { search(query); }, [query, search]);
 
-  // ── Makrų skaičiavimas ────────────────────────────────────────────────────
+  // FIX: "grams" → "amount" kad sutaptų su food_log lentelės schema
   function calcForGrams(food, g) {
     const ratio = g / 100;
     return {
       name:    food.name,
       brand:   food.brand || "",
-      grams:   g,
+      amount:  g,
       kcal:    Math.round((food.kcal    || 0) * ratio),
       protein: Math.round((food.protein || 0) * ratio * 10) / 10,
       fat:     Math.round((food.fat     || 0) * ratio * 10) / 10,
@@ -79,10 +76,7 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
     addRecent({ name: selected.name, brand: selected.brand, ...selected });
     setRecent(getRecent());
     onAdd(entry);
-    setSelected(null);
-    setQuery("");
-    setResults([]);
-    inputRef.current?.focus();
+    onClose(); // FIX: uždaryti iškart
   }
 
   const list = query.trim() ? results : (selected ? [] : recent);
@@ -93,8 +87,7 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
     dinner:"🌙 Vakarienė", snack:"🍎 Užkandis",
   };
 
-  // Pastumti turinį aukščiau klaviatūros
-  const bottomOffset = kbHeight > 0 ? kbHeight : 80; // 80 = nav bar height
+  const bottomOffset = kbHeight > 0 ? kbHeight : 80;
 
   return (
     <div style={{
@@ -112,7 +105,7 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
         transition:"padding-bottom 0.15s, max-height 0.15s",
       }}>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div style={{ padding:"16px 16px 12px", borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>
@@ -138,16 +131,17 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
               }}
             />
             {query && (
-              <button onClick={() => { setQuery(""); setSelected(null); inputRef.current?.focus(); }} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:18, cursor:"pointer", padding:"0 4px" }}>×</button>
+              <button onClick={() => { setQuery(""); setSelected(null); inputRef.current?.focus(); }}
+                style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:18, cursor:"pointer", padding:"0 4px" }}>×</button>
             )}
           </div>
         </div>
 
-        {/* ── Gramų įvedimas (kai pasirinktas produktas) ── */}
+        {/* Gramų įvedimas */}
         {selected && (
           <div style={{ padding:"12px 16px", borderBottom:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)" }}>
             <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>
-              {selected.name} {selected.brand ? <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>({selected.brand})</span> : null}
+              {selected.name}{selected.brand ? <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", fontWeight:400 }}> ({selected.brand})</span> : null}
             </p>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               <input
@@ -160,14 +154,17 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
               />
               <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>g</span>
               <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:4, fontSize:10, color:"rgba(255,255,255,0.6)", textAlign:"center" }}>
-                {(() => { const e = calcForGrams(selected, parseFloat(grams)||100); return (
-                  <>
-                    <div><div style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{e.kcal}</div>kcal</div>
-                    <div><div style={{ fontSize:13, fontWeight:700, color:"#FFB3C6" }}>{e.protein}g</div>B</div>
-                    <div><div style={{ fontSize:13, fontWeight:700, color:"#FF80AB" }}>{e.fat}g</div>R</div>
-                    <div><div style={{ fontSize:13, fontWeight:700, color:"#F48FB1" }}>{e.carbs}g</div>A</div>
-                  </>
-                ); })()}
+                {(() => {
+                  const e = calcForGrams(selected, parseFloat(grams)||100);
+                  return (
+                    <>
+                      <div><div style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{e.kcal}</div>kcal</div>
+                      <div><div style={{ fontSize:13, fontWeight:700, color:"#FFB3C6" }}>{e.protein}g</div>B</div>
+                      <div><div style={{ fontSize:13, fontWeight:700, color:"#FF80AB" }}>{e.fat}g</div>R</div>
+                      <div><div style={{ fontSize:13, fontWeight:700, color:"#F48FB1" }}>{e.carbs}g</div>A</div>
+                    </>
+                  );
+                })()}
               </div>
               <button onClick={handleAdd} style={{ padding:"10px 16px", borderRadius:12, background:"rgba(127,255,176,0.2)", border:"1.5px solid rgba(127,255,176,0.4)", color:"#7FFFB0", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
                 + Pridėti
@@ -175,7 +172,8 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
             </div>
             <div style={{ display:"flex", gap:6, marginTop:8 }}>
               {[50,100,150,200,300].map(g => (
-                <button key={g} onClick={() => setGrams(String(g))} style={{ flex:1, padding:"5px 0", borderRadius:8, background:grams===String(g)?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                <button key={g} onClick={() => setGrams(String(g))}
+                  style={{ flex:1, padding:"5px 0", borderRadius:8, background:grams===String(g)?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                   {g}g
                 </button>
               ))}
@@ -183,7 +181,7 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
           </div>
         )}
 
-        {/* ── Rezultatų sąrašas ── */}
+        {/* Rezultatų sąrašas */}
         <div style={{ overflowY:"auto", flex:1, WebkitOverflowScrolling:"touch" }}>
           {showRecent && !selected && (
             <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.08em", padding:"10px 16px 4px", margin:0 }}>
@@ -202,7 +200,8 @@ export default function FoodSearch({ meal, onAdd, onClose }) {
           )}
           {list.map((food, i) => (
             <button key={i} onClick={() => handleSelect(food)} style={{
-              width:"100%", padding:"11px 16px", background:selected?.name===food.name?"rgba(255,255,255,0.12)":"transparent",
+              width:"100%", padding:"11px 16px",
+              background:selected?.name===food.name?"rgba(255,255,255,0.12)":"transparent",
               border:"none", borderBottom:"1px solid rgba(255,255,255,0.06)",
               display:"flex", justifyContent:"space-between", alignItems:"center",
               cursor:"pointer", fontFamily:"inherit", textAlign:"left",
