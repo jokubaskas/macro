@@ -519,6 +519,7 @@ export default function FoodLog({ userId, targetMacros }) {
                   </button>
                 </div>
 
+                <div style={{maxHeight:mealEntries.length>3?"230px":"none",overflowY:mealEntries.length>3?"auto":"visible",WebkitOverflowScrolling:"touch"}}>
                 {mealEntries.map(e => (
                   <div key={e.id}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:"1px solid #FFF0F5" }}>
@@ -553,6 +554,7 @@ export default function FoodLog({ userId, targetMacros }) {
                     )}
                   </div>
                 ))}
+                </div>
               </div>
             );
           })}

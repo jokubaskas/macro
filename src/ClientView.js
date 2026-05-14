@@ -365,6 +365,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
                 {isAct && (
                   <div style={{marginTop:6,background:"rgba(0,0,0,0.2)",borderRadius:12,padding:"10px 12px"}}>
+                    <div style={{maxHeight:me.length>3?"220px":"none",overflowY:me.length>3?"auto":"visible",WebkitOverflowScrolling:"touch"}}>
                     {me.map(e=>(
                       <div key={e.id}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
@@ -401,6 +402,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                         )}
                       </div>
                     ))}
+                    </div>
 
                     {isToday && (
                       <div style={{display:"flex",gap:6,marginTop:8}}>
