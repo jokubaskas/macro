@@ -4,7 +4,7 @@ export const pb = new PocketBase(process.env.REACT_APP_PB_URL);
 
 export async function pbFirst(collection, filter, opts = {}) {
   try {
-    return await pb.collection(collection).getFirstListItem(filter, opts);
+    return await pb.collection(collection).getFirstListItem(filter, { requestKey: null, ...opts });
   } catch (e) {
     if (e.status === 404) return null;
     throw e;
