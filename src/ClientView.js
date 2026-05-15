@@ -237,23 +237,23 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 }, [user.id]);
 
   const loadEntries = useCallback(async () => {
-    const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
-    const [{ data:food },{ data:sleep },{ data:water },{ data:ci },{ data:stepRow }] = await Promise.all([
-      pb.collection("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
-      pb.collection("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-      pb.collection("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-      pb.collection("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
-      pb.collection("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-    ]);
-    setEntries(food||[]);
-    setTodaySleep(sleep?.hours_slept ?? null);
-    setTodayWater({ ml:water?.ml||0, goal:water?.goal||Math.round(parseFloat(profile?.weight||60)*33) });
-    setCheckinDone(ci?.is_done ?? false);
-    setTodaySteps(Math.max(propSteps||0, stepRow?.steps||0));
-  }, [user.id, selectedDate, profile?.weight, propSteps]);
+  const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
+  const [food, sleep, water, ci, stepRow] = await Promise.all([
+    pb.collection("food_log").getFullList({ filter: `user_id="${user.id}" && date="${selectedDate}"`, sort: "created", requestKey: null }),
+    pbFirst("sleep_log", `user_id="${user.id}" && date="${selectedDate}"`),
+    pbFirst("water_log", `user_id="${user.id}" && date="${selectedDate}"`),
+    pbFirst("client_checkins", `user_id="${user.id}" && week_start="${weekStart}"`),
+    pbFirst("step_log", `user_id="${user.id}" && date="${selectedDate}"`),
+  ]);
+  setEntries(food||[]);
+  setTodaySleep(sleep?.hours_slept ?? null);
+  setTodayWater({ ml:water?.ml||0, goal:water?.goal||Math.round(parseFloat(profile?.weight||60)*33) });
+  setCheckinDone(ci?.is_done ?? false);
+  setTodaySteps(Math.max(propSteps||0, stepRow?.steps||0));
+}, [user.id, selectedDate, profile?.weight, propSteps]);
 
-  useEffect(() => { loadEntries(); }, [loadEntries]);
-  useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, loadEntries]);
+useEffect(() => { loadEntries(); }, [loadEntries]);
+useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, loadEntries]);
 
   async function addEntry(meal, food) {
     setSearching(false); setActiveMeal(null);
