@@ -324,7 +324,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
                isDue ? "⏰ Matavimo laikas atėjo!" :
                `🗓️ Kitas matavimas po ${weeksLeft} sav.`}
             </p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0 }}>
+            <p style={{ fontSize:11, color:"rgba(0, 0, 0, 0.5)", margin:0 }}>
               {!last ? 'Įvesk pirmus matavimus mygtuku "+ Matuoti"' :
                `Paskutinis: ${fmtFull(last.measured_at)} · ${weeksAgo(last.measured_at)} sav. atgal`}
             </p>
@@ -615,7 +615,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div>
                   <span style={{ fontSize:12, fontWeight:700, color:PK.dark }}>Matavimas #{m.cycle_number}</span>
-                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginLeft:8 }}>{fmtFull(m.measured_at)}</span>
+                  <span style={{ fontSize:11, color:"rgba(0, 0, 0, 0.5)", marginLeft:8 }}>{fmtFull(m.measured_at)}</span>
                 </div>
                 <button onClick={()=>openForm(m)} style={{ fontSize:11, color:"rgba(255,255,255,0.75)", background:"none", border:"none", cursor:"pointer" }}>✏️</button>
               </div>
