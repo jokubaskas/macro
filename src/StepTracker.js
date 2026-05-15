@@ -76,7 +76,7 @@ export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
     Promise.all([
       pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
 pb.collection("step_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}"`, sort: "date", requestKey: null }),
-    ]).then(([{ data:today }, { data:hist }]) => {
+]).then(([today, hist]) => {
       const s = today?.steps || 0;
       setSteps(s);
       setHistory(hist || []);
