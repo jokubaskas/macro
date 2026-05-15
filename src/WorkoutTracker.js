@@ -126,7 +126,7 @@ pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date=
       )}
 
       {!isToday && workouts.length === 0 && (
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", margin:0, textAlign:"center" }}>Šią dieną treniruočių nebuvo suvedta</p>
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", margin:0, textAlign:"center" }}>Šią dieną treniruočių nebuvo suvesta</p>
       )}
     </div>
   );

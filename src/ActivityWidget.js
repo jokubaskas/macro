@@ -81,7 +81,7 @@ await pbUpsert("step_log", `user_id="${userId}" && date="${currentDate}"`, { use
 }
 
   async function deleteWorkout(id) {
-    await pb.collection("workout_log").delete().eq("id", id);
+await pb.collection("workout_log").delete(id);
     const next = workouts.filter(w => w.id !== id);
     setWorkouts(next);
     onActivityChange?.(steps, next);
