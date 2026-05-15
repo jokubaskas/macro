@@ -220,21 +220,21 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const isToday         = selectedDate === todayStr();
 
   useEffect(() => {
-    async function load() {
-      const { data } = await pb.collection("profiles").select("*").eq("id",user.id).single();
-      setProfile(data);
-      setLoading(false);
-      if (data) {
-        const min = new Date(); min.setDate(min.getDate()-90);
-        setMinDate(min.toISOString().split("T")[0]);
-      }
+  async function load() {
+    const data = await pb.collection("users").getOne(user.id);
+    setProfile(data);
+    setLoading(false);
+    if (data) {
+      const min = new Date(); min.setDate(min.getDate()-90);
+      setMinDate(min.toISOString().split("T")[0]);
     }
-    load();
-    pb.collection("trainer_measurements").select("id").eq("user_id",user.id).is("client_read_at",null).limit(1)
-      .then(({ data }) => { if (data?.length) { setHasReport(true); setShowReport(true); } });
-    pb.collection("step_log").select("steps").eq("user_id",user.id).eq("date",todayStr()).maybeSingle()
-      .then(({ data }) => { if (data?.steps > 0) setTodaySteps(data.steps); });
-  }, [user.id]);
+  }
+  load();
+  pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
+    .then(data => { if (data) { setHasReport(true); setShowReport(true); } });
+  pbFirst("step_log", `user_id="${user.id}" && date="${todayStr()}"`)
+    .then(data => { if (data?.steps > 0) setTodaySteps(data.steps); });
+}, [user.id]);
 
   const loadEntries = useCallback(async () => {
     const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
