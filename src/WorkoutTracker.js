@@ -21,7 +21,7 @@ export default function WorkoutTracker({ userId, date }) {
     if (!userId) return;
 pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date="${currentDate}"`, sort: "created" })      .eq("user_id", userId).eq("date", currentDate)
       .order("created_at")
-      .then(({ data }) => setWorkouts(data || []));
+.then(data => setWorkouts(data || []));
   }, [userId, currentDate]);
 
   async function handleSave() {
