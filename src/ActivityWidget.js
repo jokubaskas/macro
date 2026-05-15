@@ -60,7 +60,7 @@ pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date=
     const n = Math.min(50000, Math.max(0, val));
     setSteps(n);
     onActivityChange?.(n, workouts);
-    await pbUpsert("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:n });
+await pbUpsert("step_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, steps:n });
   }
 
   function applyStep() {

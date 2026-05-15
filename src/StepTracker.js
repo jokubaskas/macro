@@ -88,8 +88,7 @@ pb.collection("step_log").getFullList({ filter: `user_id="${userId}" && date>="$
   async function save(newSteps) {
     if (!isToday) return;
     setSaving(true);
-    await pbUpsert("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:newSteps });
-    onStepsChange?.(newSteps);
+    await pbUpsert("step_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, steps:newSteps });    onStepsChange?.(newSteps);
     setSaving(false);
   }
 
