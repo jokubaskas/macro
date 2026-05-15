@@ -208,8 +208,9 @@ export default function Onboarding({ user, onComplete }) {
     });
     onComplete();
   } catch(e) {
-    setError("Klaida išsaugant: " + e.message);
-  }
+  console.log("Onboarding klaida:", e);
+  setError("Klaida išsaugant: " + (e.message || JSON.stringify(e)));
+}
   setSaving(false);
 }
 
