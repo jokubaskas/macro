@@ -186,36 +186,32 @@ export default function Onboarding({ user, onComplete }) {
   }
 
   async function handleFinish() {
-    setSaving(true); setError("");
-    const age = calcAge(form.dob);
-    try {
-      const { error: err } = await pb.collection("profiles").update({
-        gender:        form.gender,
-        dob:           form.dob,
-        age:           age,
-        height:        parseFloat(form.height) || null,
-        weight:        parseFloat(form.weight) || null,
-        act:           form.act,
-        goal:          form.goal,
-        motivation:    form.motivation,
-        sleep_stress:  form.sleep_stress,
-        steps_per_day: form.steps_per_day,
-        diet_desc:     form.diet_desc,
-        hardest_part:  form.hardest_part,
-        expectations:  form.expectations,
-        wellbeing:     form.wellbeing,
-        photo_front:   form.photo_front || null,
-        photo_side:    form.photo_side  || null,
-        photo_back:    form.photo_back  || null,
-        onboarding_done: true,
-      }).eq("id", user.id);
-      if (err) throw err;
-      onComplete();
-    } catch(e) {
-      setError("Klaida išsaugant: " + e.message);
-    }
-    setSaving(false);
+  setSaving(true); setError("");
+  const age = calcAge(form.dob);
+  try {
+    await pb.collection("users").update(user.id, {
+      gender:        form.gender,
+      dob:           form.dob,
+      age:           age,
+      height:        parseFloat(form.height) || null,
+      weight:        parseFloat(form.weight) || null,
+      act:           form.act,
+      goal:          form.goal,
+      motivation:    form.motivation,
+      sleep_stress:  form.sleep_stress,
+      steps_per_day: form.steps_per_day,
+      diet_desc:     form.diet_desc,
+      hardest_part:  form.hardest_part,
+      expectations:  form.expectations,
+      wellbeing:     form.wellbeing,
+      onboarding_done: true,
+    });
+    onComplete();
+  } catch(e) {
+    setError("Klaida išsaugant: " + e.message);
   }
+  setSaving(false);
+}
 
   const age = calcAge(form.dob);
 
