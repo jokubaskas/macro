@@ -385,16 +385,16 @@ export default function FoodLog({ userId, targetMacros }) {
   const [replacingEntry, setReplacingEntry]= useState(null);
 
   const loadEntries = useCallback(async () => {
-    setLoading(true);
-    const { data } = await pb.collection("food_log").select("*").eq("user_id",userId).eq("date",date).order("created_at");
-    setEntries(data||[]);
-    setLoading(false);
-  }, [userId, date]);
+  setLoading(true);
+  const data = await pb.collection("food_log").getFullList({ filter: `user_id="${userId}" && date="${date}"`, sort: "created", requestKey: null });
+  setEntries(data||[]);
+  setLoading(false);
+}, [userId, date]);
 
-  const loadHistory = useCallback(async () => {
-    const { data } = await supabase.from("food_log").select("*").eq("user_id",userId).order("date",{ascending:false}).order("created_at");
-    setHistory(data||[]);
-  }, [userId]);
+const loadHistory = useCallback(async () => {
+  const data = await pb.collection("food_log").getFullList({ filter: `user_id="${userId}"`, sort: "-date,created", requestKey: null });
+  setHistory(data||[]);
+}, [userId]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
   useEffect(() => { if (tab==="history") loadHistory(); }, [tab, loadHistory]);

@@ -45,8 +45,8 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
   useEffect(() => {
     if (!userId) return;
     Promise.all([
-      pb.collection("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      pb.collection("workout_log").select("*").eq("user_id",userId).eq("date",currentDate).order("created_at"),
+      pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
+pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date="${currentDate}"`, sort: "created", requestKey: null }),
     ]).then(([{data:s},{data:w}]) => {
       const st = s?.steps || 0;
       const wt = w || [];

@@ -189,12 +189,12 @@ async function analyzeAndGenerateMessage(userId, res, goalId) {
   const today   = new Date().toISOString().split("T")[0];
   const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split("T")[0];
 
-  const [{ data: foods }, { data: waters }, { data: checkins }, { data: weightData }] = await Promise.all([
-    pb.collection("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
-    pb.collection("water_log").select("date,ml,goal").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
-    pb.collection("client_checkins").select("*").eq("user_id",userId).order("week_start",{ascending:false}).limit(2),
-    pb.collection("client_checkins").select("weight_self,week_start").eq("user_id",userId).order("week_start",{ascending:false}).limit(4),
-  ]);
+  const [foods, waters, checkins, weightData] = await Promise.all([
+  pb.collection("food_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}" && date<="${today}"`, requestKey: null }),
+  pb.collection("water_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}" && date<="${today}"`, requestKey: null }),
+  pb.collection("client_checkins").getList(1, 2, { filter: `user_id="${userId}"`, sort: "-week_start", requestKey: null }).then(r => r.items),
+  pb.collection("client_checkins").getList(1, 4, { filter: `user_id="${userId}"`, sort: "-week_start", requestKey: null }).then(r => r.items),
+]);
 
   const signals = [];
 

@@ -70,41 +70,29 @@ export default function MeasurementReport({ userId, onClose }) {
   }, [userId]);
 
   async function loadReport() {
-    // Gauti neperskaitytą matavimą
-    const { data: measures } = await pb.collection
-    ("trainer_measurements")
-      .select("*")
-      .eq("user_id", userId)
-      .is("client_read_at", null)
-      .order("measured_at", { ascending:false })
-      .limit(1);
+  const measures = await pb.collection("trainer_measurements").getList(1, 1, {
+    filter: `user_id="${userId}" && client_read_at=""`,
+    sort: "-measured_at", requestKey: null,
+  }).then(r => r.items).catch(() => []);
 
-    if (!measures?.length) { setLoading(false); return; }
-    const current = measures[0];
+  if (!measures?.length) { setLoading(false); return; }
+  const current = measures[0];
 
-    // Gauti prieš tai buvusį matavimą (palyginimui)
-    const { data: prev } = await pb.collection
-    ("trainer_measurements")
-      .select("*")
-      .eq("user_id", userId)
-      .not("id", "eq", current.id)
-      .not("client_read_at", "is", null)
-      .order("measured_at", { ascending:false })
-      .limit(1);
+  const prevList = await pb.collection("trainer_measurements").getList(1, 1, {
+    filter: `user_id="${userId}" && id!="${current.id}" && client_read_at!=""`,
+    sort: "-measured_at", requestKey: null,
+  }).then(r => r.items).catch(() => []);
+  const prev = prevList[0] || null;
 
-    // Ciklo check-in'ų vidurkiai (8 savaitės atgal)
-    const cycleStart = new Date(current.measured_at);
-    cycleStart.setDate(cycleStart.getDate() - 56);
-    const cycleStartStr = cycleStart.toISOString().split("T")[0];
-    const cycleEndStr   = current.measured_at.split("T")[0];
+  const cycleStart = new Date(current.measured_at);
+  cycleStart.setDate(cycleStart.getDate() - 56);
+  const cycleStartStr = cycleStart.toISOString().split("T")[0];
+  const cycleEndStr   = current.measured_at.split("T")[0];
 
-    const { data: checkins } = await pb.collection
-    ("client_checkins")
-      .select("sleep_quality,energy,diet_adherence,water_score,stress_level,workouts_done")
-      .eq("user_id", userId)
-      .eq("is_done", true)
-      .gte("week_start", cycleStartStr)
-      .lte("week_start", cycleEndStr);
+  const checkins = await pb.collection("client_checkins").getFullList({
+    filter: `user_id="${userId}" && is_done=true && week_start>="${cycleStartStr}" && week_start<="${cycleEndStr}"`,
+    requestKey: null,
+  }).catch(() => []);
 
     // Vidurkiai
     const avg = (key) => {

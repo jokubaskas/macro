@@ -115,21 +115,20 @@ export default function TrainerMeasurements({ clientId, clientName }) {
   const set = k => v => setForm(f=>({...f,[k]:v}));
 
   const load = useCallback(async () => {
-    const [{ data:m }, { data:c }] = await Promise.all([
-      pb.collection("trainer_measurements").select("*").eq("user_id",clientId).order("measured_at",{ascending:true}),
-      pb.collection("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
+  const [m, c] = await Promise.all([
+    pb.collection("trainer_measurements").getFullList({ filter: `user_id="${clientId}"`, sort: "measured_at", requestKey: null }),
+    pb.collection("client_checkins").getList(1, 24, { filter: `user_id="${clientId}"`, sort: "week_start", requestKey: null }).then(r => r.items),
+  ]);
+  setMeasures(m||[]);
+
+  const ciList = c || [];
+  if (ciList.length > 0) {
+    const oldestWeek = ciList[0].week_start;
+
+    const [waterRaw, foodData] = await Promise.all([
+      pb.collection("water_log").getFullList({ filter: `user_id="${clientId}" && date>="${oldestWeek}"`, sort: "date", requestKey: null }),
+      pb.collection("food_log").getFullList({ filter: `user_id="${clientId}" && date>="${oldestWeek}"`, requestKey: null }),
     ]);
-    setMeasures(m||[]);
-
-    // Sodinti vandenį ir mitybą iš žurnalų (visada – ne tik null)
-    const ciList = c || [];
-    if (ciList.length > 0) {
-      const oldestWeek = ciList[0].week_start;
-
-      const [{ data: waterRaw }, { data: foodData }] = await Promise.all([
-        pb.collection("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek).order("date"),
-        pb.collection("food_log").select("date,kcal,protein").eq("user_id",clientId).gte("date",oldestWeek),
-      ]);
 
       // Normalizuoti water datas (pašalinti laiko komponentą jei yra)
       const waterData = waterRaw?.map(w => ({ ...w, date: String(w.date).substring(0,10) }));

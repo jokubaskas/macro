@@ -28,10 +28,7 @@ pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date=
     const dur = parseInt(duration);
     if (!dur || dur <= 0 || !adding) return;
     setSaving(true);
-    const { data } = await pb.collection("workout_log").create({
-      user_id: userId, date: currentDate,
-      type: adding, duration_min: dur,
-    }).select().single();
+    const data = await pb.collection("workout_log").create({ user_id: userId, date: currentDate, type: adding, duration_min: dur });
     if (data) setWorkouts(w => [...w, data]);
     setAdding(null);
     setDuration("");

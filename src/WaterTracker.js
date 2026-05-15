@@ -25,20 +25,17 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
   const done         = drunk >= goal;
 
   useEffect(() => {
-    if (!userId) return;
-    setLoaded(false);
-    async function load() {
-      const { data } = await pbFirst
-      ("water_log").select("ml, goal")
-        .eq("user_id", userId).eq("date", currentDate)
-        .maybeSingle();
-      if (data) { setDrunk(data.ml || 0); setGoal(data.goal || defaultGoal); }
-      else       { setDrunk(0); setGoal(defaultGoal); }
-      setLoaded(true);
-    }
-    load();
-  // eslint-disable-next-line
-  }, [userId, currentDate]);
+  if (!userId) return;
+  setLoaded(false);
+  async function load() {
+    const data = await pbFirst("water_log", `user_id="${userId}" && date="${currentDate}"`);
+    if (data) { setDrunk(data.ml || 0); setGoal(data.goal || defaultGoal); }
+    else       { setDrunk(0); setGoal(defaultGoal); }
+    setLoaded(true);
+  }
+  load();
+// eslint-disable-next-line
+}, [userId, currentDate]);
 
   async function save(newDrunk) {
     if (!userId || !isToday) return;

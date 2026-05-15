@@ -74,8 +74,8 @@ export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
     if (!userId) return;
     const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
     Promise.all([
-      pb.collection("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      pb.collection("step_log").select("date,steps").eq("user_id",userId).gte("date",weekAgo).order("date"),
+      pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
+pb.collection("step_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}"`, sort: "date", requestKey: null }),
     ]).then(([{ data:today }, { data:hist }]) => {
       const s = today?.steps || 0;
       setSteps(s);

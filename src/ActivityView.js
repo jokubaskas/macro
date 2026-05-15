@@ -74,7 +74,7 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
 
   useEffect(() => {
     if (!user) return;
-    pb.collection("profiles").select("*").eq("id",user.id).single()
+pb.collection("users").getOne(user.id)
       .then(({ data }) => { setProfile(data); setLoading(false); });
   }, [user.id]);
 
