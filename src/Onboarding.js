@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
 
 // ── Veiklos lygiai (sutampa su constants.js ACTIVITY) ────────────────────────
@@ -80,7 +80,6 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
   );
 }
 
-// ── Nuotraukų įkėlimas ───────────────────────────────────────────────────────
 function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
   const [loading, setLoading] = useState(false);
 
@@ -91,18 +90,15 @@ function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
     try {
       // Lokali peržiūra iš karto
       const reader = new FileReader();
-      reader.onload = ev => onChange(ev.target.result); // temp base64 preview
+      reader.onload = ev => onChange(ev.target.result);
       reader.readAsDataURL(file);
 
-      // Įkelti į Supabase Storage
-      const path = `${userId}/${field}_${Date.now()}.jpg`;
-      const { error } = await supabase.storage
-        .from("profile-photos")
-        .upload(path, file, { upsert:true });
-      if (!error) {
-        const url = supabase.storage.from("profile-photos").getPublicUrl(path).data.publicUrl;
-        onChange(url);
-      }
+      // Įkelti į PocketBase
+      const formData = new FormData();
+      formData.append(field, file);
+      const updated = await pb.collection("users").update(userId, formData);
+      const url = pb.getFileUrl(updated, updated[field]);
+      onChange(url);
     } catch(e) { console.warn("Photo upload:", e); }
     setLoading(false);
   }
@@ -193,7 +189,7 @@ export default function Onboarding({ user, onComplete }) {
     setSaving(true); setError("");
     const age = calcAge(form.dob);
     try {
-      const { error: err } = await supabase.from("profiles").update({
+      const { error: err } = await pb.collection("profiles").update({
         gender:        form.gender,
         dob:           form.dob,
         age:           age,

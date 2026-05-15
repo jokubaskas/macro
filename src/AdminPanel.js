@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
+import { pb, pbUpsert } from "./pb";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import TrainerMeasurements from "./TrainerMeasurements";
-
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
-const SERVICE_KEY  = process.env.REACT_APP_SERVICE_ROLE_KEY;
-const adminDb = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SERVICE_ROLE_KEY
-);
 
 const STEPS_LABELS = {
   "under5k":"Iki 5 000 žingsnių","5k-8k":"5 000–8 000",
@@ -17,13 +9,15 @@ const STEPS_LABELS = {
 };
 
 async function adminCreateUser(email, password) {
-  const res = await fetch(SUPABASE_URL + "/auth/v1/admin/users", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", "apikey":SERVICE_KEY, "Authorization":"Bearer "+SERVICE_KEY },
-    body: JSON.stringify({ email, password, email_confirm:true }),
+  const data = await pb.collection("users").create({
+    email,
+    password,
+    passwordConfirm: password,
+    role: "client",
+    onboarding_done: false,
+    emailVisibility: true,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Klaida kuriant vartotoją");
+  if (!data?.id) throw new Error("Klaida kuriant vartotoją");
   return data;
 }
 
@@ -45,7 +39,6 @@ function InfoRow({ label, value }) {
   );
 }
 
-// ── Pilnas kliento profilis (admin rodinys) ───────────────────────────────────
 function ClientProfile({ client, onClose, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [form,    setForm]    = useState({
@@ -61,14 +54,14 @@ function ClientProfile({ client, onClose, onSaved }) {
   async function handleSave() {
     setSaving(true);
     const age = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
-    await supabase.from("profiles").update({
+    await pb.collection("users").update(client.id, {
       weight:    parseFloat(form.weight)||null,
       height:    parseFloat(form.height)||null,
       age:       age||null,
       act:       form.act,
       goal:      form.goal,
       wellbeing: form.wellbeing||null,
-    }).eq("id", client.id);
+    });
     setSaving(false);
     setEditing(false);
     onSaved();
@@ -89,8 +82,6 @@ function ClientProfile({ client, onClose, onSaved }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"flex-end" }}>
       <div style={{ width:"100%", maxHeight:"92vh", background:"rgba(255,255,255,0.08)", borderRadius:"20px 20px 0 0", display:"flex", flexDirection:"column" }}>
-
-        {/* Header */}
         <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", borderRadius:"20px 20px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>
@@ -105,8 +96,6 @@ function ClientProfile({ client, onClose, onSaved }) {
         </div>
 
         <div style={{ overflowY:"auto", flex:1, padding:"16px" }}>
-
-          {/* Redaguojami laukai */}
           <Card style={{ marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <SectionLabel>Kintami duomenys</SectionLabel>
@@ -118,7 +107,6 @@ function ClientProfile({ client, onClose, onSaved }) {
                   </div>
               }
             </div>
-
             {editing ? (
               <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -180,7 +168,6 @@ function ClientProfile({ client, onClose, onSaved }) {
             )}
           </Card>
 
-          {/* Makro rezultatai */}
           {res && (
             <Card style={{ marginBottom:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)" }}>
               <SectionLabel><span style={{ color:"rgba(255,255,255,0.7)" }}>Apskaičiuoti makro</span></SectionLabel>
@@ -198,7 +185,6 @@ function ClientProfile({ client, onClose, onSaved }) {
             </Card>
           )}
 
-          {/* Anketos atsakymai */}
           <Card style={{ marginBottom:12 }}>
             <SectionLabel>Anketos atsakymai</SectionLabel>
             <InfoRow label="Tikslas"           value={GOALS.find(g=>g.id===client.goal)?.label} />
@@ -210,21 +196,20 @@ function ClientProfile({ client, onClose, onSaved }) {
             <InfoRow label="Lūkesčiai"         value={client.expectations} />
           </Card>
 
-          {/* Nuotraukos */}
           {(client.photo_front || client.photo_side || client.photo_back) && (
             <Card style={{ marginBottom:12 }}>
               <SectionLabel>Pirminės nuotraukos</SectionLabel>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-                {[{label:"Priekis",url:client.photo_front},{label:"Šonas",url:client.photo_side},{label:"Nugara",url:client.photo_back}].map(p => p.url && (
+                {[{label:"Priekis",field:"photo_front"},{label:"Šonas",field:"photo_side"},{label:"Nugara",field:"photo_back"}].map(p => client[p.field] && (
                   <div key={p.label}>
                     <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", textAlign:"center", marginBottom:5 }}>{p.label}</p>
-                    <img src={p.url} alt={p.label} style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
+                    <img src={pb.getFileUrl(client, client[p.field])} alt={p.label} style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
                   </div>
                 ))}
               </div>
             </Card>
           )}
-          {/* Check-in sekcija */}
+
           <div style={{ marginBottom:12 }}>
             <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Check-in & Progresas</p>
             <TrainerMeasurements clientId={client.id} clientName={client.name} />
@@ -235,7 +220,6 @@ function ClientProfile({ client, onClose, onSaved }) {
   );
 }
 
-// ── Naujo kliento forma (supaprastinta, anketa užpildoma pačių) ───────────────
 function NewClientForm({ onSave, onCancel }) {
   const [form,   setForm]   = useState({ name:"", email:"", password:"" });
   const [saving, setSaving] = useState(false);
@@ -248,20 +232,11 @@ function NewClientForm({ onSave, onCancel }) {
     setSaving(true); setError("");
     try {
       const user = await adminCreateUser(form.email, form.password);
-      await supabase.from("profiles").upsert({
-        id:user.id, email:form.email, name:form.name, role:"client", onboarding_done:false,
-      });
+      await pb.collection("users").update(user.id, { name: form.name });
       onSave();
     } catch(e) { setError(e.message); }
     setSaving(false);
   }
-
-  const inp = (v,fn,t="text",ph="") => {
-    const [f,setF] = useState(false);
-    return <input type={t} value={v} placeholder={ph} onChange={e=>fn(e.target.value)}
-      onFocus={()=>setF(true)} onBlur={()=>setF(false)}
-      style={{ width:"100%", padding:"10px 12px", border:"2px solid "+(f?PK.mid:PK.blush), borderRadius:12, fontSize:15, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit" }} />;
-  };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -269,8 +244,8 @@ function NewClientForm({ onSave, onCancel }) {
         <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:12 }}>Prisijungimo duomenys</p>
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {[
-            { l:"Vardas Pavardė", k:"name",     t:"text",     ph:"Emilija Šerkšnaitė" },
-            { l:"El. paštas",     k:"email",    t:"email",    ph:"emilija@gmail.com" },
+            { l:"Vardas Pavardė", k:"name",     t:"text",     ph:"Vardas Pavardė" },
+            { l:"El. paštas",     k:"email",    t:"email",    ph:"email@gmail.com" },
             { l:"Slaptažodis",    k:"password", t:"password", ph:"min. 6 simboliai" },
           ].map(f => (
             <div key={f.k}>
@@ -282,13 +257,11 @@ function NewClientForm({ onSave, onCancel }) {
         </div>
         <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px", marginTop:12 }}>
           <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
-            💡 Klientas pirmą kartą prisijungęs užpildys išsamią anketą (tikslai, gyvensena, nuotraukos ir t.t.)
+            💡 Klientas pirmą kartą prisijungęs užpildys išsamią anketą
           </p>
         </div>
       </div>
-
-      {error && <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:10, padding:"10px 14px", fontSize:13, color:PK.mid }}>{error}</div>}
-
+      {error && <div style={{ background:"#FFF0F5", borderRadius:10, padding:"10px 14px", fontSize:13, color:PK.mid }}>{error}</div>}
       <div style={{ display:"flex", gap:10 }}>
         <button onClick={onCancel} style={{ flex:1, padding:"13px 0", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
         <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px 0", borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
@@ -299,16 +272,12 @@ function NewClientForm({ onSave, onCancel }) {
   );
 }
 
-// ── Kliento kortelė sąraše ────────────────────────────────────────────────────
 function ClientCard({ client, onDelete, onOpen }) {
   const age  = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
   const done = client.onboarding_done;
   const today = new Date();
-
-  // ── Perspėjimai ──────────────────────────────────────────────────────────
   const alerts = [];
 
-  // 🎂 Gimtadienis (likus ≤ 7 dienoms)
   if (client.dob) {
     const bday = new Date(client.dob);
     const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
@@ -319,7 +288,6 @@ function ClientCard({ client, onDelete, onOpen }) {
     else if (d <= 7) alerts.push({ e:"🎂", t:"Gimtadienis po "+d+" d.", c:"#E91E8C" });
   }
 
-  // 📏 Matavimai (kas 56 d.)
   if (client._lastMeasure) {
     const nextM = new Date(new Date(client._lastMeasure).getTime() + 56*24*60*60*1000);
     const d = Math.ceil((nextM - today) / (1000*60*60*24));
@@ -329,26 +297,14 @@ function ClientCard({ client, onDelete, onOpen }) {
     alerts.push({ e:"📏", t:"Pirmi matavimai neatlikti", c:"#e74c3c" });
   }
 
-  // (Check-in rodomas atskirame tab'e)
-  // c:"#856404" });
-
-  // 🍽️ Mityba
   if (done && !client._lastFood) alerts.push({ e:"🍽️", t:"3+ d. nesuvedė mitybos", c:"#c0392b" });
-
-  // ⚠️ Anketa
   if (!done) alerts.push({ e:"⚠️", t:"Anketa nebaigta", c:"#856404" });
 
-  // 📊 Savaitiniai duomenys
   const stepAvg  = client._weekStepAvg  || 0;
   const workouts = client._weekWorkouts || { strength:0, cardio:0 };
-  const totalWorkouts = workouts.strength + workouts.cardio;
 
   return (
-    <div style={{
-      background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"12px 16px", marginBottom:10,
-      border:"1px solid "+(alerts.length?PK.mid:PK.blush),
-      boxShadow: alerts.length?"0 2px 12px rgba(173,20,87,0.12)":"0 2px 8px rgba(173,20,87,0.06)",
-    }}>
+    <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"12px 16px", marginBottom:10, border:"1px solid "+(alerts.length?PK.mid:PK.blush) }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, flex:1 }}>
           <div style={{ width:42, height:42, borderRadius:"50%", background:done?PK.light:"#f5f5f5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
@@ -370,7 +326,6 @@ function ClientCard({ client, onDelete, onOpen }) {
           <button onClick={onDelete} style={{ padding:"6px 8px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer" }}>🗑️</button>
         </div>
       </div>
-      {/* Savaitinės treniruotės */}
       {(workouts.strength > 0 || workouts.cardio > 0 || stepAvg > 0) && (
         <div style={{ marginTop:8, paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.1)", display:"flex", gap:8, flexWrap:"wrap" }}>
           {stepAvg > 0 && <span style={{ fontSize:10, color:"rgba(255,255,255,0.6)", background:"rgba(255,255,255,0.08)", borderRadius:8, padding:"3px 8px" }}>🚶 {stepAvg.toLocaleString()} žingsnių/d.</span>}
@@ -391,51 +346,43 @@ function ClientCard({ client, onDelete, onOpen }) {
   );
 }
 
-
 export default function AdminPanel({ user, onLogout }) {
   const [clients,    setClients]    = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [view,       setView]       = useState("list"); // list | new
+  const [view,       setView]       = useState("list");
   const [openClient, setOpenClient] = useState(null);
 
   useEffect(() => { loadClients(); }, []);
 
   async function loadClients() {
     setLoading(true);
-    const today = new Date().toISOString().split("T")[0];
     const weekStart = (() => {
       const d=new Date(),day=d.getDay();
       d.setDate(d.getDate()-day+(day===0?-6:1));
       return d.toISOString().split("T")[0];
     })();
+    const threeDaysAgo = new Date(Date.now()-3*24*60*60*1000).toISOString().split("T")[0];
+    const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
 
-    const [{ data: profiles }, { data: measures }, { data: checkins }, { data: foodLogs }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("role","client").order("name"),
-      supabase.from("trainer_measurements").select("user_id,measured_at").order("measured_at",{ascending:false}),
-      supabase.from("client_checkins").select("user_id,is_done").eq("week_start",weekStart),
-      supabase.from("food_log").select("user_id,date").gte("date", new Date(Date.now()-3*24*60*60*1000).toISOString().split("T")[0]),
-    ]);
+   const [profiles, measures, checkins, foodLogs, stepData, workoutData] = await Promise.all([
+  pb.collection("users").getFullList({ filter: 'role = "client"', sort: "name", requestKey: null }),
+  pb.collection("trainer_measurements").getFullList({ sort: "-measured_at", requestKey: null }),
+  pb.collection("client_checkins").getFullList({ filter: `week_start="${weekStart}"`, requestKey: null }),
+  pb.collection("food_log").getFullList({ filter: `date>="${threeDaysAgo}"`, requestKey: null }),
+  pb.collection("step_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
+  pb.collection("workout_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
+]);
 
-    // Paskutinis matavimas kiekvienam klientui
     const lastMeasure = {};
     (measures||[]).forEach(m => { if (!lastMeasure[m.user_id]) lastMeasure[m.user_id] = m.measured_at; });
 
-    // Šios savaitės check-in statusas
     const checkinDone = {};
     (checkins||[]).forEach(c => { checkinDone[c.user_id] = c.is_done; });
 
-    // Paskutinė mitybos suvedimo data
     const lastFood = {};
     (foodLogs||[]).forEach(f => {
       if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
     });
-
-    // Savaitiniai žingsniai ir treniruotės
-    const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    const srRes = await adminDb.from("step_log").select("user_id,steps,date").gte("date",weekAgo7);
-    const wrRes = await adminDb.from("workout_log").select("user_id,type,duration_min,date").gte("date",weekAgo7);
-    const stepData    = srRes.error ? [] : (srRes.data || []);
-    const workoutData = wrRes.error ? [] : (wrRes.data || []);
 
     const weekStepAvg = {};
     (stepData||[]).forEach(s => {
@@ -456,11 +403,11 @@ export default function AdminPanel({ user, onLogout }) {
 
     const enriched = (profiles||[]).map(p => ({
       ...p,
-      _lastMeasure:    lastMeasure[p.id]    || null,
-      _checkinDone:    checkinDone[p.id]    ?? null,
-      _lastFood:       lastFood[p.id]       || null,
-      _weekStepAvg:    weekStepAvg[p.id]    || 0,
-      _weekWorkouts:   weekWorkouts[p.id]   || { strength:0, cardio:0 },
+      _lastMeasure:  lastMeasure[p.id]  || null,
+      _checkinDone:  checkinDone[p.id]  ?? null,
+      _lastFood:     lastFood[p.id]     || null,
+      _weekStepAvg:  weekStepAvg[p.id]  || 0,
+      _weekWorkouts: weekWorkouts[p.id] || { strength:0, cardio:0 },
     }));
 
     setClients(enriched);
@@ -469,10 +416,19 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function handleDelete(client) {
     if (!window.confirm("Ištrinti " + (client.name||client.email) + "?")) return;
-    await supabase.from("profiles").delete().eq("id", client.id);
-    await fetch(SUPABASE_URL+"/auth/v1/admin/users/"+client.id, {
-      method:"DELETE", headers:{ "apikey":SERVICE_KEY, "Authorization":"Bearer "+SERVICE_KEY },
-    });
+    await Promise.all([
+      pb.collection("food_log").getFullList({ filter: `user_id="${client.id}"` })
+        .then(rs => Promise.all(rs.map(r => pb.collection("food_log").delete(r.id)))),
+      pb.collection("step_log").getFullList({ filter: `user_id="${client.id}"` })
+        .then(rs => Promise.all(rs.map(r => pb.collection("step_log").delete(r.id)))),
+      pb.collection("workout_log").getFullList({ filter: `user_id="${client.id}"` })
+        .then(rs => Promise.all(rs.map(r => pb.collection("workout_log").delete(r.id)))),
+      pb.collection("client_checkins").getFullList({ filter: `user_id="${client.id}"` })
+        .then(rs => Promise.all(rs.map(r => pb.collection("client_checkins").delete(r.id)))),
+      pb.collection("trainer_measurements").getFullList({ filter: `user_id="${client.id}"` })
+        .then(rs => Promise.all(rs.map(r => pb.collection("trainer_measurements").delete(r.id)))),
+    ]);
+    await pb.collection("users").delete(client.id);
     loadClients();
   }
 
@@ -490,7 +446,6 @@ export default function AdminPanel({ user, onLogout }) {
 
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
-
       {openClient && (
         <ClientProfile
           client={openClient}
@@ -498,8 +453,6 @@ export default function AdminPanel({ user, onLogout }) {
           onSaved={() => { loadClients(); setOpenClient(null); }}
         />
       )}
-
-      {/* Header */}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -516,12 +469,11 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:"16px" }}>
-        {/* Statistika */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
           {[
-            { v:clients.length,                                       l:"Klientai iš viso",   bg:"linear-gradient(135deg,#6D1B3B,#AD1457)", c:"#fff", sc:PK.blush },
-            { v:clients.filter(c=>c.onboarding_done).length,         l:"Anketa baigta",      bg:"#fff", c:PK.mid, sc:PK.rose },
-            { v:clients.filter(c=>!c.onboarding_done).length,        l:"Anketa nebaigta",    bg:"#fff", c:"#856404", sc:"#B7791F" },
+            { v:clients.length,                                l:"Klientai iš viso", bg:"linear-gradient(135deg,#6D1B3B,#AD1457)", c:"#fff", sc:PK.blush },
+            { v:clients.filter(c=>c.onboarding_done).length,  l:"Anketa baigta",    bg:"#fff", c:PK.mid, sc:PK.rose },
+            { v:clients.filter(c=>!c.onboarding_done).length, l:"Anketa nebaigta",  bg:"#fff", c:"#856404", sc:"#B7791F" },
           ].map((s,i) => (
             <div key={i} style={{ background:s.bg, borderRadius:14, padding:"14px 10px", textAlign:"center", border:s.bg==="#fff"?"1px solid "+PK.blush:"none" }}>
               <div style={{ fontSize:26, fontWeight:700, color:s.c }}>{s.v}</div>

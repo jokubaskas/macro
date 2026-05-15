@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK, calcMacros } from "./constants";
 import ActivityWidget from "./ActivityWidget";
 
@@ -74,7 +74,7 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("*").eq("id",user.id).single()
+    pb.collection("profiles").select("*").eq("id",user.id).single()
       .then(({ data }) => { setProfile(data); setLoading(false); });
   }, [user.id]);
 

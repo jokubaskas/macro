@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb } from "./pb";
 import Login from "./Login";
 import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
 import ActivityView from "./ActivityView";
 import Onboarding from "./Onboarding";
 
-const ADMIN_EMAILS = (process.env.REACT_APP_ADMIN_EMAILS || "").split(",").map(e => e.trim());
-
 export default function App() {
-  const [session,      setSession]      = useState(null);
+  const [user,         setUser]         = useState(null);
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [tab,          setTab]          = useState("food");
@@ -19,34 +17,51 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) loadProfile(session.user.id);
-      else setLoading(false);
+    // Check initial auth state
+    if (pb.authStore.isValid) {
+      loadProfile(pb.authStore.model);
+    } else {
+      setLoading(false);
+    }
+
+    // Listen for auth changes
+    const unsub = pb.authStore.onChange(async (token, model) => {
+      if (model) {
+        await loadProfile(model);
+      } else {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return; // getSession() jau tvarko
-      setSession(session);
-      if (session) loadProfile(session.user.id);
-      else { setProfile(null); setLoading(false); }
-    });
-    return () => subscription.unsubscribe();
+
+    return () => unsub();
   }, []);
 
-  async function loadProfile(userId) {
+  async function loadProfile(authModel) {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: prof }, { data: steps }, { data: wrkts }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).single(),
-      supabase.from("step_log").select("steps").eq("user_id", userId).eq("date", today).maybeSingle(),
-      supabase.from("workout_log").select("type,duration_min").eq("user_id", userId).eq("date", today),
+    setUser(authModel);
+
+    // Fetch fresh profile + today's activity in parallel
+    const [freshProfile, steps, wrkts] = await Promise.all([
+      pb.collection("users").getOne(authModel.id).catch(() => authModel),
+      pb.collection("step_log")
+        .getFirstListItem(`user_id="${authModel.id}" && date="${today}"`)
+        .catch(() => null),
+      pb.collection("workout_log")
+        .getFullList({ filter: `user_id="${authModel.id}" && date="${today}"` })
+        .catch(() => []),
     ]);
-    setProfile(prof);
+
+    setProfile(freshProfile);
     if (steps?.steps) setStepsToday(steps.steps);
     if (wrkts?.length) setWorkoutsToday(wrkts);
     setLoading(false);
   }
 
-  async function handleLogout() { await supabase.auth.signOut(); }
+  function handleLogout() {
+    pb.authStore.clear(); // triggers onChange → clears state
+  }
 
   if (loading) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#FFF0F5", fontFamily:"-apple-system, sans-serif" }}>
@@ -57,13 +72,12 @@ export default function App() {
     </div>
   );
 
-  if (!session) return <Login />;
+  if (!user) return <Login />;
 
-  const isAdmin = ADMIN_EMAILS.includes(session.user.email);
-  if (isAdmin) return <AdminPanel user={session.user} onLogout={handleLogout} />;
+  const isAdmin = profile?.role === "admin";
+  if (isAdmin) return <AdminPanel user={user} onLogout={handleLogout} />;
 
-  // Klientas – ar baigta registracija?
-  // Jei profilis dar kraunamas – nerodyti anketos (apsauga nuo mirksnio)
+  // Jei profilis dar kraunamas – nerodyti anketos
   if (!profile) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#6D1B3B,#AD1457)" }}>
       <div style={{ textAlign:"center" }}>
@@ -74,10 +88,9 @@ export default function App() {
   );
 
   if (!profile.onboarding_done) {
-    return <Onboarding user={session.user} onComplete={() => loadProfile(session.user.id)} />;
+    return <Onboarding user={user} onComplete={() => loadProfile(user)} />;
   }
 
-  // Kliento navigacija
   function handleDateChange(v) {
     if (v === "today" || !v) setSelectedDate(new Date().toISOString().split("T")[0]);
     else setSelectedDate(v);
@@ -85,11 +98,11 @@ export default function App() {
 
   return (
     <div style={{ position:"relative" }}>
-      {tab==="food"
-        ? <ClientView key={foodKey} user={session.user} onLogout={handleLogout} stepsToday={stepsToday} workoutsToday={workoutsToday} selectedDate={selectedDate} onDateChange={handleDateChange}
-          onActivityChange={(st,wt)=>{ setStepsToday(st); setWorkoutsToday(wt); }} />
-        : <ActivityView user={session.user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange}
-          onActivityChange={(st,wt)=>{ setStepsToday(st); setWorkoutsToday(wt); }} />
+      {tab === "food"
+        ? <ClientView key={foodKey} user={user} onLogout={handleLogout} stepsToday={stepsToday} workoutsToday={workoutsToday} selectedDate={selectedDate} onDateChange={handleDateChange}
+            onActivityChange={(st, wt) => { setStepsToday(st); setWorkoutsToday(wt); }} />
+        : <ActivityView user={user} onLogout={handleLogout} selectedDate={selectedDate} onDateChange={handleDateChange}
+            onActivityChange={(st, wt) => { setStepsToday(st); setWorkoutsToday(wt); }} />
       }
 
       {/* Apačios navigacija */}
@@ -103,17 +116,17 @@ export default function App() {
         {[
           { id:"food",     emoji:"🍽️", label:"Mityba" },
           { id:"activity", emoji:"🏃", label:"Aktyvumas" },
-        ].map(t=>(
-          <button key={t.id} onClick={()=>{ if(t.id==="food") setFoodKey(k=>k+1); setTab(t.id); }} style={{
+        ].map(t => (
+          <button key={t.id} onClick={() => { if (t.id === "food") setFoodKey(k => k+1); setTab(t.id); }} style={{
             flex:1, padding:"10px 0 18px",
             background:"none", border:"none", cursor:"pointer",
             fontFamily:"inherit", display:"flex", flexDirection:"column",
             alignItems:"center", gap:4,
-            borderTop: tab===t.id ? "2px solid rgba(255,255,255,0.8)" : "2px solid transparent",
+            borderTop: tab === t.id ? "2px solid rgba(255,255,255,0.8)" : "2px solid transparent",
             transition:"all 0.15s",
           }}>
-            <span style={{ fontSize:22, opacity: tab===t.id?1:0.4 }}>{t.emoji}</span>
-            <span style={{ fontSize:10, fontWeight:700, color:tab===t.id?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.3)", letterSpacing:"0.03em" }}>{t.label}</span>
+            <span style={{ fontSize:22, opacity: tab === t.id ? 1 : 0.4 }}>{t.emoji}</span>
+            <span style={{ fontSize:10, fontWeight:700, color: tab === t.id ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)", letterSpacing:"0.03em" }}>{t.label}</span>
           </button>
         ))}
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -74,8 +74,8 @@ export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
     if (!userId) return;
     const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
     Promise.all([
-      supabase.from("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      supabase.from("step_log").select("date,steps").eq("user_id",userId).gte("date",weekAgo).order("date"),
+      pb.collection("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
+      pb.collection("step_log").select("date,steps").eq("user_id",userId).gte("date",weekAgo).order("date"),
     ]).then(([{ data:today }, { data:hist }]) => {
       const s = today?.steps || 0;
       setSteps(s);
@@ -88,7 +88,7 @@ export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
   async function save(newSteps) {
     if (!isToday) return;
     setSaving(true);
-    await supabase.rpc("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:newSteps });
+    await pbUpsert("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:newSteps });
     onStepsChange?.(newSteps);
     setSaving(false);
   }

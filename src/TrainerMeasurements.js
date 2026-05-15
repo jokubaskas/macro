@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
-
-// Admin client su service role – apeinamas RLS
-const adminDb = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SERVICE_ROLE_KEY
-);
 
 function fmt(dateStr) {
   return new Date(dateStr+"T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" });
@@ -123,8 +116,8 @@ export default function TrainerMeasurements({ clientId, clientName }) {
 
   const load = useCallback(async () => {
     const [{ data:m }, { data:c }] = await Promise.all([
-      adminDb.from("trainer_measurements").select("*").eq("user_id",clientId).order("measured_at",{ascending:true}),
-      adminDb.from("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
+      pb.collection("trainer_measurements").select("*").eq("user_id",clientId).order("measured_at",{ascending:true}),
+      pb.collection("client_checkins").select("*").eq("user_id",clientId).order("week_start",{ascending:true}).limit(24),
     ]);
     setMeasures(m||[]);
 
@@ -134,8 +127,8 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       const oldestWeek = ciList[0].week_start;
 
       const [{ data: waterRaw }, { data: foodData }] = await Promise.all([
-        adminDb.from("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek).order("date"),
-        adminDb.from("food_log").select("date,kcal,protein").eq("user_id",clientId).gte("date",oldestWeek),
+        pb.collection("water_log").select("date,ml,goal").eq("user_id",clientId).gte("date",oldestWeek).order("date"),
+        pb.collection("food_log").select("date,kcal,protein").eq("user_id",clientId).gte("date",oldestWeek),
       ]);
 
       // Normalizuoti water datas (pašalinti laiko komponentą jei yra)
@@ -252,9 +245,9 @@ export default function TrainerMeasurements({ clientId, clientName }) {
       trainer_note:     form.trainer_note||null,
     };
     if (editId) {
-      await adminDb.from("trainer_measurements").update(payload).eq("id",editId);
+      await pb.collection("trainer_measurements").update(payload).eq("id",editId);
     } else {
-      await adminDb.from("trainer_measurements").insert(payload);
+      await pb.collection("trainer_measurements").insert(payload);
     }
     await load();
     setTab("overview");

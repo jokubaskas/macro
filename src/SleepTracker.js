@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 
 function getRecommended(age) {
   if (!age) return [7, 9];
@@ -169,8 +169,8 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
     setLoaded(false);
     const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
     Promise.all([
-      supabase.from("sleep_log").select("hours_slept").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      supabase.from("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekAgo).lte("date",todayStr()),
+      pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
+      pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekAgo).lte("date",todayStr()),
     ]).then(([{ data:todayData }, { data:week }]) => {
       setSavedHours(todayData?.hours_slept ?? null);
       setLocalHours(null);
@@ -185,7 +185,7 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
   async function handleSave() {
     if (!userId || localHours === null) return;
     setSaving(true);
-    await supabase.rpc("upsert_sleep_log", { p_user_id:userId, p_date:currentDate, p_hours:localHours });
+    await pbUpsert("upsert_sleep_log", { p_user_id:userId, p_date:currentDate, p_hours:localHours });
     setSavedHours(localHours);
     setLocalHours(null);
     setSaving(false);

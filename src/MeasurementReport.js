@@ -1,11 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
-import { createClient } from "@supabase/supabase-js";
-
-const adminDb = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SERVICE_ROLE_KEY
-);
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
 
 function fmt(d) {
@@ -77,8 +71,8 @@ export default function MeasurementReport({ userId, onClose }) {
 
   async function loadReport() {
     // Gauti neperskaitytą matavimą
-    const { data: measures } = await supabase
-      .from("trainer_measurements")
+    const { data: measures } = await pb.collection
+    ("trainer_measurements")
       .select("*")
       .eq("user_id", userId)
       .is("client_read_at", null)
@@ -89,8 +83,8 @@ export default function MeasurementReport({ userId, onClose }) {
     const current = measures[0];
 
     // Gauti prieš tai buvusį matavimą (palyginimui)
-    const { data: prev } = await supabase
-      .from("trainer_measurements")
+    const { data: prev } = await pb.collection
+    ("trainer_measurements")
       .select("*")
       .eq("user_id", userId)
       .not("id", "eq", current.id)
@@ -104,8 +98,8 @@ export default function MeasurementReport({ userId, onClose }) {
     const cycleStartStr = cycleStart.toISOString().split("T")[0];
     const cycleEndStr   = current.measured_at.split("T")[0];
 
-    const { data: checkins } = await supabase
-      .from("client_checkins")
+    const { data: checkins } = await pb.collection
+    ("client_checkins")
       .select("sleep_quality,energy,diet_adherence,water_score,stress_level,workouts_done")
       .eq("user_id", userId)
       .eq("is_done", true)

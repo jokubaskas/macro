@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "./supabase";
-
+import { pb, pbFirst, pbUpsert } from "./pb";
 const PK = {
   dark:"#6D1B3B", mid:"#AD1457",
   blush:"#F8BBD9", light:"#FCE4EC", pale:"#FFF0F5",
@@ -29,8 +28,8 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
     if (!userId) return;
     setLoaded(false);
     async function load() {
-      const { data } = await supabase
-        .from("water_log").select("ml, goal")
+      const { data } = await pb.collection
+      ("water_log").select("ml, goal")
         .eq("user_id", userId).eq("date", currentDate)
         .maybeSingle();
       if (data) { setDrunk(data.ml || 0); setGoal(data.goal || defaultGoal); }
@@ -44,7 +43,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
   async function save(newDrunk) {
     if (!userId || !isToday) return;
     setSaving(true);
-    await supabase.rpc("upsert_water_log", {
+    await pbUpsert("upsert_water_log", {
       p_user_id: userId, p_date: currentDate, p_ml: newDrunk, p_goal: goal,
     });
     setSaving(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb } from "./pb";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -19,8 +19,7 @@ export default function WorkoutTracker({ userId, date }) {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from("workout_log").select("*")
-      .eq("user_id", userId).eq("date", currentDate)
+pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date="${currentDate}"`, sort: "created" })      .eq("user_id", userId).eq("date", currentDate)
       .order("created_at")
       .then(({ data }) => setWorkouts(data || []));
   }, [userId, currentDate]);
@@ -29,7 +28,7 @@ export default function WorkoutTracker({ userId, date }) {
     const dur = parseInt(duration);
     if (!dur || dur <= 0 || !adding) return;
     setSaving(true);
-    const { data } = await supabase.from("workout_log").insert({
+    const { data } = await pb.collection("workout_log").create({
       user_id: userId, date: currentDate,
       type: adding, duration_min: dur,
     }).select().single();
@@ -40,7 +39,7 @@ export default function WorkoutTracker({ userId, date }) {
   }
 
   async function handleDelete(id) {
-    await supabase.from("workout_log").delete().eq("id", id);
+    await pb.collection("workout_log").delete(id);
     setWorkouts(w => w.filter(x => x.id !== id));
   }
 

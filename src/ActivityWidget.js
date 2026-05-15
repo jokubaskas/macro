@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { calcStepCalories, calcWorkoutCalories } from "./StepTracker";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -45,8 +45,8 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
   useEffect(() => {
     if (!userId) return;
     Promise.all([
-      supabase.from("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      supabase.from("workout_log").select("*").eq("user_id",userId).eq("date",currentDate).order("created_at"),
+      pb.collection("step_log").select("steps").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
+      pb.collection("workout_log").select("*").eq("user_id",userId).eq("date",currentDate).order("created_at"),
     ]).then(([{data:s},{data:w}]) => {
       const st = s?.steps || 0;
       const wt = w || [];
@@ -60,7 +60,7 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
     const n = Math.min(50000, Math.max(0, val));
     setSteps(n);
     onActivityChange?.(n, workouts);
-    await supabase.rpc("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:n });
+    await pbUpsert("upsert_step_log", { p_user_id:userId, p_date:currentDate, p_steps:n });
   }
 
   function applyStep() {
@@ -72,7 +72,7 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
     const dur = parseInt(duration);
     if (!dur || !adding) return;
     setSaving(true);
-    const { data } = await supabase.from("workout_log")
+    const { data } = await pb.collection("workout_log")
       .insert({ user_id:userId, date:currentDate, type:adding, duration_min:dur })
       .select().single();
     const next = data ? [...workouts, data] : workouts;
@@ -82,7 +82,7 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
   }
 
   async function deleteWorkout(id) {
-    await supabase.from("workout_log").delete().eq("id", id);
+    await pb.collection("workout_log").delete().eq("id", id);
     const next = workouts.filter(w => w.id !== id);
     setWorkouts(next);
     onActivityChange?.(steps, next);

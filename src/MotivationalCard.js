@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
 
 // ── Dienos seed – žinutė stabili per dieną, keičiasi kitą dieną ──────────────
@@ -190,10 +190,10 @@ async function analyzeAndGenerateMessage(userId, res, goalId) {
   const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split("T")[0];
 
   const [{ data: foods }, { data: waters }, { data: checkins }, { data: weightData }] = await Promise.all([
-    supabase.from("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
-    supabase.from("water_log").select("date,ml,goal").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
-    supabase.from("client_checkins").select("*").eq("user_id",userId).order("week_start",{ascending:false}).limit(2),
-    supabase.from("client_checkins").select("weight_self,week_start").eq("user_id",userId).order("week_start",{ascending:false}).limit(4),
+    pb.collection("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
+    pb.collection("water_log").select("date,ml,goal").eq("user_id",userId).gte("date",weekAgo).lte("date",today),
+    pb.collection("client_checkins").select("*").eq("user_id",userId).order("week_start",{ascending:false}).limit(2),
+    pb.collection("client_checkins").select("weight_self,week_start").eq("user_id",userId).order("week_start",{ascending:false}).limit(4),
   ]);
 
   const signals = [];

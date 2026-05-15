@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "./supabase";
+import { pb } from "./pb";
 import { PK } from "./constants";
 
 export default function Login() {
@@ -15,8 +15,12 @@ export default function Login() {
   async function handleLogin(e) {
     e.preventDefault();
     setLoading(true); setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError("Neteisingas el. paštas arba slaptažodis.");
+    try {
+      await pb.collection("users").authWithPassword(email, password);
+      // App.js onChange listener picks up the new session automatically
+    } catch {
+      setError("Neteisingas el. paštas arba slaptažodis.");
+    }
     setLoading(false);
   }
 
@@ -27,16 +31,21 @@ export default function Login() {
     if (password.length < 6)   { setError("Slaptažodis min. 6 simboliai."); setLoading(false); return; }
     if (password !== password2) { setError("Slaptažodžiai nesutampa."); setLoading(false); return; }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) { setError(error.message); setLoading(false); return; }
-    if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id, email, name, role: "client",
+    try {
+      await pb.collection("users").create({
+        email,
+        password,
+        passwordConfirm: password,
+        name,
+        role: "client",
         onboarding_done: false,
+        emailVisibility: true,
       });
+      setSuccess("Paskyra sukurta! Prisijunkite ir užpildykite anketą.");
+      setMode("login"); setPassword(""); setPassword2("");
+    } catch (err) {
+      setError(err.response?.message || err.message || "Klaida kuriant paskyrą.");
     }
-    setSuccess("Paskyra sukurta! Prisijunkite ir užpildykite anketą.");
-    setMode("login"); setPassword(""); setPassword2("");
     setLoading(false);
   }
 
@@ -59,71 +68,51 @@ export default function Login() {
         <img src="/logo.png" alt="Coach Vilma" style={{ width:90, height:90, objectFit:"contain", borderRadius:18, marginBottom:14 }} />
         <h1 style={{ fontSize:22, fontWeight:700, color:"#fff", marginBottom:4 }}>Coach Vilma</h1>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>
-          {mode === "login" ? "Prisijunk prie savo paskyros" : "Sukurk naują paskyrą"}
+          {mode === "login" ? "Prisijunkite prie savo paskyros" : "Sukurkite naują paskyrą"}
         </p>
       </div>
 
-      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,0.08)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.15)", boxShadow:"0 4px 24px rgba(173,20,87,0.1)" }}>
-        <div style={{ display:"flex", gap:8, marginBottom:24 }}>
-          {[{id:"login",l:"Prisijungti"},{id:"register",l:"Registruotis"}].map(t => (
-            <button key={t.id} onClick={() => { setMode(t.id); setError(""); setSuccess(""); }}
-              style={{ flex:1, padding:"10px 0", borderRadius:12, fontSize:13, fontWeight:700, cursor:"pointer",
-                border:"2px solid "+(mode===t.id?PK.mid:PK.blush),
-                background:mode===t.id?PK.light:"#fff", color:mode===t.id?PK.dark:PK.rose, fontFamily:"inherit",
-              }}>{t.l}</button>
-          ))}
-        </div>
-
-        <form onSubmit={mode==="login" ? handleLogin : handleRegister}>
+      <div style={{ width:"100%", maxWidth:400, background:"rgba(255,255,255,0.06)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.12)" }}>
+        <form onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {mode === "register" && (
-            <div style={{ marginBottom:14 }}>
+            <div>
               <label style={lbl}>Vardas Pavardė</label>
-              <input type="text" value={name} required onChange={e=>setName(e.target.value)} placeholder="Emilija Šerkšnaitė" style={inp} />
+              <input style={inp} type="text" value={name} placeholder="Emilija Šerkšnaitė" onChange={e => setName(e.target.value)} />
             </div>
           )}
-
-          <div style={{ marginBottom:14 }}>
+          <div>
             <label style={lbl}>El. paštas</label>
-            <input type="email" value={email} required onChange={e=>setEmail(e.target.value)} placeholder="vardas@gmail.com" style={inp} />
+            <input style={inp} type="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
           </div>
-
-          <div style={{ marginBottom: mode==="register" ? 14 : 20 }}>
+          <div>
             <label style={lbl}>Slaptažodis</label>
-            <input type="password" value={password} required onChange={e=>setPassword(e.target.value)} placeholder="min. 6 simboliai" style={inp} />
+            <input style={inp} type="password" value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
           </div>
-
           {mode === "register" && (
-            <div style={{ marginBottom:20 }}>
-              <label style={lbl}>Pakartoti slaptažodį</label>
-              <input type="password" value={password2} required onChange={e=>setPassword2(e.target.value)} placeholder="pakartok slaptažodį" style={inp} />
-              {password2 && password !== password2 && (
-                <p style={{ fontSize:11, color:"#E53E3E", marginTop:5 }}>⚠ Slaptažodžiai nesutampa</p>
-              )}
-              {password2 && password === password2 && password.length >= 6 && (
-                <p style={{ fontSize:11, color:"#38A169", marginTop:5 }}>✓ Slaptažodžiai sutampa</p>
-              )}
+            <div>
+              <label style={lbl}>Pakartokite slaptažodį</label>
+              <input style={inp} type="password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
             </div>
           )}
 
-          {error   && <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:10, padding:"10px 14px", fontSize:13, color:"rgba(255,255,255,0.75)", marginBottom:16 }}>{error}</div>}
-          {success && <div style={{ background:"#F0FFF4", border:"1px solid #9AE6B4", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#276749", marginBottom:16 }}>{success}</div>}
+          {error   && <p style={{ color:"#FFB3B3", fontSize:13, margin:0 }}>{error}</p>}
+          {success && <p style={{ color:"#7FFFB0", fontSize:13, margin:0 }}>{success}</p>}
 
           <button type="submit" disabled={loading} style={{
-            width:"100%", padding:"14px 0",
-            background:"linear-gradient(135deg,#6D1B3B,#AD1457)",
-            color:"#fff", border:"none", borderRadius:14,
-            fontSize:15, fontWeight:700, cursor:"pointer",
-            fontFamily:"inherit", opacity:loading?0.7:1,
+            padding:"14px", background:PK.mid, border:"none", borderRadius:14,
+            color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+            opacity: loading ? 0.7 : 1,
           }}>
-            {loading ? "Palaukite..." : mode==="login" ? "Prisijungti" : "Sukurti paskyrą →"}
+            {loading ? "..." : mode === "login" ? "Prisijungti" : "Registruotis"}
           </button>
-
-          {mode === "register" && (
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginTop:12, lineHeight:1.5 }}>
-              Po registracijos užpildysi trumpą anketą apie save 🌸
-            </p>
-          )}
         </form>
+
+        <div style={{ textAlign:"center", marginTop:20 }}>
+          <button onClick={() => { setMode(m => m === "login" ? "register" : "login"); setError(""); setSuccess(""); }}
+            style={{ background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+            {mode === "login" ? "Neturite paskyros? Registruokitės" : "Jau turite paskyrą? Prisijunkite"}
+          </button>
+        </div>
       </div>
     </div>
   );

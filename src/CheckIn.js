@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
 
 // ── Pagalbinės ────────────────────────────────────────────────────────────────
@@ -36,8 +36,8 @@ async function calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age
   const weekEnd = getWeekEnd(weekStart);
 
   const [{ data:foods }, { data:sleeps }] = await Promise.all([
-    supabase.from("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
-    supabase.from("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
+    pb.collection("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
+    pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
   ]);
 
   // Mityba
@@ -78,8 +78,8 @@ async function calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age
 
   // Vanduo
   let waterScore = null;
-  const { data:waters } = await supabase
-    .from("water_log").select("ml,goal")
+  const { data:waters } = await pb.collection
+  ("water_log").select("ml,goal")
     .eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd);
   if (waters?.length) {
     const goalDays = waters.filter(w=>w.ml>=(w.goal||2000)).length;
@@ -187,8 +187,8 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const { isSunday, daysUntilSun, nextSunStr } = getSundayInfo();
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from("client_checkins").select("*")
+    const { data } = await pb.collection
+    ("client_checkins").select("*")
       .eq("user_id",userId)
       .order("week_start",{ascending:false})
       .limit(8);
@@ -211,7 +211,7 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
 
   async function handleSave() {
     setSaving(true);
-    await supabase.from("client_checkins").upsert({
+    await pb.collection("client_checkins").upsert({
       user_id:        userId,
       week_start:     weekStart,
       weight_self:    parseFloat(form.weight_self)||null,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK, ACTIVITY, GOALS, calcMacros } from "./constants";
 import { ALL_FOODS } from "./foodDatabase";
 import WaterTracker from "./WaterTracker";
@@ -221,7 +221,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("profiles").select("*").eq("id",user.id).single();
+      const { data } = await pb.collection("profiles").select("*").eq("id",user.id).single();
       setProfile(data);
       setLoading(false);
       if (data) {
@@ -230,20 +230,20 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       }
     }
     load();
-    supabase.from("trainer_measurements").select("id").eq("user_id",user.id).is("client_read_at",null).limit(1)
+    pb.collection("trainer_measurements").select("id").eq("user_id",user.id).is("client_read_at",null).limit(1)
       .then(({ data }) => { if (data?.length) { setHasReport(true); setShowReport(true); } });
-    supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",todayStr()).maybeSingle()
+    pb.collection("step_log").select("steps").eq("user_id",user.id).eq("date",todayStr()).maybeSingle()
       .then(({ data }) => { if (data?.steps > 0) setTodaySteps(data.steps); });
   }, [user.id]);
 
   const loadEntries = useCallback(async () => {
     const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
     const [{ data:food },{ data:sleep },{ data:water },{ data:ci },{ data:stepRow }] = await Promise.all([
-      supabase.from("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
-      supabase.from("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-      supabase.from("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
-      supabase.from("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
-      supabase.from("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
+      pb.collection("food_log").select("*").eq("user_id",user.id).eq("date",selectedDate).order("created_at"),
+      pb.collection("sleep_log").select("hours_slept").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
+      pb.collection("water_log").select("ml,goal").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
+      pb.collection("client_checkins").select("is_done").eq("user_id",user.id).eq("week_start",weekStart).maybeSingle(),
+      pb.collection("step_log").select("steps").eq("user_id",user.id).eq("date",selectedDate).maybeSingle(),
     ]);
     setEntries(food||[]);
     setTodaySleep(sleep?.hours_slept ?? null);
@@ -258,7 +258,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   async function addEntry(meal, food) {
     setSearching(false); setActiveMeal(null);
     try {
-      await supabase.from("food_log").insert({
+      await pb.collection("food_log").insert({
         user_id:user.id, date:selectedDate, meal,
         name:food.name, brand:food.brand||"",
         amount:food.amount||food.grams||100,
@@ -271,7 +271,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   async function updateEntry(id, newAmount, per100) {
     const r = newAmount / 100;
     try {
-      await supabase.from("food_log").update({
+      await pb.collection("food_log").update({
         amount:  newAmount,
         kcal:    Math.round(per100.kcal    * r),
         protein: Math.round(per100.protein * r * 10) / 10,
@@ -285,8 +285,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   async function replaceEntry(id, meal, food) {
     try {
-      await supabase.from("food_log").delete().eq("id", id);
-      await supabase.from("food_log").insert({
+      await pb.collection("food_log").delete().eq("id", id);
+      await pb.collection("food_log").insert({
         user_id:user.id, date:selectedDate, meal,
         name:food.name, brand:food.brand||"",
         amount:food.amount||food.grams||100,
@@ -296,7 +296,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     } catch(e) { console.error("replaceEntry:", e); }
   }
 
-  async function removeEntry(id) { await supabase.from("food_log").delete().eq("id",id); loadEntries(); }
+  async function removeEntry(id) { await pb.collection("food_log").delete().eq("id",id); loadEntries(); }
   function toggleMeal(id) { setOpenMeal(p=>p===id?null:id); setEditingId(null); }
   function handleDateSelect(d) { setSelectedDate(d); setOpenMeal(null); }
 
