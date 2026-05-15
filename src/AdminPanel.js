@@ -11,19 +11,12 @@ const STEPS_LABELS = {
 async function adminCreateUser(email, password) {
   try {
     const data = await pb.collection("users").create({
-      email,
-      password,
-      passwordConfirm: password,
-      role: "client",
-      onboarding_done: false,
-      emailVisibility: true,
+      email, password, passwordConfirm: password,
+      role: "client", onboarding_done: false, emailVisibility: true,
     });
     if (!data?.id) throw new Error("Klaida kuriant vartotoją");
     return data;
-  } catch(e) {
-    console.log("Klaida:", e);
-    throw e;
-  }
+  } catch(e) { console.log("Klaida:", e); throw e; }
 }
 
 function Card({ children, style }) {
@@ -53,8 +46,17 @@ function ClientProfile({ client, onClose, onSaved }) {
     goal:      client.goal   ?? "lose",
     wellbeing: client.wellbeing ?? "",
   });
-  const [saving, setSaving] = useState(false);
+  const [saving,         setSaving]         = useState(false);
+  const [progressPhotos, setProgressPhotos] = useState([]);
   const set = k => v => setForm(f => ({...f,[k]:v}));
+
+  useEffect(() => {
+    pb.collection("progress_photos").getFullList({
+      filter: `user_id="${client.id}"`,
+      sort: "-created",
+      requestKey: null,
+    }).then(data => setProgressPhotos(data || [])).catch(() => {});
+  }, [client.id]);
 
   async function handleSave() {
     setSaving(true);
@@ -162,13 +164,13 @@ function ClientProfile({ client, onClose, onSaved }) {
               </div>
             ) : (
               <div>
-                <InfoRow label="Svoris" value={client.weight ? client.weight+" kg" : null} />
-                <InfoRow label="Ūgis"   value={client.height ? client.height+" cm" : null} />
-                <InfoRow label="Amžius" value={age ? age+" m." : null} />
+                <InfoRow label="Svoris"      value={client.weight ? client.weight+" kg" : null} />
+                <InfoRow label="Ūgis"        value={client.height ? client.height+" cm" : null} />
+                <InfoRow label="Amžius"      value={age ? age+" m." : null} />
                 <InfoRow label="Gimimo data" value={client.dob} />
-                <InfoRow label="Tikslas" value={GOALS.find(g=>g.id===client.goal)?.label} />
-                <InfoRow label="Aktyvumas" value={ACTIVITY.find(a=>a.id===client.act)?.label} />
-                <InfoRow label="Savijauta" value={client.wellbeing ? client.wellbeing+"/5" : null} />
+                <InfoRow label="Tikslas"     value={GOALS.find(g=>g.id===client.goal)?.label} />
+                <InfoRow label="Aktyvumas"   value={ACTIVITY.find(a=>a.id===client.act)?.label} />
+                <InfoRow label="Savijauta"   value={client.wellbeing ? client.wellbeing+"/5" : null} />
               </div>
             )}
           </Card>
@@ -192,26 +194,46 @@ function ClientProfile({ client, onClose, onSaved }) {
 
           <Card style={{ marginBottom:12 }}>
             <SectionLabel>Anketos atsakymai</SectionLabel>
-            <InfoRow label="Tikslas"           value={GOALS.find(g=>g.id===client.goal)?.label} />
-            <InfoRow label="Motyvacija"        value={client.motivation} />
-            <InfoRow label="Miegas / stresas"  value={client.sleep_stress} />
-            <InfoRow label="Žingsniai/dieną"   value={STEPS_LABELS[client.steps_per_day]} />
-            <InfoRow label="Mityba šiuo metu"  value={client.diet_desc} />
-            <InfoRow label="Sunkiausia"        value={client.hardest_part} />
-            <InfoRow label="Lūkesčiai"         value={client.expectations} />
+            <InfoRow label="Tikslas"          value={GOALS.find(g=>g.id===client.goal)?.label} />
+            <InfoRow label="Motyvacija"       value={client.motivation} />
+            <InfoRow label="Miegas / stresas" value={client.sleep_stress} />
+            <InfoRow label="Žingsniai/dieną"  value={STEPS_LABELS[client.steps_per_day]} />
+            <InfoRow label="Mityba šiuo metu" value={client.diet_desc} />
+            <InfoRow label="Sunkiausia"       value={client.hardest_part} />
+            <InfoRow label="Lūkesčiai"        value={client.expectations} />
           </Card>
 
           {(client.photo_front || client.photo_side || client.photo_back) && (
             <Card style={{ marginBottom:12 }}>
-              <SectionLabel>Pirminės nuotraukos</SectionLabel>
+              <SectionLabel>Pradinės nuotraukos</SectionLabel>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
                 {[{label:"Priekis",field:"photo_front"},{label:"Šonas",field:"photo_side"},{label:"Nugara",field:"photo_back"}].map(p => client[p.field] && (
                   <div key={p.label}>
                     <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", textAlign:"center", marginBottom:5 }}>{p.label}</p>
-                    <img src={pb.getFileUrl(client, client[p.field])} alt={p.label} style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
+                    <img src={pb.getFileUrl(client, client[p.field])} alt={p.label}
+                      style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {progressPhotos.length > 0 && (
+            <Card style={{ marginBottom:12 }}>
+              <SectionLabel>Progreso nuotraukos</SectionLabel>
+              {progressPhotos.map((photoSet, idx) => (
+                <div key={photoSet.id} style={{ marginBottom: idx < progressPhotos.length-1 ? 16 : 0 }}>
+                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:"0 0 8px" }}>
+                    {idx === 0 ? "🕐 Naujausios" : "📅 Ankstesnės"} · {new Date(photoSet.created).toLocaleDateString("lt-LT")}
+                  </p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                    {["photo_front","photo_side","photo_back"].map(field => photoSet[field] && (
+                      <img key={field} src={pb.getFileUrl(photoSet, photoSet[field])} alt={field}
+                        style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)" }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </Card>
           )}
 
@@ -239,7 +261,7 @@ function NewClientForm({ onSave, onCancel }) {
       const user = await adminCreateUser(form.email, form.password);
       await pb.collection("users").update(user.id, { name: form.name });
       onSave();
-} catch(e) { console.log("NewClientForm klaida:", e); setError(e.message || JSON.stringify(e)); }
+    } catch(e) { console.log("NewClientForm klaida:", e); setError(e.message || JSON.stringify(e)); }
     setSaving(false);
   }
 
@@ -278,8 +300,8 @@ function NewClientForm({ onSave, onCancel }) {
 }
 
 function ClientCard({ client, onDelete, onOpen }) {
-  const age  = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
-  const done = client.onboarding_done;
+  const age   = client.dob ? Math.floor((new Date()-new Date(client.dob))/(365.25*24*60*60*1000)) : client.age;
+  const done  = client.onboarding_done;
   const today = new Date();
   const alerts = [];
 
@@ -296,7 +318,7 @@ function ClientCard({ client, onDelete, onOpen }) {
   if (client._lastMeasure) {
     const nextM = new Date(new Date(client._lastMeasure).getTime() + 56*24*60*60*1000);
     const d = Math.ceil((nextM - today) / (1000*60*60*24));
-    if (d < 0)      alerts.push({ e:"📏", t:"Matavimai pradelsti "+Math.abs(d)+" d.", c:"#e74c3c" });
+    if (d < 0)       alerts.push({ e:"📏", t:"Matavimai pradelsti "+Math.abs(d)+" d.", c:"#e74c3c" });
     else if (d <= 7) alerts.push({ e:"📏", t:"Matavimai po "+d+" d.", c:"#f39c12" });
   } else if (done) {
     alerts.push({ e:"📏", t:"Pirmi matavimai neatlikti", c:"#e74c3c" });
@@ -361,77 +383,51 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function loadClients() {
     setLoading(true);
-    const weekStart = (() => {
-      const d=new Date(),day=d.getDay();
-      d.setDate(d.getDate()-day+(day===0?-6:1));
-      return d.toISOString().split("T")[0];
-    })();
+    const weekStart = (() => { const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
     const threeDaysAgo = new Date(Date.now()-3*24*60*60*1000).toISOString().split("T")[0];
-    const weekAgo7 = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
+    const weekAgo7     = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
 
-   const [profiles, measures, checkins, foodLogs, stepData, workoutData] = await Promise.all([
-  pb.collection("users").getFullList({ filter: 'role = "client"', sort: "name", requestKey: null }),
-  pb.collection("trainer_measurements").getFullList({ sort: "-measured_at", requestKey: null }),
-  pb.collection("client_checkins").getFullList({ filter: `week_start="${weekStart}"`, requestKey: null }),
-  pb.collection("food_log").getFullList({ filter: `date>="${threeDaysAgo}"`, requestKey: null }),
-  pb.collection("step_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
-  pb.collection("workout_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
-]);
+    const [profiles, measures, checkins, foodLogs, stepData, workoutData] = await Promise.all([
+      pb.collection("users").getFullList({ filter: 'role = "client"', sort: "name", requestKey: null }),
+      pb.collection("trainer_measurements").getFullList({ sort: "-measured_at", requestKey: null }),
+      pb.collection("client_checkins").getFullList({ filter: `week_start="${weekStart}"`, requestKey: null }),
+      pb.collection("food_log").getFullList({ filter: `date>="${threeDaysAgo}"`, requestKey: null }),
+      pb.collection("step_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
+      pb.collection("workout_log").getFullList({ filter: `date>="${weekAgo7}"`, requestKey: null }),
+    ]);
 
     const lastMeasure = {};
     (measures||[]).forEach(m => { if (!lastMeasure[m.user_id]) lastMeasure[m.user_id] = m.measured_at; });
-
     const checkinDone = {};
     (checkins||[]).forEach(c => { checkinDone[c.user_id] = c.is_done; });
-
     const lastFood = {};
-    (foodLogs||[]).forEach(f => {
-      if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date;
-    });
-
+    (foodLogs||[]).forEach(f => { if (!lastFood[f.user_id] || f.date > lastFood[f.user_id]) lastFood[f.user_id] = f.date; });
     const weekStepAvg = {};
-    (stepData||[]).forEach(s => {
-      if (!weekStepAvg[s.user_id]) weekStepAvg[s.user_id] = [];
-      weekStepAvg[s.user_id].push(s.steps);
-    });
-    Object.keys(weekStepAvg).forEach(uid => {
-      const arr = weekStepAvg[uid];
-      weekStepAvg[uid] = Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
-    });
-
+    (stepData||[]).forEach(s => { if (!weekStepAvg[s.user_id]) weekStepAvg[s.user_id] = []; weekStepAvg[s.user_id].push(s.steps); });
+    Object.keys(weekStepAvg).forEach(uid => { const arr = weekStepAvg[uid]; weekStepAvg[uid] = Math.round(arr.reduce((a,b)=>a+b,0)/arr.length); });
     const weekWorkouts = {};
-    (workoutData||[]).forEach(w => {
-      if (!weekWorkouts[w.user_id]) weekWorkouts[w.user_id] = { strength:0, cardio:0 };
-      if (w.type==="strength") weekWorkouts[w.user_id].strength++;
-      else weekWorkouts[w.user_id].cardio++;
-    });
+    (workoutData||[]).forEach(w => { if (!weekWorkouts[w.user_id]) weekWorkouts[w.user_id] = { strength:0, cardio:0 }; if (w.type==="strength") weekWorkouts[w.user_id].strength++; else weekWorkouts[w.user_id].cardio++; });
 
-    const enriched = (profiles||[]).map(p => ({
+    setClients((profiles||[]).map(p => ({
       ...p,
       _lastMeasure:  lastMeasure[p.id]  || null,
       _checkinDone:  checkinDone[p.id]  ?? null,
       _lastFood:     lastFood[p.id]     || null,
       _weekStepAvg:  weekStepAvg[p.id]  || 0,
       _weekWorkouts: weekWorkouts[p.id] || { strength:0, cardio:0 },
-    }));
-
-    setClients(enriched);
+    })));
     setLoading(false);
   }
 
   async function handleDelete(client) {
     if (!window.confirm("Ištrinti " + (client.name||client.email) + "?")) return;
     await Promise.all([
-      pb.collection("food_log").getFullList({ filter: `user_id="${client.id}"` })
-        .then(rs => Promise.all(rs.map(r => pb.collection("food_log").delete(r.id)))),
-      pb.collection("step_log").getFullList({ filter: `user_id="${client.id}"` })
-        .then(rs => Promise.all(rs.map(r => pb.collection("step_log").delete(r.id)))),
-      pb.collection("workout_log").getFullList({ filter: `user_id="${client.id}"` })
-        .then(rs => Promise.all(rs.map(r => pb.collection("workout_log").delete(r.id)))),
-      pb.collection("client_checkins").getFullList({ filter: `user_id="${client.id}"` })
-        .then(rs => Promise.all(rs.map(r => pb.collection("client_checkins").delete(r.id)))),
-      pb.collection("trainer_measurements").getFullList({ filter: `user_id="${client.id}"` })
-        .then(rs => Promise.all(rs.map(r => pb.collection("trainer_measurements").delete(r.id)))),
+      pb.collection("food_log").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("food_log").delete(r.id)))),
+      pb.collection("step_log").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("step_log").delete(r.id)))),
+      pb.collection("workout_log").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("workout_log").delete(r.id)))),
+      pb.collection("client_checkins").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("client_checkins").delete(r.id)))),
+      pb.collection("trainer_measurements").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("trainer_measurements").delete(r.id)))),
+      pb.collection("progress_photos").getFullList({ filter: `user_id="${client.id}"` }).then(rs => Promise.all(rs.map(r => pb.collection("progress_photos").delete(r.id)))),
     ]);
     await pb.collection("users").delete(client.id);
     loadClients();
@@ -452,11 +448,7 @@ export default function AdminPanel({ user, onLogout }) {
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", paddingBottom:48 }}>
       {openClient && (
-        <ClientProfile
-          client={openClient}
-          onClose={() => setOpenClient(null)}
-          onSaved={() => { loadClients(); setOpenClient(null); }}
-        />
+        <ClientProfile client={openClient} onClose={() => setOpenClient(null)} onSaved={() => { loadClients(); setOpenClient(null); }} />
       )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -467,9 +459,7 @@ export default function AdminPanel({ user, onLogout }) {
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>{user.email}</p>
             </div>
           </div>
-          <button onClick={onLogout} style={{ background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
-            Atsijungti
-          </button>
+          <button onClick={onLogout} style={{ background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>Atsijungti</button>
         </div>
       </div>
 

@@ -1,23 +1,26 @@
-import React from 'react';
+import { useState } from 'react';
 import { PK } from './constants';
 import { pb } from './pb';
+import ProgressPhotoUpload from "./ProgressPhotoUpload";
 
 export default function ReportOverlay({ report, userId, onRead }) {
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+
   if (!report) return null;
 
-  const handleRead = async () => {
-    await pb.collection("users").update(userId, { last_read_report_id: report.id });
-    onRead();
-  };
-
   const isLoss = report.weightDiff < 0;
+
+  async function handleRead() {
+    await pb.collection("users").update(userId, { last_read_report_id: report.id });
+    setShowPhotoUpload(true);
+  }
 
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       background: "rgba(45, 20, 31, 0.9)", zIndex: 9999,
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 20, backdropFilter: "blur(8px)"
+      padding: 20, backdropFilter: "blur(8px)", overflowY: "auto",
     }}>
       <div style={{
         background: "#fff", borderRadius: 28, width: "100%", maxWidth: 400,
@@ -43,13 +46,17 @@ export default function ReportOverlay({ report, userId, onRead }) {
             </div>
           </div>
 
-          <button onClick={handleRead} style={{
-            width: "100%", padding: "14px", background: PK.mid, border: "none",
-            borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>
-            Perskaičiau ✓
-          </button>
+          {!showPhotoUpload ? (
+            <button onClick={handleRead} style={{
+              width: "100%", padding: "14px", background: PK.mid, border: "none",
+              borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>
+              Perskaičiau ✓
+            </button>
+          ) : (
+            <ProgressPhotoUpload userId={userId} onComplete={onRead} />
+          )}
         </div>
       </div>
     </div>
