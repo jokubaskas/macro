@@ -271,21 +271,21 @@ useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, load
   async function updateEntry(id, newAmount, per100) {
     const r = newAmount / 100;
     try {
-      await pb.collection("food_log").update({
-        amount:  newAmount,
-        kcal:    Math.round(per100.kcal    * r),
-        protein: Math.round(per100.protein * r * 10) / 10,
-        fat:     Math.round(per100.fat     * r * 10) / 10,
-        carbs:   Math.round(per100.carbs   * r * 10) / 10,
-      }).eq("id", id);
-      setEditingId(null);
-      loadEntries();
+      await pb.collection("food_log").update(id, {
+  amount:  newAmount,
+  kcal:    Math.round(per100.kcal    * r),
+  protein: Math.round(per100.protein * r * 10) / 10,
+  fat:     Math.round(per100.fat     * r * 10) / 10,
+  carbs:   Math.round(per100.carbs   * r * 10) / 10,
+});
+setEditingId(null);
+loadEntries();
     } catch(e) { console.error("updateEntry:", e); }
   }
 
   async function replaceEntry(id, meal, food) {
     try {
-      await pb.collection("food_log").delete().eq("id", id);
+await pb.collection("food_log").delete(id);
       await pb.collection("food_log").create({
         user_id:user.id, date:selectedDate, meal,
         name:food.name, brand:food.brand||"",
@@ -296,7 +296,7 @@ useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, load
     } catch(e) { console.error("replaceEntry:", e); }
   }
 
-  async function removeEntry(id) { await pb.collection("food_log").delete().eq("id",id); loadEntries(); }
+async function removeEntry(id) { await pb.collection("food_log").delete(id); loadEntries(); }
   function toggleMeal(id) { setOpenMeal(p=>p===id?null:id); setEditingId(null); }
   function handleDateSelect(d) { setSelectedDate(d); setOpenMeal(null); }
 
@@ -334,7 +334,10 @@ useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, load
             const over=m.cur>m.tgt;
             return (
               <div key={m.l} style={{textAlign:"center"}}>
-                <div style={{fontSize:15,fontWeight:800,color:over?"#FFD700":"#fff"}}>{m.cur}</div>
+                <div style={{fontSize:15,fontWeight:800,color:over?"#FFD700":"#fff"}}>
+  {m.cur}
+  {m.tgt>0&&<span style={{fontSize:9,fontWeight:400,color:"rgba(255,255,255,0.35)"}}>/{m.tgt}</span>}
+</div>
                 <div style={{fontSize:8,color:"rgba(255,255,255,0.45)",margin:"2px 0"}}>{m.l}</div>
                 <div style={{background:"rgba(255,255,255,0.15)",borderRadius:99,height:3}}>
                   <div style={{width:pct+"%",height:"100%",borderRadius:99,background:over?"#FFD700":"rgba(255,255,255,0.7)",transition:"width 0.4s"}}/>

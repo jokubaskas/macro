@@ -408,32 +408,32 @@ const loadHistory = useCallback(async () => {
   }
 
   async function updateEntry(id, newAmount, per100) {
-    const r = newAmount / 100;
-    try {
-      await pb.collection("food_log").update({
-        amount:  newAmount,
-        kcal:    Math.round(per100.kcal    * r),
-        protein: Math.round(per100.protein * r * 10) / 10,
-        fat:     Math.round(per100.fat     * r * 10) / 10,
-        carbs:   Math.round(per100.carbs   * r * 10) / 10,
-      }).eq("id", id);
-      setEditingId(null);
-      loadEntries();
-    } catch(e) { console.error("updateEntry:", e); }
-  }
+  const r = newAmount / 100;
+  try {
+    await pb.collection("food_log").update(id, {
+      amount:  newAmount,
+      kcal:    Math.round(per100.kcal    * r),
+      protein: Math.round(per100.protein * r * 10) / 10,
+      fat:     Math.round(per100.fat     * r * 10) / 10,
+      carbs:   Math.round(per100.carbs   * r * 10) / 10,
+    });
+    setEditingId(null);
+    loadEntries();
+  } catch(e) { console.error("updateEntry:", e); }
+}
 
   async function replaceEntry(id, meal, food) {
-    try {
-      await pb.collection("food_log").delete().eq("id", id);
-      await pb.collection("food_log").create({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
-      loadEntries();
-    } catch(e) { console.error("replaceEntry:", e); }
-  }
+  try {
+    await pb.collection("food_log").delete(id);
+    await pb.collection("food_log").create({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
+    loadEntries();
+  } catch(e) { console.error("replaceEntry:", e); }
+}
 
   async function removeEntry(id) {
-    await pb.collection("food_log").delete().eq("id", id);
-    loadEntries();
-  }
+  await pb.collection("food_log").delete(id);
+  loadEntries();
+}
 
   const totals = entries.reduce((a,e)=>({ kcal:a.kcal+(e.kcal||0), protein:a.protein+(e.protein||0), fat:a.fat+(e.fat||0), carbs:a.carbs+(e.carbs||0) }),{ kcal:0,protein:0,fat:0,carbs:0 });
   const historyByDate = history.reduce((acc,e)=>{ if(!acc[e.date]) acc[e.date]=[]; acc[e.date].push(e); return acc; },{});
