@@ -73,10 +73,10 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
   const isToday = (selectedDate||todayStr()) === todayStr();
 
   useEffect(() => {
-    if (!user) return;
-pb.collection("users").getOne(user.id)
-      .then(({ data }) => { setProfile(data); setLoading(false); });
-  }, [user.id]);
+  if (!user) return;
+  pb.collection("users").getOne(user.id)
+    .then(data => { setProfile(data); setLoading(false); });
+}, [user.id]);
 
   if (loading || !profile) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(160deg,#2d0a1a,${PK.dark},${PK.mid})`}}>
