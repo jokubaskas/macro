@@ -28,7 +28,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
     if (!userId) return;
     setLoaded(false);
     async function load() {
-      const { data } = await pb.collection
+      const { data } = await pbFirst
       ("water_log").select("ml, goal")
         .eq("user_id", userId).eq("date", currentDate)
         .maybeSingle();
@@ -43,9 +43,8 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
   async function save(newDrunk) {
     if (!userId || !isToday) return;
     setSaving(true);
-    await pbUpsert("upsert_water_log", {
-      p_user_id: userId, p_date: currentDate, p_ml: newDrunk, p_goal: goal,
-    });
+    await pbUpsert("water_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, ml:newDrunk, goal });
+
     setSaving(false);
   }
 

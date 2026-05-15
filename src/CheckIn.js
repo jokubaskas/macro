@@ -35,10 +35,10 @@ function getSundayInfo() {
 async function calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age) {
   const weekEnd = getWeekEnd(weekStart);
 
-  const [{ data:foods }, { data:sleeps }] = await Promise.all([
-    pb.collection("food_log").select("date,kcal,protein").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
-    pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd),
-  ]);
+  const [foods, sleeps] = await Promise.all([
+  pb.collection("food_log").getFullList({ filter: `user_id="${userId}" && date>="${weekStart}" && date<="${weekEnd}"`, requestKey: null }),
+  pb.collection("sleep_log").getFullList({ filter: `user_id="${userId}" && date>="${weekStart}" && date<="${weekEnd}"`, requestKey: null }),
+]);
 
   // Mityba
   let dietScore = null, dietDetail = null;
@@ -78,9 +78,8 @@ async function calcAutoMetrics(userId, weekStart, targetKcal, targetProtein, age
 
   // Vanduo
   let waterScore = null;
-  const { data:waters } = await pb.collection
-  ("water_log").select("ml,goal")
-    .eq("user_id",userId).gte("date",weekStart).lte("date",weekEnd);
+  const waters = await pb.collection("water_log").getFullList({ filter: `user_id="${userId}" && date>="${weekStart}" && date<="${weekEnd}"`, requestKey: null });
+
   if (waters?.length) {
     const goalDays = waters.filter(w=>w.ml>=(w.goal||2000)).length;
     const rate     = goalDays/7;
@@ -187,12 +186,10 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
   const { isSunday, daysUntilSun, nextSunStr } = getSundayInfo();
 
   const load = useCallback(async () => {
-    const { data } = await pb.collection
-    ("client_checkins").select("*")
-      .eq("user_id",userId)
-      .order("week_start",{ascending:false})
-      .limit(8);
-    setCheckins(data||[]);
+    const data = await pb.collection("client_checkins").getList(1, 8, {
+  filter: `user_id="${userId}"`, sort: "-week_start", requestKey: null,
+}).then(r => r.items);
+setCheckins(data||[])
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
@@ -211,20 +208,19 @@ export default function CheckIn({ userId, targetKcal, targetProtein, age }) {
 
   async function handleSave() {
     setSaving(true);
-    await pb.collection("client_checkins").upsert({
-      user_id:        userId,
-      week_start:     weekStart,
-      weight_self:    parseFloat(form.weight_self)||null,
-      energy:         form.energy,
-      diet_adherence: dietScore,
-      sleep_quality:  sleepScore,
-      water_score:    waterScore,
-      workouts_done:  form.workouts_done,
-      stress_level:   form.stress_level,
-      client_note:    form.client_note||null,
-      is_done:        true,
-      done_at:        new Date().toISOString(),
-    }, { onConflict:"user_id,week_start" });
+    await pbUpsert("client_checkins", `user_id="${userId}" && week_start="${weekStart}"`, {
+  user_id:userId, week_start:weekStart,
+  weight_self:    parseFloat(form.weight_self)||null,
+  energy:         form.energy,
+  diet_adherence: dietScore,
+  sleep_quality:  sleepScore,
+  water_score:    waterScore,
+  workouts_done:  form.workouts_done,
+  stress_level:   form.stress_level,
+  client_note:    form.client_note||null,
+  is_done:        true,
+  done_at:        new Date().toISOString(),
+});
     await load();
     setShowForm(false);
     setSaving(false);

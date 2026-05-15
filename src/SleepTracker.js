@@ -169,10 +169,10 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
     setLoaded(false);
     const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
     Promise.all([
-      pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).eq("date",currentDate).maybeSingle(),
-      pb.collection("sleep_log").select("hours_slept").eq("user_id",userId).gte("date",weekAgo).lte("date",todayStr()),
-    ]).then(([{ data:todayData }, { data:week }]) => {
-      setSavedHours(todayData?.hours_slept ?? null);
+  pbFirst("sleep_log", `user_id="${userId}" && date="${currentDate}"`),
+  pb.collection("sleep_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}" && date<="${todayStr()}"`, requestKey: null }),
+]).then(([todayData, week]) => {
+  setSavedHours(todayData?.hours_slept ?? null);
       setLocalHours(null);
       if (week?.length) {
         const avg = week.reduce((a,d)=>a+(+d.hours_slept),0)/week.length;
@@ -185,7 +185,7 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
   async function handleSave() {
     if (!userId || localHours === null) return;
     setSaving(true);
-    await pbUpsert("upsert_sleep_log", { p_user_id:userId, p_date:currentDate, p_hours:localHours });
+await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, hours_slept:localHours });
     setSavedHours(localHours);
     setLocalHours(null);
     setSaving(false);
