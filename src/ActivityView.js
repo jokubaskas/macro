@@ -74,9 +74,17 @@ export default function ActivityView({ user, onLogout, selectedDate, onDateChang
 
   useEffect(() => {
   if (!user) return;
+  console.log("ActivityView: loading user", user.id);
   pb.collection("users").getOne(user.id)
-    .then(data => { setProfile(data); setLoading(false); })
-    .catch(e => { console.error("ActivityView load:", e); setLoading(false); });
+    .then(data => { 
+      console.log("ActivityView: got data", data);
+      setProfile(data); 
+      setLoading(false); 
+    })
+    .catch(e => { 
+      console.error("ActivityView load:", e); 
+      setLoading(false); 
+    });
 }, [user.id]);
 
   if (loading || !profile) return (
