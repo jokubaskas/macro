@@ -258,7 +258,7 @@ useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, load
   async function addEntry(meal, food) {
     setSearching(false); setActiveMeal(null);
     try {
-      await pb.collection("food_log").insert({
+      await pb.collection("food_log").create({
         user_id:user.id, date:selectedDate, meal,
         name:food.name, brand:food.brand||"",
         amount:food.amount||food.grams||100,
@@ -286,7 +286,7 @@ useEffect(() => { if (openSection === null) loadEntries(); }, [openSection, load
   async function replaceEntry(id, meal, food) {
     try {
       await pb.collection("food_log").delete().eq("id", id);
-      await pb.collection("food_log").insert({
+      await pb.collection("food_log").create({
         user_id:user.id, date:selectedDate, meal,
         name:food.name, brand:food.brand||"",
         amount:food.amount||food.grams||100,
