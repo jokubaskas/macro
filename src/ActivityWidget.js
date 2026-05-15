@@ -73,8 +73,7 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
     if (!dur || !adding) return;
     setSaving(true);
     const { data } = await pb.collection("workout_log")
-      .insert({ user_id:userId, date:currentDate, type:adding, duration_min:dur })
-      .select().single();
+      .create({ user_id:userId, date:currentDate, type:adding, duration_min:dur });
     const next = data ? [...workouts, data] : workouts;
     setWorkouts(next);
     onActivityChange?.(steps, next);

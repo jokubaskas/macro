@@ -247,7 +247,7 @@ export default function TrainerMeasurements({ clientId, clientName }) {
     if (editId) {
       await pb.collection("trainer_measurements").update(payload).eq("id",editId);
     } else {
-      await pb.collection("trainer_measurements").insert(payload);
+      await pb.collection("trainer_measurements").create(payload);
     }
     await load();
     setTab("overview");

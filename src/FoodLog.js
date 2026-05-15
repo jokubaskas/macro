@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "./supabase";
+import { pb, pbFirst, pbUpsert } from "./pb";
 import { ALL_FOODS, LOCAL_FOODS, searchLocalFoods, CATEGORIES } from "./foodDatabase";
 
 const PK = {
@@ -386,7 +386,7 @@ export default function FoodLog({ userId, targetMacros }) {
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("food_log").select("*").eq("user_id",userId).eq("date",date).order("created_at");
+    const { data } = await pb.collection("food_log").select("*").eq("user_id",userId).eq("date",date).order("created_at");
     setEntries(data||[]);
     setLoading(false);
   }, [userId, date]);
@@ -402,7 +402,7 @@ export default function FoodLog({ userId, targetMacros }) {
   async function addEntry(meal, food) {
     setSearching(false); setActiveMeal(null);
     try {
-      await supabase.from("food_log").insert({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
+      await pb.collection("food_log").create({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
       loadEntries();
     } catch(e) { console.error("addEntry:", e); }
   }
@@ -410,7 +410,7 @@ export default function FoodLog({ userId, targetMacros }) {
   async function updateEntry(id, newAmount, per100) {
     const r = newAmount / 100;
     try {
-      await supabase.from("food_log").update({
+      await pb.collection("food_log").update({
         amount:  newAmount,
         kcal:    Math.round(per100.kcal    * r),
         protein: Math.round(per100.protein * r * 10) / 10,
@@ -424,14 +424,14 @@ export default function FoodLog({ userId, targetMacros }) {
 
   async function replaceEntry(id, meal, food) {
     try {
-      await supabase.from("food_log").delete().eq("id", id);
-      await supabase.from("food_log").insert({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
+      await pb.collection("food_log").delete().eq("id", id);
+      await pb.collection("food_log").create({ user_id:userId, date, meal, name:food.name, brand:food.brand||"", amount:food.amount||100, kcal:food.kcal||0, protein:food.protein||0, fat:food.fat||0, carbs:food.carbs||0 });
       loadEntries();
     } catch(e) { console.error("replaceEntry:", e); }
   }
 
   async function removeEntry(id) {
-    await supabase.from("food_log").delete().eq("id", id);
+    await pb.collection("food_log").delete().eq("id", id);
     loadEntries();
   }
 
