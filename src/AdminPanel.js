@@ -239,7 +239,7 @@ function NewClientForm({ onSave, onCancel }) {
       const user = await adminCreateUser(form.email, form.password);
       await pb.collection("users").update(user.id, { name: form.name });
       onSave();
-    } catch(e) { setError(e.message); }
+} catch(e) { console.log("NewClientForm klaida:", e); setError(e.message || JSON.stringify(e)); }
     setSaving(false);
   }
 
