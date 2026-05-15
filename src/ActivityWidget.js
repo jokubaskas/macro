@@ -47,9 +47,9 @@ export default function ActivityWidget({ userId, weightKg, date, onActivityChang
     Promise.all([
       pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
 pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date="${currentDate}"`, sort: "created", requestKey: null }),
-    ]).then(([{data:s},{data:w}]) => {
-      const st = s?.steps || 0;
-      const wt = w || [];
+    ]).then(([s, w]) => {
+  const st = s?.steps || 0;
+  const wt = w || [];
       setSteps(st); setWorkouts(wt); setLoaded(true);
       onActivityChange?.(st, wt);
     });
