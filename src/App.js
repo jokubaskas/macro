@@ -5,6 +5,8 @@ import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
 import ActivityView from "./ActivityView";
 import Onboarding from "./Onboarding";
+import PhotoUploadPrompt from "./Photouploadprompt";
+
 
 export default function App() {
   const [user,         setUser]         = useState(null);
@@ -90,6 +92,14 @@ export default function App() {
   if (!profile.onboarding_done) {
     return <Onboarding user={user} onComplete={() => loadProfile(user)} />;
   }
+
+  if (!profile.photo_front) {
+  return <PhotoUploadPrompt user={user} onComplete={() => loadProfile(user)} />;
+}
+
+  if (!profile.onboarding_done) {
+  return <Onboarding user={user} onComplete={() => loadProfile(user)} />;
+}
 
   function handleDateChange(v) {
     if (v === "today" || !v) setSelectedDate(new Date().toISOString().split("T")[0]);
