@@ -69,16 +69,16 @@ pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date=
   }
 
   async function saveWorkout() {
-    const dur = parseInt(duration);
-    if (!dur || !adding) return;
-    setSaving(true);
-    const { data } = await pb.collection("workout_log")
-      .create({ user_id:userId, date:currentDate, type:adding, duration_min:dur });
-    const next = data ? [...workouts, data] : workouts;
-    setWorkouts(next);
-    onActivityChange?.(steps, next);
-    setAdding(null); setDuration(""); setSaving(false);
-  }
+  const dur = parseInt(duration);
+  if (!dur || !adding) return;
+  setSaving(true);
+  const data = await pb.collection("workout_log")
+    .create({ user_id:userId, date:currentDate, type:adding, duration_min:dur });
+  const next = data ? [...workouts, data] : workouts;
+  setWorkouts(next);
+  onActivityChange?.(steps, next);
+  setAdding(null); setDuration(""); setSaving(false);
+}
 
   async function deleteWorkout(id) {
     await pb.collection("workout_log").delete().eq("id", id);
