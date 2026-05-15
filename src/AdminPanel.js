@@ -9,16 +9,21 @@ const STEPS_LABELS = {
 };
 
 async function adminCreateUser(email, password) {
-  const data = await pb.collection("users").create({
-    email,
-    password,
-    passwordConfirm: password,
-    role: "client",
-    onboarding_done: false,
-    emailVisibility: true,
-  });
-  if (!data?.id) throw new Error("Klaida kuriant vartotoją");
-  return data;
+  try {
+    const data = await pb.collection("users").create({
+      email,
+      password,
+      passwordConfirm: password,
+      role: "client",
+      onboarding_done: false,
+      emailVisibility: true,
+    });
+    if (!data?.id) throw new Error("Klaida kuriant vartotoją");
+    return data;
+  } catch(e) {
+    console.log("Klaida:", e);
+    throw e;
+  }
 }
 
 function Card({ children, style }) {
