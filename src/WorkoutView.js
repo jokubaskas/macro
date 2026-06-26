@@ -25,7 +25,7 @@ export default function WorkoutView({ user, onClose }) {
     const today = todayStr();
     // Rasti aktyvų planą
     const plans = await pb.collection("workout_plans").getList(1,1,{
-      filter: `user_id="${user.id}" && is_active=true && valid_until>="${today}"`,
+      filter: `user_id="${user.id}" && is_active=true`,
       sort: "-created", requestKey: null,
     }).then(r=>r.items).catch(()=>[]);
 
@@ -69,28 +69,17 @@ export default function WorkoutView({ user, onClose }) {
 
   async function toggleDone(ex) {
     const existing = logs[ex.id];
+    if (existing?.is_done) return; // užrakinta — negalima atžymėti
     setSaving(s=>({...s,[ex.id]:true}));
 
-    if (existing?.is_done) {
-      // Atžymėti
-      await pb.collection("workout_logs_client").update(existing.id, { is_done: false }).catch(()=>{});
-      setLogs(l=>({...l,[ex.id]:{...existing,is_done:false}}));
-    } else if (existing) {
-      // Pažymėti kaip atlikta
+    if (existing) {
       await pb.collection("workout_logs_client").update(existing.id, { is_done: true }).catch(()=>{});
       setLogs(l=>({...l,[ex.id]:{...existing,is_done:true}}));
     } else {
-      // Sukurti naują
       const rec = await pb.collection("workout_logs_client").create({
-        user_id: user.id,
-        plan_exercise_id: ex.id,
-        day_id: activeDay.id,
-        date: todayStr(),
-        sets_done: ex.sets,
-        reps_done: ex.reps,
-        weight_done: ex.weight_kg,
-        duration_done: ex.duration_min,
-        is_done: true,
+        user_id: user.id, plan_exercise_id: ex.id, day_id: activeDay.id,
+        date: todayStr(), sets_done: ex.sets, reps_done: ex.reps,
+        weight_done: ex.weight_kg, duration_done: ex.duration_min, is_done: true,
       }).catch(()=>null);
       if (rec) setLogs(l=>({...l,[ex.id]:rec}));
     }
@@ -178,7 +167,7 @@ export default function WorkoutView({ user, onClose }) {
                               : `${ex.sets||"–"} serijos × ${ex.reps||"–"} kartojimai${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
                           </p>
                         </div>
-                        <button onClick={()=>!isSav&&toggleDone(ex)} style={{ width:36, height:36, borderRadius:"50%", border:`2px solid ${isDone?"#7FFFB0":"rgba(255,255,255,0.3)"}`, background:isDone?"rgba(127,255,176,0.2)":"transparent", color:isDone?"#7FFFB0":"rgba(255,255,255,0.5)", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s" }}>
+                        <button onClick={()=>!isSav&&!isDone&&toggleDone(ex)} style={{ width:36, height:36, borderRadius:"50%", border:`2px solid ${isDone?"#7FFFB0":"rgba(255,255,255,0.3)"}`, background:isDone?"rgba(127,255,176,0.2)":"transparent", color:isDone?"#7FFFB0":"rgba(255,255,255,0.5)", fontSize:18, cursor:isDone?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s" }}>
                           {isSav ? "⋯" : isDone ? "✓" : "○"}
                         </button>
                       </div>
