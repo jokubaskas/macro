@@ -73,6 +73,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [minDate,      setMinDate]      = useState(null);
   const [checkinKey,   setCheckinKey]   = useState(0);
   const [showWorkout,  setShowWorkout]  = useState(false);
+  const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : null;
@@ -87,6 +88,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         const min = new Date(); min.setDate(min.getDate() - 90);
         setMinDate(min.toISOString().split("T")[0]);
       }
+      // Tikrinti ar yra aktyvus planas
+      const today = new Date().toISOString().split("T")[0];
+      pb.collection("workout_plans").getFullList({
+        filter: `user_id="${user.id}" && is_active=true`, requestKey: null,
+      }).then(plans => {
+        setHasActivePlan(plans.some(p => p.start_date <= today && p.end_date >= today));
+      }).catch(() => {});
     }
     load();
     pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
@@ -183,10 +191,12 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           onSaved={() => setCheckinKey(k => k + 1)}
         />
 
-        {/* Treniruotė */}
-        <button onClick={() => setShowWorkout(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          🏋️ Treniruotė
-        </button>
+        {/* Treniruotė — tik šiandien ir tik kai yra aktyvus planas */}
+        {isToday && hasActivePlan && (
+          <button onClick={() => setShowWorkout(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            🏋️ Treniruotė
+          </button>
+        )}
 
         {/* Miegas */}
         <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
