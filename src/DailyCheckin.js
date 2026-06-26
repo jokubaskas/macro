@@ -64,7 +64,7 @@ export default function DailyCheckin({ userId, date, onSaved }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const isDone = checkin?.is_done;
+  const isDone = checkin?.is_done === true || checkin?.is_done === "true";
   const canSave = isToday && !isDone && nutrition && wellbeing;
 
   async function handleSave() {
@@ -85,12 +85,24 @@ export default function DailyCheckin({ userId, date, onSaved }) {
 
   if (!loaded) return null;
 
-  return (
-    <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: 18, marginBottom: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>📋 Dienos check-in</p>
-        {isDone && <span style={{ fontSize: 11, background: "rgba(127,255,176,0.2)", color: "#7FFFB0", borderRadius: 8, padding: "3px 10px" }}>✓ Atlikta</span>}
+  // Sutrauktas vaizdas po išsaugojimo
+  if (isDone) {
+    const n = checkin.nutrition_score;
+    const w = checkin.wellbeing_score;
+    const E = { 1:"🔴", 2:"🟡", 3:"🟢" };
+    return (
+      <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>📋 Check-in</span>
+          <span style={{ fontSize: 18 }}>{E[n]}</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Mityba</span>
+          <span style={{ fontSize: 18 }}>{E[w]}</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Savijauta</span>
+        </div>
+        <span style={{ fontSize: 11, background: "rgba(127,255,176,0.2)", color: "#7FFFB0", borderRadius: 8, padding: "3px 10px" }}>✓</span>
       </div>
+    );
+  }
 
       {/* Mityba */}
       <div style={{ marginBottom: 16 }}>
