@@ -170,12 +170,11 @@ export default function Onboarding({ user, onComplete }) {
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
 
   const steps = [
-    { title:"Asmeniniai duomenys", icon:"👤" },
-    { title:"Tikslas ir motyvacija", icon:"🎯" },
-    { title:"Gyvensena",            icon:"🌿" },
-    { title:"Mityba ir iššūkiai",   icon:"🥗" },
-    { title:"Nuotraukos",           icon:"📸" },
-  ];
+  { title:"Asmeniniai duomenys", icon:"👤" },
+  { title:"Tikslas ir motyvacija", icon:"🎯" },
+  { title:"Gyvensena",            icon:"🌿" },
+  { title:"Mityba ir iššūkiai",   icon:"🥗" },
+];
 
   function canNext() {
     if (step === 0) return form.dob && form.height && form.weight;
