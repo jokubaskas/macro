@@ -193,6 +193,37 @@ function ClientCard({ client, onOpen }) {
   );
 }
 
+// ── Plano dienos pratimai (admin peržiūra) ────────────────────────────────────
+function PlanDayExercises({ dayId }) {
+  const [exercises, setExercises] = useState([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    pb.collection("workout_plan_exercises").getFullList({ filter: `day_id="${dayId}"`, sort: "order", requestKey: null })
+      .then(data => { setExercises(data); setLoading(false); }).catch(() => setLoading(false));
+  }, [dayId]);
+
+  if (loading) return <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"8px 0 0" }}>Kraunama...</p>;
+  if (!exercises.length) return <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"8px 0 0" }}>Pratimų nėra</p>;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:4 }}>
+      {exercises.map((ex, i) => (
+        <div key={ex.id} style={{ background:"rgba(0,0,0,0.2)", borderRadius:10, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{i+1}. {ex.exercise_name}</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>
+              {ex.category==="cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+            </p>
+          </div>
+          <span style={{ fontSize:10, color:ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Kliento profilis su kalendoriumi ─────────────────────────────────────────
 function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
@@ -200,6 +231,7 @@ function ClientDetail({ client, onClose }) {
   const [showPlanBuilder, setShowPlanBuilder] = useState(false);
   const [activePlan, setActivePlan]     = useState(null);
   const [planDays, setPlanDays]         = useState([]);
+  const [activePlanDay, setActivePlanDay] = useState(null);
 
   useEffect(() => {
     pb.collection("daily_checkins").getFullList({
@@ -237,18 +269,24 @@ function ClientDetail({ client, onClose }) {
         {/* Sporto planas */}
         {activePlan ? (
           <div style={{ marginBottom: 16, background: "rgba(26,71,49,0.5)", borderRadius: 16, padding: "14px 16px", border: "1px solid rgba(127,255,176,0.2)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px" }}>🏋️ {activePlan.plan_name}</p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>Galioja iki {activePlan.valid_until} · {activePlan.days_count} d./sav.</p>
               </div>
               <button onClick={() => setShowPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>+ Naujas</button>
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {/* Dienų tab'ai */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, paddingBottom: 2 }}>
               {planDays.map(d => (
-                <span key={d.id} style={{ fontSize: 11, background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "3px 10px" }}>{d.day_name}</span>
+                <button key={d.id} onClick={() => setActivePlanDay(p => p?.id === d.id ? null : d)}
+                  style={{ padding: "6px 12px", borderRadius: 20, border: "none", background: activePlanDay?.id === d.id ? "#276749" : "rgba(255,255,255,0.1)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}>
+                  {d.day_name}
+                </button>
               ))}
             </div>
+            {/* Pratimai pasirinktai dienai */}
+            {activePlanDay && <PlanDayExercises dayId={activePlanDay.id} />}
           </div>
         ) : (
           <button onClick={() => setShowPlanBuilder(true)} style={{ width: "100%", padding: "14px", marginBottom: 16, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
