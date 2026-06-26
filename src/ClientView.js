@@ -3,8 +3,9 @@ import { pb, pbFirst } from "./pb";
 import { PK, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
-import DailyCheckin from "./Dailycheckin";
+import DailyCheckin from "./DailyCheckin";
 import MeasurementReport from "./MeasurementReport";
+import MotivationalCard from "./MotivationalCard";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -128,8 +129,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src="/logo.png" alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{profile?.name?.split(" ")[0]}</p>
-              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0 }}>{goalLabel}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>Daily Check-in</p>
+              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0 }}>{profile?.name?.split(" ")[0]}</p>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -164,6 +165,11 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               📅 {new Date(selectedDate + "T12:00:00").toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" })}
             </p>
           </div>
+        )}
+
+        {/* Motyvacija */}
+        {isToday && (
+          <MotivationalCard userId={user.id} res={null} goalId={profile?.goal} />
         )}
 
         {/* Daily Check-in */}
