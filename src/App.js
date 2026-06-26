@@ -27,7 +27,8 @@ export default function App() {
 
   async function loadProfile(authModel) {
     setUser(authModel);
-    const freshProfile = await pb.collection("users").getOne(authModel.id).catch(() => authModel);
+    setProfile(null);
+    const freshProfile = await pb.collection("users").getOne(authModel.id, { requestKey: null }).catch(() => authModel);
     setProfile(freshProfile);
     setLoading(false);
   }
