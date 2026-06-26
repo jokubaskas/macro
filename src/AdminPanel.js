@@ -235,14 +235,17 @@ function ClientDetail({ client, onClose }) {
   const [workoutLogs, setWorkoutLogs]     = useState({});
   const [planLoading, setPlanLoading]     = useState(false);
 
+  function reloadPlans() {
+    pb.collection("workout_plans").getFullList({
+      filter: `user_id="${client.id}" && is_active=true`, sort: "created", requestKey: null,
+    }).then(setAllPlans).catch(() => {});
+  }
+
   useEffect(() => {
     pb.collection("daily_checkins").getFullList({
       filter: `user_id="${client.id}" && is_done=true`, fields: "date", requestKey: null,
     }).then(items => setCheckinDates(items.map(i => i.date))).catch(() => {});
-
-    pb.collection("workout_plans").getFullList({
-      filter: `user_id="${client.id}" && is_active=true`, sort: "created", requestKey: null,
-    }).then(setAllPlans).catch(() => {});
+    reloadPlans();
   }, [client.id]);
 
   // Kai keičiasi data — rasti planą kuris TUO METU galiojo
@@ -250,20 +253,18 @@ function ClientDetail({ client, onClose }) {
     setPlanForDate(null); setPlanDays([]); setSelectedPlanDay(null); setPlanExercises([]); setWorkoutLogs({});
     if (!allPlans.length) return;
 
-    // Planas galiojo jei: created <= selectedDate IR valid_until >= selectedDate
-    // Iš kelių tinkamų — imame naujausią (sort:"created" ASC, tai paskutinis)
+    // Naudojame start_date ir end_date
     const validPlans = allPlans.filter(p =>
-      p.created.slice(0,10) <= selectedDate && p.valid_until >= selectedDate
+      (p.start_date || p.created.slice(0,10)) <= selectedDate && p.end_date >= selectedDate
     );
     const plan = validPlans[validPlans.length - 1] || null;
     setPlanForDate(plan);
-
     if (!plan) return;
+
     pb.collection("workout_plan_days").getFullList({
       filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
     }).then(days => {
       setPlanDays(days);
-      // Automatiškai parinkti pirmą dieną
       if (days.length) setSelectedPlanDay(days[0]);
     }).catch(() => {});
   }, [selectedDate, allPlans]);
@@ -275,11 +276,13 @@ function ClientDetail({ client, onClose }) {
     setPlanLoading(true);
 
     pb.collection("workout_plan_exercises").getFullList({
-      filter: `day_id="${selectedPlanDay.id}"`, sort: "order", requestKey: null,
+      filter: `day_id="${selectedPlanDay.id}"`, sort: "order_num", requestKey: null,
     }).then(async exs => {
       setPlanExercises(exs);
+      // Logai: klientas atliko šios plano dienos pratimus pasirinktą kalendorinę dieną
       const logs = await pb.collection("workout_logs_client").getFullList({
-        filter: `user_id="${client.id}" && date="${selectedDate}"`, requestKey: null,
+        filter: `user_id="${client.id}" && plan_day_id="${selectedPlanDay.id}" && calendar_date="${selectedDate}"`,
+        requestKey: null,
       }).catch(() => []);
       const logsMap = {};
       logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
@@ -293,7 +296,7 @@ function ClientDetail({ client, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showPlanBuilder && (
-        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); pb.collection("workout_plans").getFullList({ filter:`user_id="${client.id}" && is_active=true`, sort:"created", requestKey:null }).then(setAllPlans).catch(()=>{}); }} />
+        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); reloadPlans(); }} />
       )}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
@@ -313,7 +316,7 @@ function ClientDetail({ client, onClose }) {
                 <>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px" }}>🏋️ {planForDate.plan_name}</p>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-                    Galioja iki {planForDate.valid_until}
+                    {planForDate.start_date} → {planForDate.end_date}
                     {doneCount > 0 && <span style={{ marginLeft: 6, color: "#7FFFB0" }}>· {doneCount}/{planExercises.length} atlikta</span>}
                   </p>
                 </>
@@ -326,13 +329,13 @@ function ClientDetail({ client, onClose }) {
             <button onClick={() => setShowPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>+ Naujas</button>
           </div>
 
-          {/* Dienų tab'ai — rankinis pasirinkimas */}
+          {/* Dienų tab'ai */}
           {planForDate && planDays.length > 0 && (
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, paddingBottom: 2 }}>
               {planDays.map(d => (
                 <button key={d.id} onClick={() => setSelectedPlanDay(d)}
                   style={{ padding: "6px 12px", borderRadius: 20, border: "none", background: selectedPlanDay?.id === d.id ? "#276749" : "rgba(255,255,255,0.1)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}>
-                  {d.day_name}
+                  {d.day_label}
                 </button>
               ))}
             </div>
