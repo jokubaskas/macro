@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS } from "./constants";
+import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
 
 const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -196,6 +197,7 @@ function ClientCard({ client, onOpen }) {
 function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
+  const [showPlanBuilder, setShowPlanBuilder] = useState(false);
 
   useEffect(() => {
     // Krauti visus check-in datas kad pažymėti kalendoriuje
@@ -208,6 +210,9 @@ function ClientDetail({ client, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {showPlanBuilder && (
+        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>setShowPlanBuilder(false)} />
+      )}
       {/* Header */}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
@@ -218,6 +223,11 @@ function ClientDetail({ client, onClose }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+        {/* Sporto planas */}
+        <button onClick={() => setShowPlanBuilder(true)} style={{ width: "100%", padding: "14px", marginBottom: 16, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          🏋️ Sudaryti sporto planą
+        </button>
+
         {/* Kalendorius */}
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>Pasirinkite dieną</p>
         <MiniCalendar
