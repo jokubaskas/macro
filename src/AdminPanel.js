@@ -79,10 +79,16 @@ function MiniCalendar({ selectedDate, onSelect, checkinDates }) {
 function DayView({ clientId, date }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [planDay, setPlanDay] = useState(null);
+  const [planExercises, setPlanExercises] = useState([]);
+  const [planName, setPlanName] = useState("");
+  const [workoutLogs, setWorkoutLogs] = useState({});
 
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setPlanDay(null); setPlanExercises([]); setPlanName(""); setWorkoutLogs({});
+
       const [checkin, sleep, water] = await Promise.all([
         pb.collection("daily_checkins").getList(1, 1, { filter: `user_id="${clientId}" && date="${date}"`, requestKey: null })
           .then(r => r.items[0] || null).catch(() => null),
@@ -92,6 +98,41 @@ function DayView({ clientId, date }) {
           .then(r => r.items[0] || null).catch(() => null),
       ]);
       setData({ checkin, sleep, water });
+
+      const d = new Date(date + "T12:00:00");
+      const dayNum = d.getDay() === 0 ? 7 : d.getDay();
+
+      const plans = await pb.collection("workout_plans").getFullList({
+        filter: `user_id="${clientId}" && is_active=true`,
+        sort: "-created", requestKey: null,
+      }).catch(() => []);
+
+      const plan = plans.find(p => p.valid_until >= date) || null;
+
+      if (plan) {
+        setPlanName(plan.plan_name);
+        const days = await pb.collection("workout_plan_days").getFullList({
+          filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
+        }).catch(() => []);
+
+        const match = days.find(d => d.day_number === dayNum) || days[(dayNum - 1) % days.length] || null;
+        if (match) {
+          setPlanDay(match);
+          const exs = await pb.collection("workout_plan_exercises").getFullList({
+            filter: `day_id="${match.id}"`, sort: "order", requestKey: null,
+          }).catch(() => []);
+          setPlanExercises(exs);
+
+          // Krauti kliento atliktus pratimus šią dieną
+          const logs = await pb.collection("workout_logs_client").getFullList({
+            filter: `user_id="${clientId}" && date="${date}"`, requestKey: null,
+          }).catch(() => []);
+          const logsMap = {};
+          logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
+          setWorkoutLogs(logsMap);
+        }
+      }
+
       setLoading(false);
     }
     load();
@@ -167,11 +208,43 @@ function DayView({ clientId, date }) {
           </p>
         </div>
       )}
+      {/* Treniruotės planas */}
+      {planDay && (
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600 }}>
+            🏋️ {planName} · {planDay.day_name}
+            {Object.values(workoutLogs).filter(l=>l.is_done).length > 0 && (
+              <span style={{ marginLeft: 8, color: "#7FFFB0" }}>
+                {Object.values(workoutLogs).filter(l=>l.is_done).length}/{planExercises.length} atlikta
+              </span>
+            )}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {planExercises.map((ex, i) => {
+              const done = workoutLogs[ex.id]?.is_done;
+              return (
+                <div key={ex.id} style={{ background: done ? "rgba(127,255,176,0.08)" : "rgba(255,255,255,0.07)", borderRadius: 10, padding: "9px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${done ? "rgba(127,255,176,0.25)" : "transparent"}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 2px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
+                        {i+1}. {ex.exercise_name}
+                      </p>
+                      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+                        {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 10, color: ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ── Kliento kortelė (sąraše) ──────────────────────────────────────────────────
 function ClientCard({ client, onOpen }) {
   return (
     <button onClick={onOpen} style={{
