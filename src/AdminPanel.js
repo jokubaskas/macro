@@ -255,7 +255,7 @@ function ClientDetail({ client, onClose }) {
 
     // Naudojame start_date ir end_date
     const validPlans = allPlans.filter(p =>
-      (p.start_date || p.created.slice(0,10)) <= selectedDate && p.end_date >= selectedDate
+      (p.start_date || "").slice(0,10) <= selectedDate && (p.end_date || "").slice(0,10) >= selectedDate
     );
     const plan = validPlans[validPlans.length - 1] || null;
     setPlanForDate(plan);
