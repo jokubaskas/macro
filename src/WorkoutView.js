@@ -58,7 +58,7 @@ export default function WorkoutView({ user, onClose }) {
 
     // Krauti šiandienos logus
     pb.collection("workout_logs_client").getFullList({
-      filter: `user_id="${user.id}" && date="${todayStr()}" && day_id="${activeDay.id}"`,
+      filter: `user_id="${user.id}" && date="${todayStr()}"`,
       requestKey: null,
     }).then(items => {
       const map = {};
