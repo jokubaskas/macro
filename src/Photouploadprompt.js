@@ -31,6 +31,7 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
       if (photos.photo_back)  formData.append("photo_back",  photos.photo_back);
       await pb.collection("users").update(user.id, formData);
       onComplete();
+      window.location.reload();
     } catch(e) {
       console.error("Photo upload:", e);
       setError("Klaida įkeliant nuotraukas. Bandykite dar kartą.");
