@@ -77,7 +77,7 @@ export default function Login() {
           {mode === "register" && (
             <div>
               <label style={lbl}>Vardas Pavardė</label>
-              <input style={inp} type="text" value={name} placeholder="Emilija Šerkšnaitė" onChange={e => setName(e.target.value)} />
+              <input style={inp} type="text" value={name} placeholder="Vardas Pavardė" onChange={e => setName(e.target.value)} />
             </div>
           )}
           <div>
