@@ -75,20 +75,14 @@ function MiniCalendar({ selectedDate, onSelect, checkinDates }) {
   );
 }
 
-// ── Dienos duomenų vaizdas ─────────────────────────────────────────────────────
+// ── Dienos duomenų vaizdas (tik check-in / miegas / vanduo) ──────────────────
 function DayView({ clientId, date }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [planDay, setPlanDay] = useState(null);
-  const [planExercises, setPlanExercises] = useState([]);
-  const [planName, setPlanName] = useState("");
-  const [workoutLogs, setWorkoutLogs] = useState({});
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      setPlanDay(null); setPlanExercises([]); setPlanName(""); setWorkoutLogs({});
-
       const [checkin, sleep, water] = await Promise.all([
         pb.collection("daily_checkins").getList(1, 1, { filter: `user_id="${clientId}" && date="${date}"`, requestKey: null })
           .then(r => r.items[0] || null).catch(() => null),
@@ -98,41 +92,6 @@ function DayView({ clientId, date }) {
           .then(r => r.items[0] || null).catch(() => null),
       ]);
       setData({ checkin, sleep, water });
-
-      const d = new Date(date + "T12:00:00");
-      const dayNum = d.getDay() === 0 ? 7 : d.getDay();
-
-      const plans = await pb.collection("workout_plans").getFullList({
-        filter: `user_id="${clientId}" && is_active=true`,
-        sort: "-created", requestKey: null,
-      }).catch(() => []);
-
-      const plan = plans.find(p => p.valid_until >= date) || null;
-
-      if (plan) {
-        setPlanName(plan.plan_name);
-        const days = await pb.collection("workout_plan_days").getFullList({
-          filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
-        }).catch(() => []);
-
-        const match = days.find(d => d.day_number === dayNum) || days[(dayNum - 1) % days.length] || null;
-        if (match) {
-          setPlanDay(match);
-          const exs = await pb.collection("workout_plan_exercises").getFullList({
-            filter: `day_id="${match.id}"`, sort: "order", requestKey: null,
-          }).catch(() => []);
-          setPlanExercises(exs);
-
-          // Krauti kliento atliktus pratimus šią dieną
-          const logs = await pb.collection("workout_logs_client").getFullList({
-            filter: `user_id="${clientId}" && date="${date}"`, requestKey: null,
-          }).catch(() => []);
-          const logsMap = {};
-          logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
-          setWorkoutLogs(logsMap);
-        }
-      }
-
       setLoading(false);
     }
     load();
@@ -208,40 +167,6 @@ function DayView({ clientId, date }) {
           </p>
         </div>
       )}
-      {/* Treniruotės planas */}
-      {planDay && (
-        <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600 }}>
-            🏋️ {planName} · {planDay.day_name}
-            {Object.values(workoutLogs).filter(l=>l.is_done).length > 0 && (
-              <span style={{ marginLeft: 8, color: "#7FFFB0" }}>
-                {Object.values(workoutLogs).filter(l=>l.is_done).length}/{planExercises.length} atlikta
-              </span>
-            )}
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {planExercises.map((ex, i) => {
-              const done = workoutLogs[ex.id]?.is_done;
-              return (
-                <div key={ex.id} style={{ background: done ? "rgba(127,255,176,0.08)" : "rgba(255,255,255,0.07)", borderRadius: 10, padding: "9px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${done ? "rgba(127,255,176,0.25)" : "transparent"}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 2px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
-                        {i+1}. {ex.exercise_name}
-                      </p>
-                      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-                        {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
-                      </p>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 10, color: ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -302,32 +227,70 @@ function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
   const [showPlanBuilder, setShowPlanBuilder] = useState(false);
-  const [activePlan, setActivePlan]     = useState(null);
-  const [planDays, setPlanDays]         = useState([]);
-  const [activePlanDay, setActivePlanDay] = useState(null);
+  const [allPlans, setAllPlans]         = useState([]);
+  const [planForDate, setPlanForDate]   = useState(null);
+  const [planDay, setPlanDay]           = useState(null);
+  const [planExercises, setPlanExercises] = useState([]);
+  const [workoutLogs, setWorkoutLogs]   = useState({});
+  const [planLoading, setPlanLoading]   = useState(false);
 
+  // Krauti check-in datas ir visus planus vieną kartą
   useEffect(() => {
     pb.collection("daily_checkins").getFullList({
       filter: `user_id="${client.id}" && is_done=true`, fields: "date", requestKey: null,
     }).then(items => setCheckinDates(items.map(i => i.date))).catch(() => {});
 
-    // Krauti aktyvų planą
-    pb.collection("workout_plans").getList(1, 1, {
+    pb.collection("workout_plans").getFullList({
       filter: `user_id="${client.id}" && is_active=true`, sort: "-created", requestKey: null,
-    }).then(r => {
-      const p = r.items[0] || null;
-      setActivePlan(p);
-      if (p) {
-        pb.collection("workout_plan_days").getFullList({ filter: `plan_id="${p.id}"`, sort: "day_number", requestKey: null })
-          .then(setPlanDays).catch(()=>{});
-      }
-    }).catch(() => {});
+    }).then(setAllPlans).catch(() => {});
   }, [client.id]);
+
+  // Kai keičiasi data — rasti planą ir dienos pratimus
+  useEffect(() => {
+    if (!allPlans.length) { setPlanForDate(null); setPlanDay(null); setPlanExercises([]); setWorkoutLogs({}); return; }
+
+    async function loadPlanForDate() {
+      setPlanLoading(true);
+      setPlanDay(null); setPlanExercises([]); setWorkoutLogs({});
+
+      // Planas kuris galiojo šią datą: valid_until >= selectedDate
+      const plan = allPlans.find(p => p.valid_until >= selectedDate) || null;
+      setPlanForDate(plan);
+
+      if (!plan) { setPlanLoading(false); return; }
+
+      const dayNum = (() => { const d = new Date(selectedDate + "T12:00:00"); return d.getDay() === 0 ? 7 : d.getDay(); })();
+      const days = await pb.collection("workout_plan_days").getFullList({
+        filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
+      }).catch(() => []);
+
+      const match = days.find(d => d.day_number === dayNum) || days[(dayNum - 1) % days.length] || null;
+      setPlanDay(match);
+
+      if (match) {
+        const exs = await pb.collection("workout_plan_exercises").getFullList({
+          filter: `day_id="${match.id}"`, sort: "order", requestKey: null,
+        }).catch(() => []);
+        setPlanExercises(exs);
+
+        const logs = await pb.collection("workout_logs_client").getFullList({
+          filter: `user_id="${client.id}" && date="${selectedDate}"`, requestKey: null,
+        }).catch(() => []);
+        const logsMap = {};
+        logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
+        setWorkoutLogs(logsMap);
+      }
+      setPlanLoading(false);
+    }
+    loadPlanForDate();
+  }, [selectedDate, allPlans, client.id]);
+
+  const doneCount = planExercises.filter(ex => workoutLogs[ex.id]?.is_done).length;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showPlanBuilder && (
-        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>setShowPlanBuilder(false)} />
+        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); pb.collection("workout_plans").getFullList({ filter:`user_id="${client.id}" && is_active=true`, sort:"-created", requestKey:null }).then(setAllPlans).catch(()=>{}); }} />
       )}
       {/* Header */}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
@@ -339,43 +302,60 @@ function ClientDetail({ client, onClose }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
-        {/* Sporto planas */}
-        {activePlan ? (
-          <div style={{ marginBottom: 16, background: "rgba(26,71,49,0.5)", borderRadius: 16, padding: "14px 16px", border: "1px solid rgba(127,255,176,0.2)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px" }}>🏋️ {activePlan.plan_name}</p>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>Galioja iki {activePlan.valid_until} · {activePlan.days_count} d./sav.</p>
-              </div>
-              <button onClick={() => setShowPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>+ Naujas</button>
+
+        {/* Sporto plano kortelė — reaguoja į pasirinktą datą */}
+        <div style={{ marginBottom: 16, background: "rgba(26,71,49,0.5)", borderRadius: 16, padding: "14px 16px", border: "1px solid rgba(127,255,176,0.2)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: planForDate ? 10 : 0 }}>
+            <div>
+              {planForDate ? (
+                <>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px" }}>🏋️ {planForDate.plan_name}</p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+                    Galioja iki {planForDate.valid_until}
+                    {planDay && <span style={{ marginLeft: 6 }}>· {planDay.day_name}</span>}
+                    {doneCount > 0 && <span style={{ marginLeft: 6, color: "#7FFFB0" }}>· {doneCount}/{planExercises.length} atlikta</span>}
+                  </p>
+                </>
+              ) : (
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+                  {allPlans.length > 0 ? "🏋️ Šiai datai planas negalioja" : "🏋️ Sporto plano nėra"}
+                </p>
+              )}
             </div>
-            {/* Dienų tab'ai */}
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, paddingBottom: 2 }}>
-              {planDays.map(d => (
-                <button key={d.id} onClick={() => setActivePlanDay(p => p?.id === d.id ? null : d)}
-                  style={{ padding: "6px 12px", borderRadius: 20, border: "none", background: activePlanDay?.id === d.id ? "#276749" : "rgba(255,255,255,0.1)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}>
-                  {d.day_name}
-                </button>
-              ))}
-            </div>
-            {/* Pratimai pasirinktai dienai */}
-            {activePlanDay && <PlanDayExercises dayId={activePlanDay.id} />}
+            <button onClick={() => setShowPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>+ Naujas</button>
           </div>
-        ) : (
-          <button onClick={() => setShowPlanBuilder(true)} style={{ width: "100%", padding: "14px", marginBottom: 16, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            🏋️ Sudaryti sporto planą
-          </button>
-        )}
+
+          {/* Pratimai */}
+          {planLoading && <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "8px 0 0" }}>Kraunama...</p>}
+          {!planLoading && planForDate && planExercises.length === 0 && planDay && (
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "8px 0 0" }}>Šiai dienai pratimų nėra</p>
+          )}
+          {!planLoading && planExercises.map((ex, i) => {
+            const done = workoutLogs[ex.id]?.is_done;
+            return (
+              <div key={ex.id} style={{ background: done ? "rgba(127,255,176,0.08)" : "rgba(0,0,0,0.2)", borderRadius: 10, padding: "9px 12px", marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${done ? "rgba(127,255,176,0.25)" : "transparent"}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 2px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
+                      {i+1}. {ex.exercise_name}
+                    </p>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+                      {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+                    </p>
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, color: ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
+              </div>
+            );
+          })}
+        </div>
 
         {/* Kalendorius */}
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>Pasirinkite dieną</p>
-        <MiniCalendar
-          selectedDate={selectedDate}
-          onSelect={setSelectedDate}
-          checkinDates={checkinDates}
-        />
+        <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} checkinDates={checkinDates} />
 
-        {/* Dienos duomenys */}
+        {/* Check-in / miegas / vanduo */}
         <DayView clientId={client.id} date={selectedDate} />
       </div>
     </div>
