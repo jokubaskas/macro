@@ -19,13 +19,12 @@ export default function WorkoutView({ user, onClose }) {
     async function load() {
       setLoading(true);
       const plans = await pb.collection("workout_plans").getFullList({
-        filter: `user_id="${user.id}" && is_active=true && start_date<="${today}" && end_date>="${today}"`,
+        filter: `user_id="${user.id}" && is_active=true`,
         sort: "-created", requestKey: null,
-      }).catch(() => []);
+      }).then(r => r.filter(p => p.start_date <= today && p.end_date >= today)).catch(() => []);
 
       if (!plans.length) { setLoading(false); return; }
-      const p = plans[0];
-      setPlan(p);
+      const p = plans[0];      setPlan(p);
 
       const days = await pb.collection("workout_plan_days").getFullList({
         filter: `plan_id="${p.id}"`, sort: "day_number", requestKey: null,
