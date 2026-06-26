@@ -251,9 +251,11 @@ function ClientDetail({ client, onClose }) {
     if (!allPlans.length) return;
 
     // Planas galiojo jei: created <= selectedDate IR valid_until >= selectedDate
-    const plan = allPlans.find(p =>
+    // Iš kelių tinkamų — imame naujausią (sort:"created" ASC, tai paskutinis)
+    const validPlans = allPlans.filter(p =>
       p.created.slice(0,10) <= selectedDate && p.valid_until >= selectedDate
-    ) || null;
+    );
+    const plan = validPlans[validPlans.length - 1] || null;
     setPlanForDate(plan);
 
     if (!plan) return;
