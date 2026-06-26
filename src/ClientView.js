@@ -6,6 +6,7 @@ import SleepTracker from "./SleepTracker";
 import DailyCheckin from "./DailyCheckin";
 import MeasurementReport from "./MeasurementReport";
 import MotivationalCard from "./MotivationalCard";
+import WorkoutView from "./WorkoutView";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -71,6 +72,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showReport,   setShowReport]   = useState(false);
   const [minDate,      setMinDate]      = useState(null);
   const [checkinKey,   setCheckinKey]   = useState(0);
+  const [showWorkout,  setShowWorkout]  = useState(false);
 
   const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : null;
@@ -109,6 +111,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   return (
     <div style={{ minHeight: "100vh", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
 
+      {showWorkout && <WorkoutView user={user} onClose={()=>setShowWorkout(false)} />}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
@@ -179,6 +182,11 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           date={selectedDate}
           onSaved={() => setCheckinKey(k => k + 1)}
         />
+
+        {/* Treniruotė */}
+        <button onClick={() => setShowWorkout(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          🏋️ Treniruotė
+        </button>
 
         {/* Miegas */}
         <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
