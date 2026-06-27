@@ -2,8 +2,46 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
-const STATUS_LABEL = { pending:"⏳ Laukia", approved:"✅ Patvirtinta", rejected:"❌ Atmesta" };
-const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)" };
+const STATUS_LABEL = { pending:"⏳ Laukia", approved:"✅ Patvirtinta", rejected:"❌ Atmesta", cancelled:"🚫 Atšaukta" };
+const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)", cancelled:"rgba(255,255,255,0.05)" };
+
+function AdminCancelButton({ booking, clientName, onCancelled }) {
+  const [open,   setOpen]   = useState(false);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleCancel() {
+    if (!reason.trim()) return;
+    setSaving(true);
+    await pb.collection("bookings").update(booking.id, {
+      status:        "cancelled",
+      cancel_reason: reason.trim(),
+      cancelled_by:  "trainer",
+    }).catch(()=>{});
+    setSaving(false);
+    setOpen(false);
+    onCancelled();
+  }
+
+  if (!open) return (
+    <button onClick={()=>setOpen(true)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,150,100,0.4)",background:"rgba(255,100,50,0.1)",color:"#FF9966",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+      🚫 Atšaukti
+    </button>
+  );
+
+  return (
+    <div style={{marginTop:8,background:"rgba(255,50,50,0.08)",borderRadius:10,padding:10,border:"1px solid rgba(255,100,100,0.25)"}}>
+      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Atšaukimo priežastis klientui..." rows={2}
+        style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(255,100,100,0.25)",background:"rgba(0,0,0,0.2)",color:"#fff",fontSize:12,fontFamily:"inherit",outline:"none",resize:"none",boxSizing:"border-box",marginBottom:8}}/>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setOpen(false)} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Atgal</button>
+        <button onClick={handleCancel} disabled={!reason.trim()||saving} style={{flex:2,padding:"8px",borderRadius:8,border:"none",background:reason.trim()?"rgba(200,50,50,0.6)":"rgba(255,255,255,0.1)",color:"#fff",fontSize:12,fontWeight:700,cursor:reason.trim()?"pointer":"default",fontFamily:"inherit"}}>
+          {saving?"Atšaukiama...":"Patvirtinti"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function downloadIcal(booking, clientName) {
   const dt = booking.date.replace(/-/g,"");
@@ -148,7 +186,7 @@ export default function BookingAdmin({ onClose }) {
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
         {/* Filtrai */}
         <div style={{display:"flex",gap:6,marginBottom:16}}>
-          {[{k:"pending",l:"Laukia"},{k:"approved",l:"Patvirtintos"},{k:"rejected",l:"Atmestos"},{k:"all",l:"Visos"}].map(f=>(
+          {[{k:"pending",l:"Laukia"},{k:"approved",l:"Patvirtintos"},{k:"rejected",l:"Atmestos"},{k:"cancelled",l:"Atšauktos"},{k:"all",l:"Visos"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} style={{flex:1,padding:"8px 4px",borderRadius:12,border:"none",background:filter===f.k?"#AD1457":"rgba(255,255,255,0.1)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
               {f.l}{f.k!=="all"&&<span style={{marginLeft:4,opacity:0.7}}>({bookings.filter(b=>b.status===f.k).length})</span>}
             </button>
@@ -174,6 +212,7 @@ export default function BookingAdmin({ onClose }) {
                     📅 {b.date} · ⏰ {b.start_time}–{b.end_time}
                   </p>
                   {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:"4px 0 0",fontStyle:"italic"}}>"{b.notes}"</p>}
+                  {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"4px 0 0"}}>🚫 {b.cancelled_by==="client"?"Klientas":"Trenerė"}: {b.cancel_reason}</p>}
                 </div>
                 <span style={{fontSize:11,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap"}}>{STATUS_LABEL[b.status]}</span>
               </div>
@@ -184,9 +223,12 @@ export default function BookingAdmin({ onClose }) {
                 </div>
               )}
               {b.status==="approved" && (
-                <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8}}>
-                  📲 Įtraukti į kalendorių
-                </button>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    📲 Įtraukti į kalendorių
+                  </button>
+                  <AdminCancelButton booking={b} clientName={client?.name||"Klientas"} onCancelled={load} />
+                </div>
               )}
             </div>
           );
