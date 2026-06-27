@@ -54,7 +54,7 @@ function downloadIcal(booking, clientName) {
     `SUMMARY:Treniruotė – ${clientName} (${booking.start_time}–${booking.end_time})`,
     `LOCATION:Gym+ Dariaus ir Girėno g. 2\\, Vilnius\\, 02158 Vilniaus m. sav.`,
     `GEO:54.668750;25.279780`,
-    `DESCRIPTION:Klientas: ${clientName}\\nLaikas: ${booking.start_time}–${booking.end_time}\\nVieta: Gym+ Dariaus ir Girėno g. 2\\, Vilnius`,
+    `DESCRIPTION:Klientas: ${clientName}\\nLaikas: ${booking.start_time}–${booking.end_time}${booking.notes ? "\\nKomentaras: " + booking.notes : ""}\\nVieta: Gym+ Dariaus ir Girėno g. 2\\, Vilnius`,
     `STATUS:CONFIRMED`,
     "END:VEVENT","END:VCALENDAR"
   ].join("\r\n");
@@ -81,7 +81,7 @@ function ScheduleSettings({ onClose }) {
         // Numatytasis grafikas I-V 10:00-19:00
         setSchedule(Array.from({length:7}, (_,i) => ({
           id: null, day_of_week: i+1, start_time:"10:00", end_time:"19:00",
-          slot_duration: 60, is_active: i < 5,
+          slot_duration: 55, is_active: i < 5,
         })));
       }).catch(()=>{});
   }, []);
@@ -128,7 +128,7 @@ function ScheduleSettings({ onClose }) {
                 <div>
                   <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>Trukmė (min)</label>
                   <select value={day.slot_duration} onChange={e=>update(i,"slot_duration",parseInt(e.target.value))} style={{...inp,width:"100%"}}>
-                    {[30,45,60,90,120].map(m=><option key={m} value={m} style={{background:"#3a0a20"}}>{m} min</option>)}
+                    {[30,45,50,55,60,90,120].map(m=><option key={m} value={m} style={{background:"#3a0a20"}}>{m} min</option>)}
                   </select>
                 </div>
               </div>
