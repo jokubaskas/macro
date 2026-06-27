@@ -179,6 +179,9 @@ export default function BookingClient({ user, onClose }) {
         {/* ── Mano rezervacijos ── */}
         {view==="mybookings" && (
           <div>
+            <button onClick={()=>setView("calendar")} style={{width:"100%",padding:"13px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+              + Rezervuoti naują laiką
+            </button>
             <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 12px"}}>Mano rezervacijos</p>
             {myBookings.length===0 && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Dar nėra rezervacijų</p>}
             {myBookings.map(b => {
@@ -205,9 +208,6 @@ export default function BookingClient({ user, onClose }) {
                 </div>
               );
             })}
-            <button onClick={()=>setView("calendar")} style={{width:"100%",padding:"13px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8}}>
-              + Rezervuoti naują laiką
-            </button>
           </div>
         )}
 
