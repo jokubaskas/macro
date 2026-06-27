@@ -4,9 +4,10 @@ import { pb } from "./pb";
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
 const STATUS_INFO = {
-  pending:  { emoji:"⏳", label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
-  approved: { emoji:"✅", label:"Patvirtinta",            bg:"rgba(127,255,176,0.15)", color:"#7FFFB0" },
-  rejected: { emoji:"❌", label:"Atmesta",                bg:"rgba(255,100,100,0.15)", color:"#FF8888" },
+  pending:   { emoji:"⏳", label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
+  approved:  { emoji:"✅", label:"Patvirtinta",            bg:"rgba(127,255,176,0.15)", color:"#7FFFB0" },
+  rejected:  { emoji:"❌", label:"Atmesta",                bg:"rgba(255,100,100,0.15)", color:"#FF8888" },
+  cancelled: { emoji:"🚫", label:"Atšaukta",               bg:"rgba(255,255,255,0.05)", color:"rgba(255,255,255,0.4)" },
 };
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -45,6 +46,48 @@ function downloadIcal(booking, clientName) {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a"); a.href=url; a.download="treniruote.ics"; a.click();
   URL.revokeObjectURL(url);
+}
+
+function CancelButton({ booking, userId, onCancelled }) {
+  const [open,   setOpen]   = useState(false);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const isLate = booking.date <= todayStr(); // šiandien arba praeitis
+  const warning = isLate ? "⚠️ Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
+
+  async function handleCancel() {
+    if (!reason.trim()) return;
+    setSaving(true);
+    await pb.collection("bookings").update(booking.id, {
+      status:       "cancelled",
+      cancel_reason: reason.trim(),
+      cancelled_by: "client",
+    }).catch(()=>{});
+    setSaving(false);
+    setOpen(false);
+    onCancelled();
+  }
+
+  if (!open) return (
+    <button onClick={()=>setOpen(true)} style={{width:"100%",padding:"8px",borderRadius:10,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(255,100,100,0.08)",color:"rgba(255,130,130,0.8)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginTop:6}}>
+      Atšaukti rezervaciją
+    </button>
+  );
+
+  return (
+    <div style={{marginTop:8,background:"rgba(255,50,50,0.1)",borderRadius:12,padding:12,border:"1px solid rgba(255,100,100,0.3)"}}>
+      {warning && <p style={{fontSize:12,color:"#FF8888",fontWeight:700,margin:"0 0 8px"}}>{warning}</p>}
+      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Nurodykite atšaukimo priežastį..." rows={2}
+        style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(0,0,0,0.2)",color:"#fff",fontSize:12,fontFamily:"inherit",outline:"none",resize:"none",boxSizing:"border-box",marginBottom:8}}/>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setOpen(false)} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Atgal</button>
+        <button onClick={handleCancel} disabled={!reason.trim()||saving} style={{flex:2,padding:"8px",borderRadius:8,border:"none",background:reason.trim()?"rgba(200,50,50,0.6)":"rgba(255,255,255,0.1)",color:"#fff",fontSize:12,fontWeight:700,cursor:reason.trim()?"pointer":"default",fontFamily:"inherit"}}>
+          {saving?"Atšaukiama...":"Patvirtinti atšaukimą"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function BookingClient({ user, onClose }) {
@@ -147,6 +190,7 @@ export default function BookingClient({ user, onClose }) {
                       <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>📅 {b.date}</p>
                       <p style={{fontSize:12,color:"rgba(255,255,255,0.6)",margin:0}}>⏰ {b.start_time} – {b.end_time}</p>
                       {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:"3px 0 0",fontStyle:"italic"}}>"{b.notes}"</p>}
+                      {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"3px 0 0"}}>🚫 {b.cancel_reason}</p>}
                     </div>
                     <span style={{fontSize:11,fontWeight:700,color:si.color,background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap"}}>{si.emoji} {si.label}</span>
                   </div>
@@ -154,6 +198,9 @@ export default function BookingClient({ user, onClose }) {
                     <button onClick={()=>downloadIcal(b,user.name||user.email)} style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:6}}>
                       📲 Įtraukti į kalendorių (.ics)
                     </button>
+                  )}
+                  {(b.status==="pending" || b.status==="approved") && (
+                    <CancelButton booking={b} userId={user.id} onCancelled={load} />
                   )}
                 </div>
               );
