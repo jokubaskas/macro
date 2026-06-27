@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS } from "./constants";
 import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
+import BookingAdmin from "./BookingAdmin";
 
 const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -427,8 +428,9 @@ function NewClientForm({ onSave, onCancel }) {
 export default function AdminPanel({ user, onLogout }) {
   const [clients,     setClients]     = useState([]);
   const [loading,     setLoading]     = useState(true);
-  const [view,        setView]        = useState("list"); // list | new
+  const [view,        setView]        = useState("list");
   const [openClient,  setOpenClient]  = useState(null);
+  const [showBookings, setShowBookings] = useState(false);
 
   const loadClients = useCallback(async () => {
     const data = await pb.collection("users").getFullList({ filter: 'role="client"', sort: "-created", requestKey: null });
@@ -439,6 +441,7 @@ export default function AdminPanel({ user, onLogout }) {
   useEffect(() => { loadClients(); }, [loadClients]);
 
   if (openClient) return <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />;
+  if (showBookings) return <BookingAdmin onClose={() => setShowBookings(false)} />;
 
   if (view === "new") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
@@ -464,6 +467,10 @@ export default function AdminPanel({ user, onLogout }) {
             </div>
           </div>
           <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Atsijungti</button>
+          <button onClick={() => setShowBookings(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", position:"relative" }}>
+            📅
+            {/* TODO: pending count badge */}
+          </button>
         </div>
       </div>
 
