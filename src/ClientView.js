@@ -7,6 +7,7 @@ import DailyCheckin from "./DailyCheckin";
 import MeasurementReport from "./MeasurementReport";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
+import BookingClient from "./BookingClient";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -73,6 +74,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [minDate,      setMinDate]      = useState(null);
   const [checkinKey,   setCheckinKey]   = useState(0);
   const [showWorkout,  setShowWorkout]  = useState(false);
+  const [showBooking,  setShowBooking]  = useState(false);
   const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
@@ -120,6 +122,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     <div style={{ minHeight: "100vh", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
 
       {showWorkout && <WorkoutView user={user} onClose={()=>setShowWorkout(false)} />}
+      {showBooking && <BookingClient user={user} onClose={()=>setShowBooking(false)} />}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
@@ -195,6 +198,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {isToday && hasActivePlan && (
           <button onClick={() => setShowWorkout(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             🏋️ Treniruotė
+          </button>
+        )}
+
+        {/* Rezervuoti laiką */}
+        {isToday && (
+          <button onClick={() => setShowBooking(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "rgba(255,255,255,0.1)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            📅 Rezervuoti treniruotę
           </button>
         )}
 
