@@ -35,8 +35,9 @@ function downloadIcal(booking, clientName) {
     "BEGIN:VEVENT",
     `DTSTART:${startDt}`,`DTEND:${endDt}`,
     `SUMMARY:Treniruotė su Coach Vilma`,
-    `DESCRIPTION:Rezervacija patvirtinta. Klientas: ${clientName}`,
-    `LOCATION:CoachVilma`,
+    `LOCATION:Gym+ Dariaus ir Girėno g. 2\\, Vilnius\\, 02158 Vilniaus m. sav.`,
+    `GEO:54.668750;25.279780`,
+    `DESCRIPTION:Treniruotė patvirtinta!\\nVieta: Gym+ Dariaus ir Girėno g. 2\\, Vilnius\\nGoogle Maps: https://maps.google.com/?q=Gym%2B+Dariaus+ir+Gir%C4%97no+g.+2+Vilnius`,
     `STATUS:CONFIRMED`,
     "END:VEVENT","END:VCALENDAR"
   ].join("\r\n");
