@@ -5,6 +5,27 @@ const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penk
 const STATUS_LABEL = { pending:"⏳ Laukia", approved:"✅ Patvirtinta", rejected:"❌ Atmesta" };
 const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)" };
 
+function downloadIcal(booking, clientName) {
+  const dt = booking.date.replace(/-/g,"");
+  const startDt = dt + "T" + booking.start_time.replace(":","") + "00";
+  const endDt   = dt + "T" + booking.end_time.replace(":","") + "00";
+  const ical = [
+    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CoachVilma//LT",
+    "BEGIN:VEVENT",
+    `DTSTART:${startDt}`,`DTEND:${endDt}`,
+    `SUMMARY:Treniruotė – ${clientName} (${booking.start_time}–${booking.end_time})`,
+    `LOCATION:Gym+ Dariaus ir Girėno g. 2\\, Vilnius\\, 02158 Vilniaus m. sav.`,
+    `GEO:54.668750;25.279780`,
+    `DESCRIPTION:Klientas: ${clientName}\\nLaikas: ${booking.start_time}–${booking.end_time}\\nVieta: Gym+ Dariaus ir Girėno g. 2\\, Vilnius`,
+    `STATUS:CONFIRMED`,
+    "END:VEVENT","END:VCALENDAR"
+  ].join("\r\n");
+  const blob = new Blob([ical], { type:"text/calendar" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a"); a.href=url; a.download=`treniruote-${clientName.replace(/\s/g,"-")}.ics`; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 
@@ -161,6 +182,11 @@ export default function BookingAdmin({ onClose }) {
                   <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕ Atmesti</button>
                   <button onClick={()=>updateStatus(b.id,"approved")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ Patvirtinti</button>
                 </div>
+              )}
+              {b.status==="approved" && (
+                <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8}}>
+                  📲 Įtraukti į kalendorių
+                </button>
               )}
             </div>
           );
