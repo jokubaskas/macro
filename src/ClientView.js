@@ -147,7 +147,22 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0 }}>{profile?.name?.split(" ")[0]}</p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {/* Treniruotė */}
+            {isToday && hasActivePlan && (
+              <button onClick={() => setShowWorkout(true)} title="Treniruotė"
+                style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#1a4731,#276749)", border: "none", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                🏋️
+              </button>
+            )}
+            {/* Rezervacija */}
+            {isToday && (
+              <button onClick={() => setShowBooking(true)} title="Rezervuoti"
+                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                📆
+              </button>
+            )}
+            {/* Kalendorius */}
             <button onClick={() => setShowCalendar(true)} style={{ background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
               📅 {isToday ? new Date().toLocaleDateString("lt-LT", { month: "short", day: "numeric" }) : selectedDate}
               <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
@@ -193,20 +208,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           date={selectedDate}
           onSaved={() => setCheckinKey(k => k + 1)}
         />
-
-        {/* Treniruotė — tik šiandien ir tik kai yra aktyvus planas */}
-        {isToday && hasActivePlan && (
-          <button onClick={() => setShowWorkout(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "linear-gradient(135deg,#1a4731,#276749)", color: "#fff", border: "none", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            🏋️ Treniruotė
-          </button>
-        )}
-
-        {/* Rezervuoti laiką */}
-        {isToday && (
-          <button onClick={() => setShowBooking(true)} style={{ width: "100%", padding: "14px", marginBottom: 12, background: "rgba(255,255,255,0.1)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            📅 Rezervuoti treniruotę
-          </button>
-        )}
 
         {/* Miegas */}
         <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
