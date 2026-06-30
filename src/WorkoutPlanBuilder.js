@@ -186,6 +186,8 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
     </div>
   );
 }
+
+export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
   const [step, setStep]           = useState(0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
   const [presets, setPresets]     = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
