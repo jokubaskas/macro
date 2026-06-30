@@ -15,12 +15,32 @@ export default function ProgressCompare({ client, onClose }) {
   const [view, setView]       = useState("photo_front");
 
   useEffect(() => {
-    pb.collection("progress_photos").getFullList({
-      filter: `user_id="${client.id}"`, sort: "date", requestKey: null,
-    }).then(data => {
-      setHistory(data);
-      if (data.length >= 2) { setIdxA(0); setIdxB(data.length-1); }
-      else if (data.length === 1) { setIdxA(0); setIdxB(0); }
+    Promise.all([
+      pb.collection("progress_photos").getFullList({
+        filter: `user_id="${client.id}"`, sort: "date", requestKey: null,
+      }).catch(()=>[]),
+      pb.collection("users").getOne(client.id, { requestKey: null }).catch(()=>null),
+    ]).then(([data, profile]) => {
+      let combined = [...data];
+      if (profile?.photo_front) {
+        const regDate = profile.created ? profile.created.slice(0,10) : "0000-00-00";
+        const alreadyExists = data.some(d => d.date === regDate);
+        if (!alreadyExists) {
+          combined.unshift({
+            id: "registration",
+            date: regDate,
+            photo_front: profile.photo_front,
+            photo_side: profile.photo_side,
+            photo_back: profile.photo_back,
+            _isProfile: true,
+            _record: profile,
+          });
+        }
+      }
+      combined.sort((a,b) => a.date.localeCompare(b.date));
+      setHistory(combined);
+      if (combined.length >= 2) { setIdxA(0); setIdxB(combined.length-1); }
+      else if (combined.length === 1) { setIdxA(0); setIdxB(0); }
       setLoading(false);
     }).catch(()=>setLoading(false));
   }, [client.id]);
@@ -66,12 +86,12 @@ export default function ProgressCompare({ client, onClose }) {
                   <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginBottom:6, fontWeight:700 }}>{col.label}</p>
                   <div style={{ aspectRatio:"3/4", borderRadius:14, overflow:"hidden", background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {col.photo && col.photo[view] ? (
-                      <img src={pb.files.getURL(col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      <img src={pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     ) : (
                       <span style={{ color:"rgba(255,255,255,0.2)", fontSize:12 }}>Nėra</span>
                     )}
                   </div>
-                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:6 }}>{col.photo?.date || "–"}</p>
+                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:6 }}>{col.photo?.date || "–"}{col.photo?._isProfile && " (pradinė)"}</p>
                 </div>
               ))}
             </div>
