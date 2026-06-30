@@ -68,7 +68,7 @@ function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-const inp = { padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
+const inp = { padding:"9px 8px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", WebkitAppearance:"none" };
 
 // ── Konkrečių laikų blokavimas ──────────────────────────────────────────────
 function ScheduleExceptions() {
@@ -133,14 +133,14 @@ function ScheduleExceptions() {
             <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Data</label>
             <input type="date" value={form.date} min={todayStr()} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={{...inp,width:"100%"}}/>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-            <div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <div style={{flex:1,minWidth:0}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo</label>
-              <input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={{...inp,width:"100%"}}/>
+              <input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={{...inp,width:"100%",minWidth:0}}/>
             </div>
-            <div>
+            <div style={{flex:1,minWidth:0}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki</label>
-              <input type="time" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} style={{...inp,width:"100%"}}/>
+              <input type="time" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} style={{...inp,width:"100%",minWidth:0}}/>
             </div>
           </div>
           <div style={{marginBottom:12}}>
@@ -208,13 +208,15 @@ function ScheduleSettings({ onClose }) {
               </button>
             </div>
             {day.is_active && (
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                {[{k:"start_time",l:"Nuo"},{k:"end_time",l:"Iki"}].map(f=>(
-                  <div key={f.k}>
-                    <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>{f.l}</label>
-                    <input type="time" value={day[f.k]} onChange={e=>update(i,f.k,e.target.value)} style={{...inp,width:"100%"}}/>
-                  </div>
-                ))}
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{display:"flex",gap:8}}>
+                  {[{k:"start_time",l:"Nuo"},{k:"end_time",l:"Iki"}].map(f=>(
+                    <div key={f.k} style={{flex:1,minWidth:0}}>
+                      <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>{f.l}</label>
+                      <input type="time" value={day[f.k]} onChange={e=>update(i,f.k,e.target.value)} style={{...inp,width:"100%",minWidth:0}}/>
+                    </div>
+                  ))}
+                </div>
                 <div>
                   <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>Trukmė (min)</label>
                   <select value={day.slot_duration} onChange={e=>update(i,"slot_duration",parseInt(e.target.value))} style={{...inp,width:"100%"}}>
