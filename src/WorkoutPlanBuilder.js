@@ -133,7 +133,59 @@ function ExercisePicker({ onAdd, onClose }) {
   );
 }
 
-export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
+// ── Esamo pratimo parametrų redagavimas ───────────────────────────────────────
+function ExerciseEditModal({ exercise, onSave, onClose }) {
+  const isCardio = exercise.category === "cardio";
+  const [form, setForm] = useState({
+    sets: exercise.sets ?? "",
+    reps: exercise.reps ?? "",
+    weight_kg: exercise.weight_kg ?? "",
+    duration_min: exercise.duration_min ?? "",
+  });
+
+  function handleSave() {
+    onSave({
+      ...exercise,
+      sets: isCardio ? null : (parseInt(form.sets) || null),
+      reps: isCardio ? null : (parseInt(form.reps) || null),
+      weight_kg: isCardio ? null : (parseFloat(form.weight_kg) || null),
+      duration_min: isCardio ? (parseInt(form.duration_min) || null) : null,
+    });
+  }
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}>✕</button>
+        </div>
+        <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+          <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{exercise.exercise_name}</p>
+          <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{exercise.muscle}</p>
+        </div>
+        {isCardio ? (
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
+            <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+            {[{k:"sets",l:"Serijos"},{k:"reps",l:"Kartojimai"},{k:"weight_kg",l:"Svoris (kg)"}].map(f=>(
+              <div key={f.k}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>{f.l}</label>
+                <input type="number" value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} placeholder="–" style={inp}/>
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          💾 Išsaugoti pakeitimus
+        </button>
+      </div>
+    </div>
+  );
+}
   const [step, setStep]           = useState(0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
   const [presets, setPresets]     = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
@@ -144,6 +196,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
   const [days, setDays]           = useState([]);
   const [activeDay, setActiveDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(null); // {dayIdx, exIdx, exercise}
   const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
@@ -295,15 +348,26 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
                 {days[activeDay].exercises.map((ex,j)=>(
-                  <div key={j} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
                     <div>
                       <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:"0 0 2px"}}>{ex.exercise_name}</p>
-                      <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.category==="cardio"?`⏱ ${ex.duration_min||"–"} min`:`${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`}</p>
+                      <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.category==="cardio"?`⏱ ${ex.duration_min||"–"} min`:`${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`} <span style={{color:"rgba(255,255,255,0.3)"}}>· paliesk redaguoti</span></p>
                     </div>
-                    <button onClick={()=>removeExercise(activeDay,j)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}>✕</button>
+                    <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                   </div>
                 ))}
               </div>
+            )}
+
+            {editingExercise && (
+              <ExerciseEditModal
+                exercise={editingExercise.exercise}
+                onClose={()=>setEditingExercise(null)}
+                onSave={(updated)=>{
+                  setDays(prev=>prev.map((d,i)=>i!==editingExercise.dayIdx?d:{...d,exercises:d.exercises.map((e,j)=>j===editingExercise.exIdx?updated:e)}));
+                  setEditingExercise(null);
+                }}
+              />
             )}
 
             <button onClick={()=>setShowPicker(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"2px dashed rgba(255,255,255,0.25)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
