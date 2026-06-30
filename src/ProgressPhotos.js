@@ -37,7 +37,14 @@ export default function ProgressPhotos({ user, onClose }) {
         });
       }
     }
-    combined.sort((a,b) => b.date.slice(0,10).localeCompare(a.date.slice(0,10)));
+    combined.sort((a,b) => {
+      const dateCmp = b.date.slice(0,10).localeCompare(a.date.slice(0,10));
+      if (dateCmp !== 0) return dateCmp;
+      // Tos pačios dienos įrašai — naujesnis (vėliau sukurtas) viršuje
+      const aCreated = a.created || a.date;
+      const bCreated = b.created || b.date;
+      return bCreated.localeCompare(aCreated);
+    });
     setHistory(combined);
     setLoading(false);
   }, [user.id]);
