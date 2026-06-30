@@ -23,8 +23,8 @@ export default function ProgressPhotos({ user, onClose }) {
 
     let combined = [...data];
     if (profile?.photo_front) {
-      const regDate = profile.created ? profile.created.slice(0,10) : "Registracija";
-      const alreadyExists = data.some(d => d.date === regDate);
+      const regDate = profile.created ? profile.created.slice(0,10) : "0000-00-00";
+      const alreadyExists = data.some(d => d.date.slice(0,10) === regDate);
       if (!alreadyExists) {
         combined.push({
           id: "registration",
@@ -37,7 +37,7 @@ export default function ProgressPhotos({ user, onClose }) {
         });
       }
     }
-    combined.sort((a,b) => b.date.localeCompare(a.date));
+    combined.sort((a,b) => b.date.slice(0,10).localeCompare(a.date.slice(0,10)));
     setHistory(combined);
     setLoading(false);
   }, [user.id]);
@@ -70,7 +70,8 @@ export default function ProgressPhotos({ user, onClose }) {
       await load();
     } catch(err) {
       console.error("Progress photo save error:", err);
-      alert("Klaida išsaugant nuotraukas: " + (err?.message || "nežinoma klaida"));
+      console.error("Error data:", JSON.stringify(err?.data || err?.response, null, 2));
+      alert("Klaida: " + JSON.stringify(err?.data?.data || err?.response?.data || err?.message));
     }
     setSaving(false);
   }
