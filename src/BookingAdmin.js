@@ -66,8 +66,98 @@ function downloadIcal(booking, clientName) {
 
 function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
+function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 const inp = { padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
+
+// ── Konkrečių laikų blokavimas ──────────────────────────────────────────────
+function ScheduleExceptions() {
+  const [exceptions, setExceptions] = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [form, setForm]             = useState({ date: todayStr(), start_time:"10:00", end_time:"11:00", reason:"" });
+  const [saving, setSaving]         = useState(false);
+
+  function load() {
+    setLoading(true);
+    pb.collection("schedule_exceptions").getFullList({ sort:"date,start_time", requestKey:null })
+      .then(data => { setExceptions(data.filter(e => e.date >= todayStr())); setLoading(false); })
+      .catch(()=>setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleAdd() {
+    if (!form.date || !form.start_time || !form.end_time) return;
+    setSaving(true);
+    await pb.collection("schedule_exceptions").create(form).catch(()=>{});
+    setSaving(false);
+    setShowAdd(false);
+    setForm({ date: todayStr(), start_time:"10:00", end_time:"11:00", reason:"" });
+    load();
+  }
+
+  async function handleDelete(id) {
+    await pb.collection("schedule_exceptions").delete(id).catch(()=>{});
+    load();
+  }
+
+  return (
+    <div style={{marginTop:24}}>
+      <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Konkrečių laikų blokavimas</p>
+      <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:12}}>Pvz. atostogos, asmeniniai reikalai, konkreti valanda kažkurią dieną kai esate užimta.</p>
+
+      {loading && <p style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Kraunama...</p>}
+
+      {!loading && exceptions.length === 0 && !showAdd && (
+        <p style={{color:"rgba(255,255,255,0.35)",fontSize:12,marginBottom:12}}>Blokuotų laikų nėra</p>
+      )}
+
+      {exceptions.map(ex => (
+        <div key={ex.id} style={{background:"rgba(255,100,100,0.08)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>📅 {ex.date} · {ex.start_time}–{ex.end_time}</p>
+            {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.reason}</p>}
+          </div>
+          <button onClick={()=>handleDelete(ex.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}>✕</button>
+        </div>
+      ))}
+
+      {!showAdd ? (
+        <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"11px",borderRadius:12,border:"2px dashed rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>
+          + Blokuoti laiką
+        </button>
+      ) : (
+        <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:14,marginTop:4}}>
+          <div style={{marginBottom:10}}>
+            <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Data</label>
+            <input type="date" value={form.date} min={todayStr()} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={{...inp,width:"100%"}}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo</label>
+              <input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={{...inp,width:"100%"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki</label>
+              <input type="time" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} style={{...inp,width:"100%"}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:12}}>
+            <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Priežastis (nebūtina)</label>
+            <input type="text" value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="pvz. Asmeninis reikalas" style={{...inp,width:"100%"}}/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
+            <button onClick={handleAdd} disabled={saving} style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              {saving?"Saugoma...":"Blokuoti"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Darbo laiko nustatymas ─────────────────────────────────────────────────────
 function ScheduleSettings({ onClose }) {
@@ -138,6 +228,8 @@ function ScheduleSettings({ onClose }) {
         <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,marginTop:8}}>
           {saving?"Saugoma...":"💾 Išsaugoti"}
         </button>
+
+        <ScheduleExceptions />
       </div>
     </div>
   );
