@@ -13,6 +13,9 @@ export default function ProgressCompare({ client, onClose }) {
   const [idxA, setIdxA]       = useState(null); // senesnė (kairė)
   const [idxB, setIdxB]       = useState(null); // naujesnė (dešinė)
   const [view, setView]       = useState("photo_front");
+  const [showAllA, setShowAllA] = useState(false);
+  const [showAllB, setShowAllB] = useState(false);
+  const VISIBLE_DATES = 6;
 
   useEffect(() => {
     Promise.all([
@@ -91,7 +94,7 @@ export default function ProgressCompare({ client, onClose }) {
                       <span style={{ color:"rgba(255,255,255,0.2)", fontSize:12 }}>Nėra</span>
                     )}
                   </div>
-                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:6 }}>{col.photo?.date || "–"}{col.photo?._isProfile && " (pradinė)"}</p>
+                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:6 }}>{col.photo?.date?.slice(0,10) || "–"}{col.photo?._isProfile && " (pradinė)"}</p>
                 </div>
               ))}
             </div>
@@ -100,22 +103,38 @@ export default function ProgressCompare({ client, onClose }) {
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Anksčiau (kairė)</label>
               <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                {history.map((h,i) => (
-                  <button key={h.id} onClick={()=>setIdxA(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxA===i?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
-                    {h.date}
+                {(showAllA ? history : history.slice(-VISIBLE_DATES)).map((h) => {
+                  const i = history.indexOf(h);
+                  return (
+                    <button key={h.id} onClick={()=>setIdxA(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxA===i?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                      {h.date.slice(0,10)}
+                    </button>
+                  );
+                })}
+                {!showAllA && history.length > VISIBLE_DATES && (
+                  <button onClick={()=>setShowAllA(true)} style={{ padding:"7px 12px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                    +{history.length - VISIBLE_DATES} senesnių
                   </button>
-                ))}
+                )}
               </div>
             </div>
 
             <div>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Dabar (dešinė)</label>
               <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                {history.map((h,i) => (
-                  <button key={h.id} onClick={()=>setIdxB(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxB===i?"#276749":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
-                    {h.date}
+                {(showAllB ? history : history.slice(-VISIBLE_DATES)).map((h) => {
+                  const i = history.indexOf(h);
+                  return (
+                    <button key={h.id} onClick={()=>setIdxB(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxB===i?"#276749":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                      {h.date.slice(0,10)}
+                    </button>
+                  );
+                })}
+                {!showAllB && history.length > VISIBLE_DATES && (
+                  <button onClick={()=>setShowAllB(true)} style={{ padding:"7px 12px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                    +{history.length - VISIBLE_DATES} senesnių
                   </button>
-                ))}
+                )}
               </div>
             </div>
           </>
