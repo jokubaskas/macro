@@ -134,7 +134,9 @@ function ExercisePicker({ onAdd, onClose }) {
 }
 
 export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
-  const [step, setStep]           = useState(1);
+  const [step, setStep]           = useState(0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
+  const [presets, setPresets]     = useState([]);
+  const [presetsLoading, setPresetsLoading] = useState(true);
   const [planName, setPlanName]   = useState("");
   const [daysCount, setDaysCount] = useState(3);
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
@@ -143,6 +145,27 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
   const [activeDay, setActiveDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving]       = useState(false);
+
+  useEffect(() => {
+    pb.collection("workout_presets").getFullList({ sort:"name", requestKey:null })
+      .then(data => { setPresets(data); setPresetsLoading(false); }).catch(()=>setPresetsLoading(false));
+  }, []);
+
+  async function loadFromPreset(preset) {
+    setPlanName(preset.name);
+    setDaysCount(preset.days_count);
+    const dbDays = await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${preset.id}"`, sort:"day_number", requestKey:null });
+    const fullDays = await Promise.all(dbDays.map(async d => {
+      const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
+      return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min })) };
+    }));
+    setDays(fullDays);
+    setStep(1); // pirma nustatyti galiojimo datą, tada pratimai jau bus įkelti iš šablono
+  }
+
+  function startFromScratch() {
+    setStep(1);
+  }
 
   function initDays(count) {
     setDays(Array.from({length:count},(_,i)=>({ day_number:i+1, day_label:`${i+1} diena`, exercises:[] })));
@@ -186,9 +209,39 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
           <p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:0}}>{client.name}</p>
         </div>
         {step===2&&<button onClick={()=>setStep(1)} style={{marginLeft:"auto",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>← Parametrai</button>}
+        {step===1&&<button onClick={()=>{setStep(0);setDays([]);}} style={{marginLeft:"auto",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>← Šablonai</button>}
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:"16px"}}>
+        {step===0&&(
+          <div>
+            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 16px"}}>Kaip norite pradėti?</p>
+
+            <button onClick={startFromScratch} style={{width:"100%",padding:"16px",marginBottom:16,borderRadius:16,background:"rgba(255,255,255,0.08)",border:"2px dashed rgba(255,255,255,0.25)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:24}}>✨</span>
+              <div>
+                <p style={{margin:"0 0 2px"}}>Naujas nuo nulio</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:400,margin:0}}>Sudėliok pratimus pačiam klientui</p>
+              </div>
+            </button>
+
+            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 10px"}}>Arba pasirink šabloną</p>
+
+            {presetsLoading && <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Kraunama...</p>}
+            {!presetsLoading && presets.length===0 && (
+              <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Šablonų dar nesukurta. Sukurkite juos "Šablonai" skiltyje.</p>
+            )}
+            {presets.map(p => (
+              <button key={p.id} onClick={()=>loadFromPreset(p)} style={{width:"100%",padding:"14px 16px",marginBottom:8,borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <p style={{fontSize:14,fontWeight:700,margin:"0 0 2px"}}>📋 {p.name}</p>
+                  <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0}}>{p.days_count} d./sav.</p>
+                </div>
+                <span style={{fontSize:16,color:"rgba(255,255,255,0.4)"}}>→</span>
+              </button>
+            ))}
+          </div>
+        )}
         {step===1&&(
           <div>
             <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 16px"}}>1. Plano parametrai</p>
@@ -214,7 +267,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
                 <input type="text" value={endDate} onChange={e=>setEndDate(e.target.value)} placeholder="2026-07-26" style={inp}/>
               </div>
             </div>
-            <button onClick={()=>{if(!endDate)return;initDays(daysCount);setStep(2);}} disabled={!endDate}
+            <button onClick={()=>{if(!endDate)return; if(days.length===0) initDays(daysCount); setStep(2);}} disabled={!endDate}
               style={{width:"100%",padding:"14px",borderRadius:14,background:endDate?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:endDate?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:endDate?"pointer":"default",fontFamily:"inherit"}}>
               Toliau → Sudėlioti pratimus
             </button>
