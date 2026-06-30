@@ -84,8 +84,38 @@ export default function PushPermissionPrompt({ userId }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getPushPermissionStatus().then(setStatus);
-  }, []);
+    async function check() {
+      const s = await getPushPermissionStatus();
+      setStatus(s);
+
+      // Jei leidimas jau suteiktas naršyklei, bet šiam userId dar nėra subscription PB - užregistruoti tyliai
+      if (s === "granted" && isPushSupported()) {
+        const registration = await navigator.serviceWorker.getRegistration().catch(()=>null);
+        if (registration) {
+          const sub = await registration.pushManager.getSubscription().catch(()=>null);
+          if (sub) {
+            const subJson = sub.toJSON();
+            const existing = await pb.collection("push_subscriptions").getFullList({
+              filter: `user_id="${userId}" && endpoint="${subJson.endpoint}"`,
+              requestKey: null,
+            }).catch(()=>[]);
+            if (existing.length === 0) {
+              await pb.collection("push_subscriptions").create({
+                user_id: userId,
+                endpoint: subJson.endpoint,
+                keys_p256dh: subJson.keys.p256dh,
+                keys_auth: subJson.keys.auth,
+              }).catch(()=>{});
+            }
+          } else {
+            // Leidimas yra, bet subscription objekto dar nėra - sukurti
+            await subscribeToPush(userId);
+          }
+        }
+      }
+    }
+    check();
+  }, [userId]);
 
   async function handleEnable() {
     setLoading(true);
