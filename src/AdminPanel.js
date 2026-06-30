@@ -6,6 +6,7 @@ import BookingAdmin from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
 import ProgressCompare from "./ProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
+import StreakBadge from "./StreakBadge";
 
 const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -190,7 +191,10 @@ function ClientCard({ client, onOpen }) {
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
         </div>
       </div>
-      <span style={{ fontSize: 18, color: "rgba(255,255,255,0.4)" }}>→</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <StreakBadge userId={client.id} compact />
+        <span style={{ fontSize: 18, color: "rgba(255,255,255,0.4)" }}>→</span>
+      </div>
     </button>
   );
 }
