@@ -14,14 +14,15 @@ function todayStr() { return new Date().toISOString().split("T")[0]; }
 function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 
-// Generuoti laikų tarpus
+// Generuoti laikų tarpus — visada prasideda lygia valanda, žingsnis 60 min
 function generateSlots(start, end, duration) {
   const slots = [];
-  let cur = timeToMin(start);
+  // Suapvalinti pradžią iki artimiausios pilnos valandos į viršų
+  let cur = Math.ceil(timeToMin(start) / 60) * 60;
   const last = timeToMin(end) - duration;
   while (cur <= last) {
     slots.push({ start: minToTime(cur), end: minToTime(cur + duration) });
-    cur += duration;
+    cur += 60; // visada kitas slotas po valandos
   }
   return slots;
 }
