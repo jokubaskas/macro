@@ -92,6 +92,7 @@ function CancelButton({ booking, userId, onCancelled }) {
 
 export default function BookingClient({ user, onClose }) {
   const [schedule, setSchedule]     = useState([]);
+  const [exceptions, setExceptions] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [takenSlots, setTakenSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -102,12 +103,14 @@ export default function BookingClient({ user, onClose }) {
   const [calMonth, setCalMonth]     = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
 
   const load = useCallback(async () => {
-    const [sched, bk] = await Promise.all([
+    const [sched, bk, exc] = await Promise.all([
       pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null }).catch(()=>[]),
       pb.collection("bookings").getFullList({ filter:`client_id="${user.id}"`, sort:"-date", requestKey:null }).catch(()=>[]),
+      pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
     ]);
     setSchedule(sched);
     setMyBookings(bk);
+    setExceptions(exc);
   }, [user.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -130,6 +133,15 @@ export default function BookingClient({ user, onClose }) {
   function isDayAvailable(dateStr) {
     if (dateStr < todayStr()) return false;
     return !!getScheduleForDate(dateStr);
+  }
+
+  function isSlotBlocked(dateStr, slotStart, slotEnd) {
+    const slotS = timeToMin(slotStart), slotE = timeToMin(slotEnd);
+    return exceptions.some(ex => {
+      if (ex.date !== dateStr) return false;
+      const exS = timeToMin(ex.start_time), exE = timeToMin(ex.end_time);
+      return slotS < exE && slotE > exS; // persidengia
+    });
   }
 
   async function handleBook() {
@@ -156,7 +168,7 @@ export default function BookingClient({ user, onClose }) {
 
   const sched = selectedDate ? getScheduleForDate(selectedDate) : null;
   const slots = sched ? generateSlots(sched.start_time, sched.end_time, sched.slot_duration) : [];
-  const availableSlots = slots.filter(s => !takenSlots.includes(s.start));
+  const availableSlots = slots.filter(s => !takenSlots.includes(s.start) && !(selectedDate && isSlotBlocked(selectedDate, s.start, s.end)));
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
