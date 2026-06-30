@@ -14,10 +14,31 @@ export default function ProgressPhotos({ user, onClose }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await pb.collection("progress_photos").getFullList({
-      filter: `user_id="${user.id}"`, sort: "-date", requestKey: null,
-    }).catch(()=>[]);
-    setHistory(data);
+    const [data, profile] = await Promise.all([
+      pb.collection("progress_photos").getFullList({
+        filter: `user_id="${user.id}"`, sort: "-date", requestKey: null,
+      }).catch(()=>[]),
+      pb.collection("users").getOne(user.id, { requestKey: null }).catch(()=>null),
+    ]);
+
+    let combined = [...data];
+    if (profile?.photo_front) {
+      const regDate = profile.created ? profile.created.slice(0,10) : "Registracija";
+      const alreadyExists = data.some(d => d.date === regDate);
+      if (!alreadyExists) {
+        combined.push({
+          id: "registration",
+          date: regDate,
+          photo_front: profile.photo_front,
+          photo_side: profile.photo_side,
+          photo_back: profile.photo_back,
+          _isProfile: true,
+          _record: profile,
+        });
+      }
+    }
+    combined.sort((a,b) => b.date.localeCompare(a.date));
+    setHistory(combined);
     setLoading(false);
   }, [user.id]);
 
@@ -35,18 +56,23 @@ export default function ProgressPhotos({ user, onClose }) {
   async function handleSave() {
     if (!photos.photo_front) return;
     setSaving(true);
-    const formData = new FormData();
-    formData.append("user_id", user.id);
-    formData.append("date", todayStr());
-    if (photos.photo_front) formData.append("photo_front", photos.photo_front);
-    if (photos.photo_side)  formData.append("photo_side", photos.photo_side);
-    if (photos.photo_back)  formData.append("photo_back", photos.photo_back);
-    await pb.collection("progress_photos").create(formData).catch(()=>{});
+    try {
+      const formData = new FormData();
+      formData.append("user_id", user.id);
+      formData.append("date", todayStr());
+      if (photos.photo_front) formData.append("photo_front", photos.photo_front);
+      if (photos.photo_side)  formData.append("photo_side", photos.photo_side);
+      if (photos.photo_back)  formData.append("photo_back", photos.photo_back);
+      await pb.collection("progress_photos").create(formData);
+      setShowUpload(false);
+      setPhotos({ photo_front:null, photo_side:null, photo_back:null });
+      setPreviews({ photo_front:null, photo_side:null, photo_back:null });
+      await load();
+    } catch(err) {
+      console.error("Progress photo save error:", err);
+      alert("Klaida išsaugant nuotraukas: " + (err?.message || "nežinoma klaida"));
+    }
     setSaving(false);
-    setShowUpload(false);
-    setPhotos({ photo_front:null, photo_side:null, photo_back:null });
-    setPreviews({ photo_front:null, photo_side:null, photo_back:null });
-    load();
   }
 
   const fields = [
@@ -107,10 +133,12 @@ export default function ProgressPhotos({ user, onClose }) {
 
         {history.map(h => (
           <div key={h.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:12, marginBottom:10 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>📅 {h.date}</p>
+            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>
+              📅 {h.date} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
+            </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
               {["photo_front","photo_side","photo_back"].map(k => h[k] ? (
-                <img key={k} src={pb.files.getURL(h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8 }} />
+                <img key={k} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8 }} />
               ) : <div key={k} style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />)}
             </div>
           </div>
