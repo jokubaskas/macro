@@ -8,6 +8,7 @@ import MeasurementReport from "./MeasurementReport";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
+import ProgressPhotos from "./ProgressPhotos";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -75,6 +76,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [checkinKey,   setCheckinKey]   = useState(0);
   const [showWorkout,  setShowWorkout]  = useState(false);
   const [showBooking,  setShowBooking]  = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
@@ -123,6 +125,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {showWorkout && <WorkoutView user={user} onClose={()=>setShowWorkout(false)} />}
       {showBooking && <BookingClient user={user} onClose={()=>setShowBooking(false)} />}
+      {showProgress && <ProgressPhotos user={user} onClose={()=>setShowProgress(false)} />}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
@@ -160,6 +163,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               <button onClick={() => setShowBooking(true)} title="Rezervuoti"
                 style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 📆
+              </button>
+            )}
+            {/* Progreso nuotraukos */}
+            {isToday && (
+              <button onClick={() => setShowProgress(true)} title="Progreso nuotraukos"
+                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                📸
               </button>
             )}
             {/* Kalendorius */}
