@@ -24,40 +24,47 @@ export async function getPushPermissionStatus() {
 }
 
 export async function subscribeToPush(userId) {
-  if (!isPushSupported()) return false;
+  if (!isPushSupported()) { alert("Push nepalaikomas šiame įrenginyje"); return false; }
 
-  const registration = await navigator.serviceWorker.register("/sw.js");
-  await navigator.serviceWorker.ready;
+  try {
+    const registration = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
 
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return false;
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") { alert("Leidimas neduotas: " + permission); return false; }
 
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const subJson = subscription.toJSON();
+
+    const existing = await pb.collection("push_subscriptions").getFullList({
+      filter: `user_id="${userId}" && endpoint="${subJson.endpoint}"`,
+      requestKey: null,
+    }).catch((e) => { alert("PB filter klaida: " + e.message); return []; });
+
+    if (existing.length === 0) {
+      await pb.collection("push_subscriptions").create({
+        user_id: userId,
+        endpoint: subJson.endpoint,
+        keys_p256dh: subJson.keys.p256dh,
+        keys_auth: subJson.keys.auth,
+      }).catch((e) => { alert("PB create klaida: " + e.message); });
+    } else {
+      alert("Subscription jau egzistuoja PB");
+    }
+
+    alert("Sėkmingai užregistruota: " + userId);
+    return true;
+  } catch (err) {
+    alert("Bendra klaida: " + err.message);
+    return false;
   }
-
-  const subJson = subscription.toJSON();
-
-  // Patikrinti ar jau yra toks subscription PB
-  const existing = await pb.collection("push_subscriptions").getFullList({
-    filter: `user_id="${userId}" && endpoint="${subJson.endpoint}"`,
-    requestKey: null,
-  }).catch(() => []);
-
-  if (existing.length === 0) {
-    await pb.collection("push_subscriptions").create({
-      user_id: userId,
-      endpoint: subJson.endpoint,
-      keys_p256dh: subJson.keys.p256dh,
-      keys_auth: subJson.keys.auth,
-    }).catch(() => {});
-  }
-
-  return true;
 }
 
 export async function unsubscribeFromPush(userId) {
