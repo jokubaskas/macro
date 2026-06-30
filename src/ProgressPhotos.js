@@ -11,6 +11,7 @@ export default function ProgressPhotos({ user, onClose }) {
   const [photos, setPhotos]     = useState({ photo_front:null, photo_side:null, photo_back:null });
   const [previews, setPreviews] = useState({ photo_front:null, photo_side:null, photo_back:null });
   const [saving, setSaving]     = useState(false);
+  const [visibleCount, setVisibleCount] = useState(3);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,10 +140,10 @@ export default function ProgressPhotos({ user, onClose }) {
         {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>}
         {!loading && history.length===0 && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Nuotraukų dar nėra</p>}
 
-        {history.map(h => (
+        {history.slice(0, visibleCount).map(h => (
           <div key={h.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:12, marginBottom:10 }}>
             <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>
-              📅 {h.date} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
+              📅 {h.date.slice(0,10)} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
             </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
               {["photo_front","photo_side","photo_back"].map(k => h[k] ? (
@@ -151,6 +152,12 @@ export default function ProgressPhotos({ user, onClose }) {
             </div>
           </div>
         ))}
+
+        {history.length > visibleCount && (
+          <button onClick={()=>setVisibleCount(c=>c+5)} style={{ width:"100%", padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
+            Rodyti daugiau ({history.length - visibleCount} liko)
+          </button>
+        )}
       </div>
     </div>
   );
