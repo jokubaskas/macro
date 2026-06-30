@@ -102,40 +102,40 @@ export default function ProgressCompare({ client, onClose }) {
             {/* Datos slankikliai */}
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Anksčiau (kairė)</label>
-              <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                 {(showAllA ? history : history.slice(-VISIBLE_DATES)).map((h) => {
                   const i = history.indexOf(h);
                   return (
-                    <button key={h.id} onClick={()=>setIdxA(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxA===i?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                    <button key={h.id} onClick={()=>setIdxA(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxA===i?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                       {h.date.slice(0,10)}
                     </button>
                   );
                 })}
-                {!showAllA && history.length > VISIBLE_DATES && (
-                  <button onClick={()=>setShowAllA(true)} style={{ padding:"7px 12px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
-                    +{history.length - VISIBLE_DATES} senesnių
-                  </button>
-                )}
               </div>
+              {!showAllA && history.length > VISIBLE_DATES && (
+                <button onClick={()=>setShowAllA(true)} style={{ marginTop:8, padding:"7px 14px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Rodyti daugiau (+{history.length - VISIBLE_DATES})
+                </button>
+              )}
             </div>
 
             <div>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Dabar (dešinė)</label>
-              <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                 {(showAllB ? history : history.slice(-VISIBLE_DATES)).map((h) => {
                   const i = history.indexOf(h);
                   return (
-                    <button key={h.id} onClick={()=>setIdxB(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxB===i?"#276749":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+                    <button key={h.id} onClick={()=>setIdxB(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxB===i?"#276749":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                       {h.date.slice(0,10)}
                     </button>
                   );
                 })}
-                {!showAllB && history.length > VISIBLE_DATES && (
-                  <button onClick={()=>setShowAllB(true)} style={{ padding:"7px 12px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
-                    +{history.length - VISIBLE_DATES} senesnių
-                  </button>
-                )}
               </div>
+              {!showAllB && history.length > VISIBLE_DATES && (
+                <button onClick={()=>setShowAllB(true)} style={{ marginTop:8, padding:"7px 14px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Rodyti daugiau (+{history.length - VISIBLE_DATES})
+                </button>
+              )}
             </div>
           </>
         )}
