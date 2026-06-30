@@ -9,6 +9,7 @@ import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
 import ProgressPhotos from "./ProgressPhotos";
+import PushPermissionPrompt from "./PushNotifications";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -205,6 +206,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             </p>
           </div>
         )}
+
+        {/* Push pranešimai */}
+        <PushPermissionPrompt userId={user.id} />
 
         {/* Motyvacija */}
         {isToday && (
