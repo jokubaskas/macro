@@ -260,46 +260,68 @@ function ClientDetail({ client, onClose }) {
 
   // Kai keičiasi data — rasti planą kuris TUO METU galiojo
   useEffect(() => {
-    setPlanForDate(null); setPlanDays([]); setSelectedPlanDay(null); setPlanExercises([]); setWorkoutLogs({});
-    if (!allPlans.length) return;
+    let cancelled = false;
+    async function loadPlanForDate() {
+      setPlanForDate(null); setPlanDays([]); setSelectedPlanDay(null); setPlanExercises([]); setWorkoutLogs({});
+      if (!allPlans.length) return;
 
-    // Naudojame start_date ir end_date
-    const validPlans = allPlans.filter(p =>
-      (p.start_date || "").slice(0,10) <= selectedDate && (p.end_date || "").slice(0,10) >= selectedDate
-    );
-    const plan = validPlans[validPlans.length - 1] || null;
-    setPlanForDate(plan);
-    if (!plan) return;
+      const validPlans = allPlans.filter(p =>
+        (p.start_date || "").slice(0,10) <= selectedDate && (p.end_date || "").slice(0,10) >= selectedDate
+      );
+      const plan = validPlans[validPlans.length - 1] || null;
+      if (cancelled) return;
+      setPlanForDate(plan);
+      if (!plan) return;
 
-    pb.collection("workout_plan_days").getFullList({
-      filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
-    }).then(days => {
+      setPlanLoading(true);
+      const days = await pb.collection("workout_plan_days").getFullList({
+        filter: `plan_id="${plan.id}"`, sort: "day_number", requestKey: null,
+      }).catch(() => []);
+      if (cancelled) return;
       setPlanDays(days);
-      if (days.length) setSelectedPlanDay(days[0]);
-    }).catch(() => {});
-  }, [selectedDate, allPlans]);
 
-  // Kai keičiasi pasirinkta plano diena — krauti pratimus ir logus
-  useEffect(() => {
-    setPlanExercises([]); setWorkoutLogs({});
-    if (!selectedPlanDay) return;
-    setPlanLoading(true);
+      const firstDay = days[0] || null;
+      setSelectedPlanDay(firstDay);
+      if (!firstDay) { setPlanLoading(false); return; }
 
-    pb.collection("workout_plan_exercises").getFullList({
-      filter: `day_id="${selectedPlanDay.id}"`, sort: "order_num", requestKey: null,
-    }).then(async exs => {
+      const exs = await pb.collection("workout_plan_exercises").getFullList({
+        filter: `day_id="${firstDay.id}"`, sort: "order_num", requestKey: null,
+      }).catch(() => []);
+      if (cancelled) return;
       setPlanExercises(exs);
-      // Logai: klientas atliko šios plano dienos pratimus pasirinktą kalendorinę dieną
+
       const logs = await pb.collection("workout_logs_client").getFullList({
-        filter: `user_id="${client.id}" && plan_day_id="${selectedPlanDay.id}" && calendar_date="${selectedDate}"`,
+        filter: `user_id="${client.id}" && plan_day_id="${firstDay.id}" && calendar_date="${selectedDate}"`,
         requestKey: null,
       }).catch(() => []);
+      if (cancelled) return;
       const logsMap = {};
       logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
       setWorkoutLogs(logsMap);
       setPlanLoading(false);
-    }).catch(() => setPlanLoading(false));
-  }, [selectedPlanDay, selectedDate, client.id]);
+    }
+    loadPlanForDate();
+    return () => { cancelled = true; };
+  }, [selectedDate, allPlans, client.id]);
+
+  // Kai treneris rankiniu būdu pasirenka kitą plano dieną tab'uose
+  async function handleSelectPlanDay(day) {
+    setSelectedPlanDay(day);
+    setPlanLoading(true);
+    setPlanExercises([]); setWorkoutLogs({});
+    const exs = await pb.collection("workout_plan_exercises").getFullList({
+      filter: `day_id="${day.id}"`, sort: "order_num", requestKey: null,
+    }).catch(() => []);
+    setPlanExercises(exs);
+    const logs = await pb.collection("workout_logs_client").getFullList({
+      filter: `user_id="${client.id}" && plan_day_id="${day.id}" && calendar_date="${selectedDate}"`,
+      requestKey: null,
+    }).catch(() => []);
+    const logsMap = {};
+    logs.forEach(l => { logsMap[l.plan_exercise_id] = l; });
+    setWorkoutLogs(logsMap);
+    setPlanLoading(false);
+  }
 
   const doneCount = planExercises.filter(ex => workoutLogs[ex.id]?.is_done).length;
 
@@ -351,7 +373,7 @@ function ClientDetail({ client, onClose }) {
           {planForDate && planDays.length > 0 && (
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, paddingBottom: 2 }}>
               {planDays.map(d => (
-                <button key={d.id} onClick={() => setSelectedPlanDay(d)}
+                <button key={d.id} onClick={() => handleSelectPlanDay(d)}
                   style={{ padding: "6px 12px", borderRadius: 20, border: "none", background: selectedPlanDay?.id === d.id ? "#276749" : "rgba(255,255,255,0.1)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}>
                   {d.day_label}
                 </button>
