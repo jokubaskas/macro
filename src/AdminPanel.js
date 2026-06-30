@@ -4,6 +4,7 @@ import { PK, GOALS } from "./constants";
 import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
 import BookingAdmin from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
+import ProgressCompare from "./ProgressCompare";
 
 const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -229,6 +230,7 @@ function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
   const [showPlanBuilder, setShowPlanBuilder] = useState(false);
+  const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [allPlans, setAllPlans]           = useState([]);
   const [planForDate, setPlanForDate]     = useState(null);
   const [planDays, setPlanDays]           = useState([]);
@@ -300,6 +302,9 @@ function ClientDetail({ client, onClose }) {
       {showPlanBuilder && (
         <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); reloadPlans(); }} />
       )}
+      {showProgressCompare && (
+        <ProgressCompare client={client} onClose={()=>setShowProgressCompare(false)} />
+      )}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
         <div>
@@ -309,6 +314,11 @@ function ClientDetail({ client, onClose }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+
+        {/* Progreso nuotraukos */}
+        <button onClick={() => setShowProgressCompare(true)} style={{ width: "100%", padding: "12px", marginBottom: 12, background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 14, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          📸 Progreso nuotraukos
+        </button>
 
         {/* Sporto plano kortelė */}
         <div style={{ marginBottom: 16, background: "rgba(26,71,49,0.5)", borderRadius: 16, padding: "14px 16px", border: "1px solid rgba(127,255,176,0.2)" }}>
