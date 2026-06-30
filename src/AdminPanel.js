@@ -5,6 +5,7 @@ import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
 import BookingAdmin from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
 import ProgressCompare from "./ProgressCompare";
+import PushPermissionPrompt from "./PushNotifications";
 
 const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -491,6 +492,8 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+        <PushPermissionPrompt userId={user.id} />
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
           {[
             { v: clients.length, l: "Klientai iš viso", bg: "linear-gradient(135deg,#6D1B3B,#AD1457)", c: "#fff" },
