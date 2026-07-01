@@ -138,8 +138,8 @@ function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function Onboarding({ user, onComplete }) {
-  const [step, setStep] = useState(0);
+export default function Onboarding({ user, onComplete, startStep = 0 }) {
+  const [step, setStep] = useState(startStep);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -177,11 +177,11 @@ export default function Onboarding({ user, onComplete }) {
 ];
 
   function canNext() {
-    if (step === 0) return form.dob && form.height && form.weight;
+    if (step === 0) return (form.dob && form.height && form.weight) || startStep > 0;
     if (step === 1) return form.goal && form.motivation.trim().length > 2;
     if (step === 2) return form.sleep_stress.trim().length > 1 && form.act && form.steps_per_day;
     if (step === 3) return form.diet_desc.trim().length > 2 && form.wellbeing;
-    return true; // nuotraukos neprivalomOS
+    return true;
   }
 
   async function handleFinish() {
