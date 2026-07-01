@@ -96,7 +96,7 @@ export default function TrainingPackages({ user, onClose }) {
               </div>
               <button onClick={()=>!alreadyPending&&!isSending&&handleRequest(pkg)} disabled={alreadyPending||!!sending}
                 style={{ width:"100%", padding:"11px", borderRadius:12, border:"none", background: alreadyPending ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg,#6D1B3B,#AD1457)", color: alreadyPending ? "rgba(255,255,255,0.3)" : "#fff", fontSize:13, fontWeight:700, cursor: alreadyPending||sending ? "default" : "pointer", fontFamily:"inherit" }}>
-                {alreadyPending ? "⏳ Užklausa išsiųsta" : isSending ? "Siunčiama..." : "Siųsti užklausą trenerai →"}
+                {alreadyPending ? "⏳ Užklausa išsiųsta" : isSending ? "Siunčiama..." : "Siųsti užklausą trenerei →"}
               </button>
             </div>
           );
