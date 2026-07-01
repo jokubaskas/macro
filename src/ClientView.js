@@ -150,70 +150,60 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         </button>
       )}
 
-      {/* Header */}
+      {/* Header — paprastas */}
       <div style={{ padding: "16px 20px 14px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src="/logo.png" alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>Daily Check-in</p>
-              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0 }}>{profile?.name?.split(" ")[0]}</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
+                Sveika, {profile?.name?.split(" ")[0]} 👋
+              </p>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+                {isToday ? new Date().toLocaleDateString("lt-LT", { weekday:"long", month:"long", day:"numeric" }) : selectedDate}
+              </p>
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {/* Treniruočių paketai */}
-            {isToday && (
-              <button onClick={() => setShowPackages(true)} title="Paketai"
-                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                🎟️
+            {profile?.track_progress && (
+              <button onClick={() => setShowCalendar(true)} style={{ background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                📅 {isToday ? new Date().toLocaleDateString("lt-LT", { month: "short", day: "numeric" }) : selectedDate}
+                <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
               </button>
             )}
-            {/* Treniruotė */}
-            {isToday && hasActivePlan && (
-              <button onClick={() => setShowWorkout(true)} title="Treniruotė"
-                style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#1a4731,#276749)", border: "none", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                🏋️
-              </button>
-            )}
-            {/* Rezervacija */}
-            {isToday && (
-              <button onClick={() => setShowBooking(true)} title="Rezervuoti"
-                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                📆
-              </button>
-            )}
-            {/* Progreso nuotraukos — tik sekiantiems */}
-            {isToday && profile?.track_progress && (
-              <button onClick={() => setShowProgress(true)} title="Progreso nuotraukos"
-                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                📸
-              </button>
-            )}
-            {/* Kalendorius */}
-            <button onClick={() => setShowCalendar(true)} style={{ background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-              📅 {isToday ? new Date().toLocaleDateString("lt-LT", { month: "short", day: "numeric" }) : selectedDate}
-              <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
-            </button>
             <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Išeiti</button>
           </div>
         </div>
         <Sep />
       </div>
 
+      {/* Tab bar apačioje — tik track_progress vartotojams */}
+      {profile?.track_progress && (
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 400, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", padding: "10px 0 env(safe-area-inset-bottom, 16px)" }}>
+          <button onClick={() => setShowPackages(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
+            <span style={{ fontSize: 28 }}>🎟️</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Paketai</span>
+          </button>
+          {hasActivePlan && (
+            <button onClick={() => setShowWorkout(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}>
+              <span style={{ fontSize: 28 }}>🏋️</span>
+              <span style={{ fontSize: 10, color: "#AD1457", fontWeight: 700 }}>Treniruotė</span>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457", marginTop: -2 }} />
+            </button>
+          )}
+          <button onClick={() => setShowBooking(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
+            <span style={{ fontSize: 28 }}>📆</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Rezervacija</span>
+          </button>
+          <button onClick={() => setShowProgress(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
+            <span style={{ fontSize: 28 }}>📸</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Progresas</span>
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
-
-        {/* Greeting */}
-        {isToday && (
-          <div style={{ marginBottom: 16, padding: "14px 16px", background: "rgba(255,255,255,0.07)", borderRadius: 16 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>
-              Sveika, {profile?.name?.split(" ")[0]} 👋
-            </p>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: 0 }}>
-              {profile?.track_progress ? "Užpildyk šiandienos check-in'ą" : "Sveiki sugrįžę!"}
-            </p>
-          </div>
-        )}
 
         {!isToday && (
           <div style={{ marginBottom: 16, padding: "12px 16px", background: "rgba(255,255,255,0.07)", borderRadius: 14 }}>
