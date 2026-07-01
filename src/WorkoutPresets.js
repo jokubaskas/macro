@@ -85,26 +85,50 @@ function ExercisePicker({ onAdd, onClose }) {
 // ── Esamo pratimo parametrų redagavimas ───────────────────────────────────────
 function ExerciseEditModal({ exercise, onSave, onClose }) {
   const isCardio = exercise.category === "cardio";
+
+  const initSetWeights = () => {
+    if (exercise.set_weights) {
+      try { return JSON.parse(exercise.set_weights).map(String); } catch {}
+    }
+    const n = parseInt(exercise.sets) || 3;
+    const w = exercise.weight_kg ? String(exercise.weight_kg) : "";
+    return Array(n).fill(w);
+  };
+
   const [form, setForm] = useState({
     sets: exercise.sets ?? "",
     reps: exercise.reps ?? "",
     weight_kg: exercise.weight_kg ?? "",
     duration_min: exercise.duration_min ?? "",
   });
+  const [perSet, setPerSet]         = useState(!!exercise.set_weights);
+  const [setWeights, setSetWeights] = useState(initSetWeights);
+
+  function handleSetsChange(val) {
+    setForm(f => ({...f, sets: val}));
+    const n = parseInt(val) || 0;
+    setSetWeights(prev => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(arr[arr.length-1] || "");
+      return arr.slice(0, n);
+    });
+  }
 
   function handleSave() {
-    onSave({
-      ...exercise,
-      sets: isCardio ? null : (parseInt(form.sets) || null),
-      reps: isCardio ? null : (parseInt(form.reps) || null),
-      weight_kg: isCardio ? null : (parseFloat(form.weight_kg) || null),
-      duration_min: isCardio ? (parseInt(form.duration_min) || null) : null,
-    });
+    const sets = parseInt(form.sets) || null;
+    let weight_kg = parseFloat(String(form.weight_kg).replace(",",".")) || null;
+    let set_weights = null;
+    if (perSet && sets) {
+      const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
+      set_weights = JSON.stringify(parsed);
+      weight_kg = parsed[0] || weight_kg;
+    }
+    onSave({ ...exercise, sets, reps: isCardio?null:(parseInt(form.reps)||null), weight_kg: isCardio?null:weight_kg, set_weights: isCardio?null:set_weights, duration_min: isCardio?(parseInt(form.duration_min)||null):null });
   }
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px"}}>
+      <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"85vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}>✕</button>
@@ -119,14 +143,38 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
             <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
           </div>
         ) : (
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
-            {[{k:"sets",l:"Serijos"},{k:"reps",l:"Kartojimai"},{k:"weight_kg",l:"Svoris (kg)"}].map(f=>(
-              <div key={f.k}>
-                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>{f.l}</label>
-                <input type="number" value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} placeholder="–" style={inp}/>
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              <div>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                <input type="number" value={form.sets} onChange={e=>handleSetsChange(e.target.value)} placeholder="3" style={inp}/>
               </div>
-            ))}
-          </div>
+              <div>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Kartojimai</label>
+                <input type="number" value={form.reps} onChange={e=>setForm(p=>({...p,reps:e.target.value}))} placeholder="12" style={inp}/>
+              </div>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>Svoris</label>
+                <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  {perSet ? "✓ Skirtingi svoriai" : "Skirtingi svoriai"}
+                </button>
+              </div>
+              {!perSet ? (
+                <input type="text" inputMode="decimal" value={form.weight_kg} onChange={e=>setForm(p=>({...p,weight_kg:e.target.value}))} placeholder="kg" style={inp}/>
+              ) : (
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {setWeights.slice(0, parseInt(form.sets)||3).map((w,i) => (
+                    <div key={i} style={{flex:"1 1 60px",minWidth:60}}>
+                      <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>S{i+1}</label>
+                      <input type="text" inputMode="decimal" value={w} onChange={e=>{const arr=[...setWeights]; arr[i]=e.target.value; setSetWeights(arr);}} placeholder="kg" style={{...inp,textAlign:"center",padding:"8px 6px"}}/>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
         <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
           💾 Išsaugoti pakeitimus
@@ -256,9 +304,21 @@ function PresetEditor({ preset, onClose, onSaved }) {
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
             {days[activeDay].exercises.map((ex,j)=>(
               <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-                <div>
+                <div style={{display:"flex",flexDirection:"column",gap:3,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
+                  <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
+                </div>
+                <div style={{flex:1}}>
                   <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:"0 0 2px"}}>{ex.exercise_name}</p>
-                  <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.category==="cardio"?`⏱ ${ex.duration_min||"–"} min`:`${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`} <span style={{color:"rgba(255,255,255,0.3)"}}>· paliesk redaguoti</span></p>
+                  <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>
+                    {ex.category==="cardio"
+                      ? `⏱ ${ex.duration_min||"–"} min`
+                      : ex.set_weights
+                        ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
+                        : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg}kg`:""}`
+                    }
+                    <span style={{color:"rgba(255,255,255,0.3)"}}> · paliesk redaguoti</span>
+                  </p>
                 </div>
                 <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
               </div>
