@@ -83,6 +83,20 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showProgress, setShowProgress] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Aktyvus tab (null = pagrindinis)
+  const activeTab = showPackages ? "packages"
+    : showWorkout ? "workout"
+    : showBooking ? "booking"
+    : showProgress ? "progress"
+    : null;
+
+  function openTab(tab) {
+    setShowPackages(tab === "packages");
+    setShowWorkout(tab === "workout");
+    setShowBooking(tab === "booking");
+    setShowProgress(tab === "progress");
+  }
   const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
@@ -129,10 +143,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   return (
     <div style={{ minHeight: "100vh", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
 
-      {showWorkout && <WorkoutView user={user} onClose={()=>setShowWorkout(false)} />}
-      {showBooking && <BookingClient user={user} onClose={()=>setShowBooking(false)} />}
-      {showProgress && <ProgressPhotos user={user} onClose={()=>setShowProgress(false)} />}
-      {showPackages && <TrainingPackages user={user} onClose={()=>setShowPackages(false)} />}
+      {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
+      {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
+      {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
+      {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
       {showOnboarding && (
         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
       )}
@@ -179,26 +193,23 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {/* Tab bar apačioje — tik track_progress vartotojams */}
       {profile?.track_progress && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 400, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", padding: "10px 0 env(safe-area-inset-bottom, 16px)" }}>
-          <button onClick={() => setShowPackages(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
-            <span style={{ fontSize: 28 }}>🎟️</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Paketai</span>
-          </button>
-          {hasActivePlan && (
-            <button onClick={() => setShowWorkout(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}>
-              <span style={{ fontSize: 28 }}>🏋️</span>
-              <span style={{ fontSize: 10, color: "#AD1457", fontWeight: 700 }}>Treniruotė</span>
-              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457", marginTop: -2 }} />
-            </button>
-          )}
-          <button onClick={() => setShowBooking(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
-            <span style={{ fontSize: 28 }}>📆</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Rezervacija</span>
-          </button>
-          <button onClick={() => setShowProgress(true)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
-            <span style={{ fontSize: 28 }}>📸</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Progresas</span>
-          </button>
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", padding: "10px 0 env(safe-area-inset-bottom, 16px)" }}>
+          {[
+            { id:"packages", emoji:"🎟️", label:"Paketai" },
+            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė" }] : []),
+            { id:"booking",  emoji:"📆", label:"Rezervacija" },
+            { id:"progress", emoji:"📸", label:"Progresas" },
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => openTab(isActive ? null : tab.id)}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", opacity: isActive ? 1 : 0.5, transition: "opacity 0.15s" }}>
+                <span style={{ fontSize: 28 }}>{tab.emoji}</span>
+                <span style={{ fontSize: 10, color: isActive ? "#AD1457" : "rgba(255,255,255,0.5)", fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
+                {isActive && <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457" }} />}
+              </button>
+            );
+          })}
         </div>
       )}
 
