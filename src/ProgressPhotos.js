@@ -111,7 +111,7 @@ export default function ProgressPhotos({ user, onClose }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
               {fields.map(f => (
                 <label key={f.key} style={{ cursor:"pointer", display:"block" }}>
-                  <input type="file" accept="image/*" capture="environment" onChange={e=>handleFile(f.key,e)} style={{ display:"none" }} />
+                  <input type="file" accept="image/*" onChange={e=>handleFile(f.key,e)} style={{ display:"none" }} />
                   <div style={{ aspectRatio:"3/4", borderRadius:12, border:previews[f.key]?"2px solid rgba(255,255,255,0.6)":f.required?"2px dashed rgba(255,180,180,0.5)":"2px dashed rgba(255,255,255,0.25)", background:previews[f.key]?"transparent":"rgba(255,255,255,0.06)", overflow:"hidden", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4 }}>
                     {previews[f.key] ? (
                       <img src={previews[f.key]} alt={f.label} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
