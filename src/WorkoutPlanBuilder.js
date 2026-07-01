@@ -427,15 +427,14 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
                 </div>
               </div>
             )}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:24}}>
-              <div>
-                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pradžia</label>
-                <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={inp}/>
-              </div>
-              <div>
-                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pabaiga</label>
-                <input type="date" value={endDate} min={startDate} onChange={e=>setEndDate(e.target.value)} style={inp}/>
-              </div>
+            <div style={{marginBottom:24}}>
+              {[{label:"Pradžia", val:startDate, set:setStartDate, minVal:null},{label:"Pabaiga", val:endDate, set:setEndDate, minVal:startDate}].map(f=>(
+                <div key={f.label} style={{marginBottom:10}}>
+                  <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>{f.label}</label>
+                  <input type="date" value={f.val} min={f.minVal||undefined} onChange={e=>f.set(e.target.value)}
+                    style={{...inp, display:"block", width:"100%"}}/>
+                </div>
+              ))}
             </div>
             <button onClick={()=>{if(!endDate)return; if(days.length===0) initDays(daysCount); setStep(2);}} disabled={!endDate}
               style={{width:"100%",padding:"14px",borderRadius:14,background:endDate?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:endDate?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:endDate?"pointer":"default",fontFamily:"inherit"}}>
