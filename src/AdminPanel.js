@@ -339,7 +339,7 @@ function ClientDetail({ client, onClose }) {
       {showMeasurements && (
         <ClientMeasurements client={client} onClose={()=>setShowMeasurements(false)} />
       )}
-      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
         <div>
           <h1 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</h1>
@@ -494,14 +494,10 @@ export default function AdminPanel({ user, onLogout }) {
   useEffect(() => { loadClients(); }, [loadClients]);
 
   if (openClient) return <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />;
-  if (showBookings) return <BookingAdmin onClose={() => setShowBookings(false)} />;
-  if (showStats) return <TrainerStats onClose={() => setShowStats(false)} />;
-  if (showPresets) return <WorkoutPresets onClose={() => setShowPresets(false)} />;
-  if (showPackages) return <PackageAdmin onClose={() => setShowPackages(false)} />;
 
   if (view === "new") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
-      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
         <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Naujas klientas</h1>
       </div>
@@ -512,32 +508,51 @@ export default function AdminPanel({ user, onLogout }) {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
-      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "16px 20px 20px" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
+      {/* Header — paprastas */}
+      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: "max(env(safe-area-inset-top), 16px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/logo.png" alt="Coach Vilma" style={{ width: 38, height: 38, objectFit: "contain", borderRadius: 8 }} />
+            <img src="/logo.png" alt="Coach Vilma" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
             <div>
-              <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Admin panelė</h1>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>{user.email}</p>
+              <h1 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>Vilma · Admin</h1>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>Trenerės panelė</p>
             </div>
           </div>
-          <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Atsijungti</button>
-          <button onClick={() => setShowPackages(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-            🎟️
-          </button>
-          <button onClick={() => setShowStats(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-            📊
-          </button>
-          <button onClick={() => setShowPresets(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-            📋
-          </button>
-          <button onClick={() => setShowBookings(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", position:"relative" }}>
-            📅
-            {/* TODO: pending count badge */}
-          </button>
+          <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
         </div>
       </div>
+
+      {/* Tab bar apačioje */}
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "env(safe-area-inset-bottom, 16px)" }}>
+        {[
+          { id:"clients", emoji:"👥", label:"Klientai",  onClick: ()=>{ setShowStats(false); setShowPresets(false); setShowPackages(false); setShowBookings(false); } },
+          { id:"bookings", emoji:"📅", label:"Rezervacijos", onClick: ()=>setShowBookings(true) },
+          { id:"packages", emoji:"🎟️", label:"Paketai",   onClick: ()=>setShowPackages(true) },
+          { id:"stats",    emoji:"📊", label:"Statistika", onClick: ()=>setShowStats(true) },
+          { id:"presets",  emoji:"📋", label:"Šablonai",  onClick: ()=>setShowPresets(true) },
+        ].map(tab => {
+          const isActive = tab.id === "bookings" ? showBookings
+            : tab.id === "packages" ? showPackages
+            : tab.id === "stats" ? showStats
+            : tab.id === "presets" ? showPresets
+            : !showBookings && !showPackages && !showStats && !showPresets;
+          return (
+            <button key={tab.id} onClick={tab.onClick}
+              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", opacity: isActive ? 1 : 0.5 }}>
+              <span style={{ fontSize: 24 }}>{tab.emoji}</span>
+              <span style={{ fontSize: 9, color: isActive ? "#AD1457" : "rgba(255,255,255,0.5)", fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
+              {isActive && <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457" }} />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Overlay langai */}
+      {showBookings && <BookingAdmin onClose={() => setShowBookings(false)} />}
+      {showStats    && <TrainerStats onClose={() => setShowStats(false)} />}
+      {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
+      {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} />}
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
         <PushPermissionPrompt userId={user.id} />
