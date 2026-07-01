@@ -10,6 +10,8 @@ function ExercisePicker({ onAdd, onClose }) {
   const [search, setSearch]       = useState("");
   const [selected, setSelected]   = useState(null);
   const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"" });
+  const [perSet, setPerSet]       = useState(false);
+  const [setWeights, setSetWeights] = useState(["","",""]);
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
@@ -20,6 +22,16 @@ function ExercisePicker({ onAdd, onClose }) {
     pb.collection("exercises").getFullList({ sort:"muscle,name", requestKey:null })
       .then(setExercises).catch(()=>{});
   }, []);
+
+  function handleSetsChange(val) {
+    setForm(f => ({...f, sets: val}));
+    const n = parseInt(val) || 0;
+    setSetWeights(prev => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(arr[arr.length-1] || "");
+      return arr.slice(0, n);
+    });
+  }
 
   async function handleAddNew() {
     if (!newEx.name.trim()) return;
@@ -37,9 +49,20 @@ function ExercisePicker({ onAdd, onClose }) {
 
   function handleAdd() {
     if (!selected) return;
-    onAdd({ exercise_name:selected.name, category:selected.category, muscle:selected.muscle,
-      sets: isCardio?null:parseInt(form.sets)||null, reps:isCardio?null:parseInt(form.reps)||null,
-      weight_kg:isCardio?null:parseFloat(form.weight_kg)||null, duration_min:isCardio?parseInt(form.duration_min)||null:null });
+    const sets = isCardio ? null : (parseInt(form.sets) || null);
+    let weight_kg = isCardio ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
+    let set_weights = null;
+    if (!isCardio && perSet && sets) {
+      const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
+      set_weights = JSON.stringify(parsed);
+      weight_kg = parsed[0] || weight_kg;
+    }
+    onAdd({
+      exercise_name: selected.name, category: selected.category, muscle: selected.muscle,
+      sets, reps: isCardio?null:(parseInt(form.reps)||null),
+      weight_kg, set_weights,
+      duration_min: isCardio?(parseInt(form.duration_min)||null):null
+    });
   }
 
   return (
@@ -113,14 +136,38 @@ function ExercisePicker({ onAdd, onClose }) {
                 <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
               </div>
             ):(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-                {[{k:"sets",l:"Serijos"},{k:"reps",l:"Kartojimai"},{k:"weight_kg",l:"Svoris (kg)"}].map(f=>(
-                  <div key={f.k}>
-                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>{f.l}</label>
-                    <input type="number" value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} placeholder="–" style={inp}/>
+              <>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                  <div>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                    <input type="number" value={form.sets} onChange={e=>handleSetsChange(e.target.value)} placeholder="3" style={inp}/>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Kartojimai</label>
+                    <input type="number" value={form.reps} onChange={e=>setForm(p=>({...p,reps:e.target.value}))} placeholder="12" style={inp}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>Svoris</label>
+                    <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                      {perSet?"✓ Skirtingi svoriai":"Skirtingi svoriai"}
+                    </button>
+                  </div>
+                  {!perSet ? (
+                    <input type="text" inputMode="decimal" value={form.weight_kg} onChange={e=>setForm(p=>({...p,weight_kg:e.target.value}))} placeholder="kg" style={inp}/>
+                  ) : (
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {setWeights.slice(0, parseInt(form.sets)||3).map((w,i) => (
+                        <div key={i} style={{flex:"1 1 60px",minWidth:60}}>
+                          <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>S{i+1}</label>
+                          <input type="text" inputMode="decimal" value={w} onChange={e=>{const arr=[...setWeights]; arr[i]=e.target.value; setSetWeights(arr);}} placeholder="kg" style={{...inp,textAlign:"center",padding:"8px 6px"}}/>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSelected(null)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>← Atgal</button>
@@ -274,7 +321,11 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
     const dbDays = await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${preset.id}"`, sort:"day_number", requestKey:null });
     const fullDays = await Promise.all(dbDays.map(async d => {
       const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
-      return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min })) };
+      return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({
+        exercise_name:e.exercise_name, category:e.category, muscle:e.muscle,
+        sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min,
+        set_weights:e.set_weights||null
+      })) };
     }));
     setDays(fullDays);
     setStep(1); // pirma nustatyti galiojimo datą, tada pratimai jau bus įkelti iš šablono
@@ -305,7 +356,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
         const dayRec = await pb.collection("workout_plan_days").create({ plan_id:plan.id, day_number:day.day_number, day_label:day.day_label });
         for (let i=0; i<day.exercises.length; i++) {
           const ex = day.exercises[i];
-          await pb.collection("workout_plan_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, order_num:i });
+          await pb.collection("workout_plan_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, order_num:i, set_weights:ex.set_weights||null });
         }
       }
       onSaved?.(); onClose();
