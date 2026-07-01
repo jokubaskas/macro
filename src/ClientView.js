@@ -210,7 +210,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               Sveika, {profile?.name?.split(" ")[0]} 👋
             </p>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: 0 }}>
-              Užpildyk šiandienos check-in'ą
+              {profile?.track_progress ? "Užpildyk šiandienos check-in'ą" : "Sveiki sugrįžę!"}
             </p>
           </div>
         )}
@@ -220,6 +220,35 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", margin: 0 }}>
               📅 {new Date(selectedDate + "T12:00:00").toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" })}
             </p>
+          </div>
+        )}
+
+        {/* Nesekančių progreso centriniai mygtukai */}
+        {isToday && !profile?.track_progress && (
+          <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:20 }}>
+            <button onClick={()=>setShowPackages(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"linear-gradient(135deg,rgba(109,27,59,0.6),rgba(173,20,87,0.6))", border:"1.5px solid rgba(255,255,255,0.2)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
+              <span style={{ fontSize:26 }}>🎟️</span>
+              <div>
+                <p style={{ margin:"0 0 2px", fontSize:14 }}>Treniruočių paketai</p>
+                <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Peržiūrėti ir įsigyti paketą</p>
+              </div>
+            </button>
+            {hasActivePlan && (
+              <button onClick={()=>setShowWorkout(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"linear-gradient(135deg,rgba(26,71,49,0.7),rgba(39,103,73,0.7))", border:"1.5px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
+                <span style={{ fontSize:26 }}>🏋️</span>
+                <div>
+                  <p style={{ margin:"0 0 2px", fontSize:14 }}>Šiandienos treniruotė</p>
+                  <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Atlikti priskirtus pratimus</p>
+                </div>
+              </button>
+            )}
+            <button onClick={()=>setShowBooking(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
+              <span style={{ fontSize:26 }}>📆</span>
+              <div>
+                <p style={{ margin:"0 0 2px", fontSize:14 }}>Rezervuoti treniruotę</p>
+                <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Pasirinkti laiką pas trenerę</p>
+              </div>
+            </button>
           </div>
         )}
 
