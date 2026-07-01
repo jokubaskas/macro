@@ -13,6 +13,9 @@ function ExercisePicker({ onAdd, onClose }) {
   const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"" });
   const [perSet, setPerSet]       = useState(false);
   const [setWeights, setSetWeights] = useState(["","",""]);
+  const [showNew, setShowNew]     = useState(false);
+  const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
+  const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
     pb.collection("exercises").getFullList({ sort:"muscle,name", requestKey:null }).then(setExercises).catch(()=>{});
@@ -26,6 +29,14 @@ function ExercisePicker({ onAdd, onClose }) {
       while (arr.length < n) arr.push(arr[arr.length-1] || "");
       return arr.slice(0, n);
     });
+  }
+
+  async function handleAddNew() {
+    if (!newEx.name.trim()) return;
+    setSaving(true);
+    const rec = await pb.collection("exercises").create(newEx).catch(()=>null);
+    if (rec) { setExercises(prev=>[...prev,rec].sort((a,b)=>a.name.localeCompare(b.name))); setShowNew(false); setNewEx({name:"",category:"strength",muscle:"Krūtinė"}); }
+    setSaving(false);
   }
 
   const filtered = exercises.filter(e => (filter==="Visi"||e.muscle===filter) && (!search||e.name.toLowerCase().includes(search.toLowerCase())));
@@ -51,10 +62,41 @@ function ExercisePicker({ onAdd, onClose }) {
     <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{selected?"Parametrai":"Pasirinkti pratimą"}</p>
+          <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{showNew?"Naujas pratimas":selected?"Parametrai":"Pasirinkti pratimą"}</p>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}>✕</button>
         </div>
-        {!selected ? (
+
+        {showNew && (
+          <div>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Pavadinimas</label>
+              <input value={newEx.name} onChange={e=>setNewEx(p=>({...p,name:e.target.value}))} placeholder="pvz. Sumo pritūpimai" style={inp}/>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              {["strength","cardio"].map(c=>(
+                <button key={c} onClick={()=>setNewEx(p=>({...p,category:c,muscle:c==="cardio"?"Cardio":p.muscle==="Cardio"?"Krūtinė":p.muscle}))}
+                  style={{flex:1,padding:"10px",borderRadius:10,border:`2px solid ${newEx.category===c?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.2)"}`,background:newEx.category===c?"rgba(255,255,255,0.2)":"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+                  {c==="strength"?"💪 Svoris":"🏃 Cardio"}
+                </button>
+              ))}
+            </div>
+            {newEx.category==="strength"&&(
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+                {MUSCLE_GROUPS.filter(g=>g!=="Cardio").map(g=>(
+                  <button key={g} onClick={()=>setNewEx(p=>({...p,muscle:g}))}
+                    style={{padding:"6px 12px",borderRadius:20,border:"none",background:newEx.muscle===g?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{g}</button>
+                ))}
+              </div>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowNew(false)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
+              <button onClick={handleAddNew} disabled={saving||!newEx.name.trim()} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                {saving?"Saugoma...":"💾 Išsaugoti"}
+              </button>
+            </div>
+          </div>
+        )}
+        {!showNew && !selected && (
           <>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Ieškoti..." style={{...inp,marginBottom:10}}/>
             <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:10,paddingBottom:4}}>
@@ -62,6 +104,7 @@ function ExercisePicker({ onAdd, onClose }) {
                 <button key={g} onClick={()=>setFilter(g)} style={{padding:"6px 12px",borderRadius:20,border:"none",background:filter===g?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}}>{g}</button>
               ))}
             </div>
+            <button onClick={()=>setShowNew(true)} style={{width:"100%",padding:"10px",marginBottom:10,borderRadius:12,border:"2px dashed rgba(255,255,255,0.3)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti naują pratimą į duomenų bazę</button>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {filtered.map(ex=>(
                 <button key={ex.id} onClick={()=>setSelected(ex)} style={{padding:"11px 14px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -71,7 +114,8 @@ function ExercisePicker({ onAdd, onClose }) {
               ))}
             </div>
           </>
-        ) : (
+        )}
+        {!showNew && selected && (
           <div>
             <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{selected.name}</p>
