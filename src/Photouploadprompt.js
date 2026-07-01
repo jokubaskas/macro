@@ -69,7 +69,7 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
           {fields.map(f => (
             <label key={f.key} style={{ cursor: "pointer", display: "block" }}>
-              <input type="file" accept="image/*" capture="environment"
+              <input type="file" accept="image/*"
                 onChange={e => handleFile(f.key, e)} style={{ display: "none" }} />
               <div style={{
                 aspectRatio: "3/4", borderRadius: 14,
