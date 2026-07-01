@@ -70,6 +70,24 @@ function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 const inp = { padding:"9px 8px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", WebkitAppearance:"none" };
 
+const HOURS = Array.from({length:24}, (_,i)=>String(i).padStart(2,"0"));
+const MINUTES = ["00","05","10","15","20","25","30","35","40","45","50","55"];
+
+function TimeSelect({ value, onChange }) {
+  const [h,m] = (value || "10:00").split(":");
+  return (
+    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <select value={h} onChange={e=>onChange(`${e.target.value}:${m}`)} style={{...inp,flex:1,minWidth:0,textAlign:"center"}}>
+        {HOURS.map(hh=><option key={hh} value={hh} style={{background:"#3a0a20"}}>{hh}</option>)}
+      </select>
+      <span style={{color:"rgba(255,255,255,0.5)",fontSize:13}}>:</span>
+      <select value={m} onChange={e=>onChange(`${h}:${e.target.value}`)} style={{...inp,flex:1,minWidth:0,textAlign:"center"}}>
+        {MINUTES.map(mm=><option key={mm} value={mm} style={{background:"#3a0a20"}}>{mm}</option>)}
+      </select>
+    </div>
+  );
+}
+
 // ── Konkrečių laikų blokavimas ──────────────────────────────────────────────
 function ScheduleExceptions() {
   const [exceptions, setExceptions] = useState([]);
@@ -136,11 +154,11 @@ function ScheduleExceptions() {
           <div style={{display:"flex",gap:8,marginBottom:10}}>
             <div style={{flex:1,minWidth:0}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo</label>
-              <input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={{...inp,width:"100%",minWidth:0}}/>
+              <TimeSelect value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))} />
             </div>
             <div style={{flex:1,minWidth:0}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki</label>
-              <input type="time" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} style={{...inp,width:"100%",minWidth:0}}/>
+              <TimeSelect value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))} />
             </div>
           </div>
           <div style={{marginBottom:12}}>
@@ -192,8 +210,8 @@ function ScheduleSettings({ onClose }) {
   }
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",fontFamily:"-apple-system,sans-serif"}}>
-      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+    <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"max(env(safe-area-inset-top),16px) 20px 16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Darbo laikas</h1>
       </div>
@@ -213,7 +231,7 @@ function ScheduleSettings({ onClose }) {
                   {[{k:"start_time",l:"Nuo"},{k:"end_time",l:"Iki"}].map(f=>(
                     <div key={f.k} style={{flex:1,minWidth:0}}>
                       <label style={{fontSize:10,color:"rgba(255,255,255,0.5)",display:"block",marginBottom:4}}>{f.l}</label>
-                      <input type="time" value={day[f.k]} onChange={e=>update(i,f.k,e.target.value)} style={{...inp,width:"100%",minWidth:0}}/>
+                      <TimeSelect value={day[f.k]} onChange={v=>update(i,f.k,v)} />
                     </div>
                   ))}
                 </div>
@@ -270,8 +288,8 @@ export default function BookingAdmin({ onClose }) {
   const filtered = bookings.filter(b => filter==="all" || b.status===filter);
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",fontFamily:"-apple-system,sans-serif"}}>
-      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"max(env(safe-area-inset-top),16px) 20px 16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1}}>📅 Rezervacijos</h1>
         <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>⚙️ Darbo laikas</button>
