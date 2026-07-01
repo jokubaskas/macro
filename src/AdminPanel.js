@@ -223,7 +223,7 @@ function PlanDayExercises({ dayId }) {
           <div>
             <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{i+1}. {ex.exercise_name}</p>
             <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>
-              {ex.category==="cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+              {ex.category==="cardio" ? `⏱ ${ex.duration_min||"–"} min` : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
             </p>
           </div>
           <span style={{ fontSize:10, color:ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
@@ -408,7 +408,7 @@ function ClientDetail({ client, onClose }) {
                       {i+1}. {ex.exercise_name}
                     </p>
                     <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-                      {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+                      {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
                     </p>
                   </div>
                 </div>
