@@ -165,7 +165,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       )}
 
       {/* Header — paprastas */}
-      <div style={{ padding: "16px 20px 14px" }}>
+      <div style={{ padding: "env(safe-area-inset-top, 16px) 20px 14px", paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src="/logo.png" alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
