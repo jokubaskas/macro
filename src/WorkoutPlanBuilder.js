@@ -412,27 +412,29 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
         )}
         {step===1&&(
           <div>
-            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 16px"}}>1. Plano parametrai</p>
+            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 16px"}}>Plano parametrai</p>
             <div style={{marginBottom:12}}>
               <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pavadinimas</label>
               <input value={planName} onChange={e=>setPlanName(e.target.value)} placeholder={`${client.name} planas`} style={inp}/>
             </div>
-            <div style={{marginBottom:14}}>
-              <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:8}}>Dienų skaičius</label>
-              <div style={{display:"flex",gap:8}}>
-                {[1,2,3,4,5].map(n=>(
-                  <button key={n} onClick={()=>setDaysCount(n)} style={{flex:1,aspectRatio:"1",borderRadius:12,border:`2px solid ${daysCount===n?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.2)"}`,background:daysCount===n?"rgba(255,255,255,0.2)":"transparent",color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{n}</button>
-                ))}
+            {days.length===0 && (
+              <div style={{marginBottom:14}}>
+                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:8}}>Dienų skaičius</label>
+                <div style={{display:"flex",gap:8}}>
+                  {[1,2,3,4,5].map(n=>(
+                    <button key={n} onClick={()=>setDaysCount(n)} style={{flex:1,aspectRatio:"1",borderRadius:12,border:`2px solid ${daysCount===n?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.2)"}`,background:daysCount===n?"rgba(255,255,255,0.2)":"transparent",color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{n}</button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:24}}>
               <div>
-                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pradžia (MMMM-MM-DD)</label>
-                <input type="text" value={startDate} onChange={e=>setStartDate(e.target.value)} placeholder="2026-06-26" style={inp}/>
+                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pradžia</label>
+                <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={inp}/>
               </div>
               <div>
-                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pabaiga (MMMM-MM-DD)</label>
-                <input type="text" value={endDate} onChange={e=>setEndDate(e.target.value)} placeholder="2026-07-26" style={inp}/>
+                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pabaiga</label>
+                <input type="date" value={endDate} min={startDate} onChange={e=>setEndDate(e.target.value)} style={inp}/>
               </div>
             </div>
             <button onClick={()=>{if(!endDate)return; if(days.length===0) initDays(daysCount); setStep(2);}} disabled={!endDate}
