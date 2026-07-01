@@ -87,7 +87,7 @@ export default function ClientMeasurements({ client, onClose }) {
   async function handleSave() {
     setSaving(true);
     const data = { user_id: client.id, measured_at: form.measured_at };
-    FIELDS.forEach(f => { if (form[f.key]) data[f.key] = parseFloat(form[f.key]); });
+    FIELDS.forEach(f => { if (form[f.key]) data[f.key] = parseFloat(String(form[f.key]).replace(",", ".")); });
     if (form.trainer_note.trim()) data.trainer_note = form.trainer_note.trim();
     await pb.collection("trainer_measurements").create(data).catch(()=>{});
     setSaving(false);
@@ -130,7 +130,7 @@ export default function ClientMeasurements({ client, onClose }) {
               {FIELDS.map(f => (
                 <div key={f.key}>
                   <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>{f.emoji} {f.label} ({f.unit})</label>
-                  <input type="number" step="0.1" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–" style={inp}/>
+                  <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–" style={inp}/>
                 </div>
               ))}
             </div>
