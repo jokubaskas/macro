@@ -102,16 +102,20 @@ export default function BookingClient({ user, onClose }) {
   const [saving, setSaving]         = useState(false);
   const [view, setView]             = useState("calendar"); // calendar | book | mybookings
   const [calMonth, setCalMonth]     = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
+  const [activePackage, setActivePackage] = useState(null);
 
   const load = useCallback(async () => {
-    const [sched, bk, exc] = await Promise.all([
+    const [sched, bk, exc, pkgs] = await Promise.all([
       pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null }).catch(()=>[]),
       pb.collection("bookings").getFullList({ filter:`client_id="${user.id}"`, sort:"-date", requestKey:null }).catch(()=>[]),
       pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
+      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, requestKey:null }).catch(()=>[]),
     ]);
     setSchedule(sched);
     setMyBookings(bk);
     setExceptions(exc);
+    const active = pkgs.find(p => (p.credits_total - p.credits_used) > 0) || null;
+    setActivePackage(active);
   }, [user.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -147,6 +151,7 @@ export default function BookingClient({ user, onClose }) {
 
   async function handleBook() {
     if (!selectedSlot || !selectedDate) return;
+    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
     setSaving(true);
     await pb.collection("bookings").create({
       client_id:  user.id,
@@ -155,6 +160,11 @@ export default function BookingClient({ user, onClose }) {
       end_time:   selectedSlot.end,
       status:     "pending",
       notes:      notes.trim(),
+      package_id: activePackage.id,
+    }).catch(()=>{});
+    // Nuskaičiuoti kreditą
+    await pb.collection("training_packages").update(activePackage.id, {
+      credits_used: (activePackage.credits_used || 0) + 1,
     }).catch(()=>{});
     await load();
     setSaving(false);
@@ -176,7 +186,14 @@ export default function BookingClient({ user, onClose }) {
       {/* Header */}
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
-        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1}}>📅 Rezervuoti laiką</h1>
+        <div style={{flex:1}}>
+          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>📅 Rezervuoti laiką</h1>
+          {activePackage && (
+            <p style={{fontSize:10,color:"#7FFFB0",margin:0}}>
+              🎟️ {activePackage.credits_total - activePackage.credits_used} treniruočių liko
+            </p>
+          )}
+        </div>
         <button onClick={()=>setView(v=>v==="mybookings"?"calendar":"mybookings")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>
           Mano
           {myBookings.filter(b=>b.status==="pending").length>0 && (
@@ -227,6 +244,13 @@ export default function BookingClient({ user, onClose }) {
         {/* ── Kalendorius ── */}
         {view==="calendar" && (
           <div>
+            {/* Nėra paketo perspėjimas */}
+            {!activePackage && (
+              <div style={{background:"rgba(255,200,0,0.08)",border:"1px solid rgba(255,200,0,0.25)",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
+                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🎟️ Treniruočių paketo nėra</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Pirmiausia įsigykite paketą (🎟️ mygtukas viršuje)</p>
+              </div>
+            )}
             {/* Mėnesio navigacija */}
             <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
