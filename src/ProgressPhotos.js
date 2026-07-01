@@ -8,6 +8,7 @@ export default function ProgressPhotos({ user, onClose }) {
   const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadDate, setUploadDate] = useState(todayStr());
   const [photos, setPhotos]     = useState({ photo_front:null, photo_side:null, photo_back:null });
   const [previews, setPreviews] = useState({ photo_front:null, photo_side:null, photo_back:null });
   const [saving, setSaving]     = useState(false);
@@ -67,7 +68,7 @@ export default function ProgressPhotos({ user, onClose }) {
     try {
       const formData = new FormData();
       formData.append("user_id", user.id);
-      formData.append("date", todayStr());
+      formData.append("date", uploadDate);
       if (photos.photo_front) formData.append("photo_front", photos.photo_front);
       if (photos.photo_side)  formData.append("photo_side", photos.photo_side);
       if (photos.photo_back)  formData.append("photo_back", photos.photo_back);
@@ -107,7 +108,12 @@ export default function ProgressPhotos({ user, onClose }) {
 
         {showUpload && (
           <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:18, padding:16, marginBottom:20 }}>
-            <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 12px" }}>Naujos nuotraukos — {todayStr()}</p>
+            <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 12px" }}>Naujos nuotraukos</p>
+            <div style={{ marginBottom:12 }}>
+              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Data</label>
+              <input type="date" value={uploadDate} max={todayStr()} onChange={e=>setUploadDate(e.target.value)}
+                style={{ padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" }}/>
+            </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
               {fields.map(f => (
                 <label key={f.key} style={{ cursor:"pointer", display:"block" }}>
