@@ -485,6 +485,19 @@ export default function AdminPanel({ user, onLogout }) {
   const [showPresets, setShowPresets]   = useState(false);
   const [showPackages, setShowPackages] = useState(false);
 
+  function openAdminTab(tab) {
+    setShowBookings(tab === "bookings");
+    setShowStats(tab === "stats");
+    setShowPresets(tab === "presets");
+    setShowPackages(tab === "packages");
+  }
+
+  const activeAdminTab = showBookings ? "bookings"
+    : showStats    ? "stats"
+    : showPresets  ? "presets"
+    : showPackages ? "packages"
+    : "clients";
+
   const loadClients = useCallback(async () => {
     const data = await pb.collection("users").getFullList({ filter: 'role="client"', sort: "-created", requestKey: null });
     setClients(data || []);
@@ -526,17 +539,13 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Tab bar apačioje */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "env(safe-area-inset-bottom, 16px)" }}>
         {[
-          { id:"clients", emoji:"👥", label:"Klientai",  onClick: ()=>{ setShowStats(false); setShowPresets(false); setShowPackages(false); setShowBookings(false); } },
-          { id:"bookings", emoji:"📅", label:"Rezervacijos", onClick: ()=>setShowBookings(true) },
-          { id:"packages", emoji:"🎟️", label:"Paketai",   onClick: ()=>setShowPackages(true) },
-          { id:"stats",    emoji:"📊", label:"Statistika", onClick: ()=>setShowStats(true) },
-          { id:"presets",  emoji:"📋", label:"Šablonai",  onClick: ()=>setShowPresets(true) },
+          { id:"clients",  emoji:"👥", label:"Klientai",    onClick: ()=>openAdminTab("clients") },
+          { id:"bookings", emoji:"📅", label:"Rezervacijos", onClick: ()=>openAdminTab("bookings") },
+          { id:"packages", emoji:"🎟️", label:"Paketai",      onClick: ()=>openAdminTab("packages") },
+          { id:"stats",    emoji:"📊", label:"Statistika",   onClick: ()=>openAdminTab("stats") },
+          { id:"presets",  emoji:"📋", label:"Šablonai",     onClick: ()=>openAdminTab("presets") },
         ].map(tab => {
-          const isActive = tab.id === "bookings" ? showBookings
-            : tab.id === "packages" ? showPackages
-            : tab.id === "stats" ? showStats
-            : tab.id === "presets" ? showPresets
-            : !showBookings && !showPackages && !showStats && !showPresets;
+          const isActive = activeAdminTab === tab.id;
           return (
             <button key={tab.id} onClick={tab.onClick}
               style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", opacity: isActive ? 1 : 0.5 }}>
