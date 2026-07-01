@@ -45,7 +45,7 @@ export default function TrainingPackages({ user, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"16px 20px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>🎟️ Treniruočių paketai</h1>
       </div>
@@ -96,7 +96,7 @@ export default function TrainingPackages({ user, onClose }) {
               </div>
               <button onClick={()=>!alreadyPending&&!isSending&&handleRequest(pkg)} disabled={alreadyPending||!!sending}
                 style={{ width:"100%", padding:"11px", borderRadius:12, border:"none", background: alreadyPending ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg,#6D1B3B,#AD1457)", color: alreadyPending ? "rgba(255,255,255,0.3)" : "#fff", fontSize:13, fontWeight:700, cursor: alreadyPending||sending ? "default" : "pointer", fontFamily:"inherit" }}>
-                {alreadyPending ? "⏳ Užklausa išsiųsta" : isSending ? "Siunčiama..." : "Siųsti užklausą trenerai →"}
+                {alreadyPending ? "⏳ Užklausa išsiųsta" : isSending ? "Siunčiama..." : "Siųsti užklausą trenerei →"}
               </button>
             </div>
           );
