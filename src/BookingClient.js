@@ -248,7 +248,7 @@ export default function BookingClient({ user, onClose }) {
             {!activePackage && (
               <div style={{background:"rgba(255,200,0,0.08)",border:"1px solid rgba(255,200,0,0.25)",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
                 <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🎟️ Treniruočių paketo nėra</p>
-                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Pirmiausia įsigykite paketą (🎟️ mygtukas viršuje)</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Pirmiausia įsigykite paketą (🎟️ mygtukas apačioje)</p>
               </div>
             )}
             {/* Mėnesio navigacija */}
