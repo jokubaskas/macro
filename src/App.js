@@ -63,7 +63,7 @@ export default function App() {
 
   if (!profile.onboarding_done) return <Onboarding user={user} onComplete={() => loadProfile(user)} />;
 
-  if (!profile.photo_front) return <PhotoUploadPrompt user={user} onComplete={() => loadProfile(user)} />;
+  if (!profile.photo_front && profile.track_progress !== false) return <PhotoUploadPrompt user={user} onComplete={() => { loadProfile(user); }} />;
 
   return (
     <ClientView
