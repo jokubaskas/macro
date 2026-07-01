@@ -204,6 +204,7 @@ export default function Onboarding({ user, onComplete }) {
       expectations:  form.expectations,
       wellbeing:     form.wellbeing,
       onboarding_done: true,
+      track_progress:  true,
     });
     onComplete();
   } catch(e) {
@@ -212,6 +213,23 @@ export default function Onboarding({ user, onComplete }) {
 }
   setSaving(false);
 }
+
+  async function handleFinishMinimal() {
+    setSaving(true); setError("");
+    const age = calcAge(form.dob);
+    try {
+      await pb.collection("users").update(user.id, {
+        dob:             form.dob,
+        age:             age,
+        onboarding_done: true,
+        track_progress:  false,
+      });
+      onComplete();
+    } catch(e) {
+      setError("Klaida išsaugant: " + (e.message || JSON.stringify(e)));
+    }
+    setSaving(false);
+  }
 
   const age = calcAge(form.dob);
 
@@ -285,6 +303,15 @@ export default function Onboarding({ user, onComplete }) {
               <Field label="Svoris (kg)">
                 <TextInput type="number" value={form.weight} onChange={set("weight")} placeholder="70" />
               </Field>
+            </div>
+
+            {/* Minimalus variantas */}
+            <div style={{ marginTop:20, padding:"14px 16px", background:"rgba(255,255,255,0.05)", borderRadius:14, border:"1.5px dashed rgba(255,255,255,0.2)" }}>
+              <p style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.7)", margin:"0 0 4px" }}>Norite pereiti greičiau?</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"0 0 10px" }}>Galite registruotis tik su gimimo data ir baigti — progreso sekimą galėsite įjungti vėliau.</p>
+              <button onClick={handleFinishMinimal} disabled={!form.dob || saving} style={{ width:"100%", padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:form.dob?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:600, cursor:form.dob?"pointer":"default", fontFamily:"inherit" }}>
+                {saving ? "Saugoma..." : "Progreso nesekti → Baigti registraciją"}
+              </button>
             </div>
           </div>
         )}
