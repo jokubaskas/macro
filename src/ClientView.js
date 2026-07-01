@@ -12,6 +12,7 @@ import ProgressPhotos from "./ProgressPhotos";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
 import TrainingPackages from "./TrainingPackages";
+import Onboarding from "./Onboarding";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -81,6 +82,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showBooking,  setShowBooking]  = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
@@ -131,6 +133,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {showBooking && <BookingClient user={user} onClose={()=>setShowBooking(false)} />}
       {showProgress && <ProgressPhotos user={user} onClose={()=>setShowProgress(false)} />}
       {showPackages && <TrainingPackages user={user} onClose={()=>setShowPackages(false)} />}
+      {showOnboarding && (
+        <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
+      )}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
@@ -177,8 +182,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 📆
               </button>
             )}
-            {/* Progreso nuotraukos */}
-            {isToday && (
+            {/* Progreso nuotraukos — tik sekiantiems */}
+            {isToday && profile?.track_progress && (
               <button onClick={() => setShowProgress(true)} title="Progreso nuotraukos"
                 style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 📸
@@ -219,35 +224,55 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         )}
 
         {/* Streak */}
-        {isToday && <StreakBadge userId={user.id} />}
+        {isToday && profile?.track_progress && <StreakBadge userId={user.id} />}
 
         {/* Push pranešimai */}
         <PushPermissionPrompt userId={user.id} />
 
-        {/* Motyvacija */}
-        {isToday && (
+        {/* Noriu sekti progresą */}
+        {isToday && !profile?.track_progress && (
+          <div style={{ background:"rgba(255,255,255,0.07)", border:"1.5px dashed rgba(255,255,255,0.2)", borderRadius:16, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>📊 Progreso sekimas</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0 }}>Svoris, miegas, vanduo ir daugiau</p>
+            </div>
+            <button onClick={()=>setShowOnboarding(true)}
+              style={{ background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0, marginLeft:10 }}>
+              Įjungti
+            </button>
+          </div>
+        )}
+
+        {/* Motyvacija — tik sekiantiems */}
+        {isToday && profile?.track_progress && (
           <MotivationalCard userId={user.id} res={null} goalId={profile?.goal} />
         )}
 
-        {/* Daily Check-in */}
-        <DailyCheckin
-          key={checkinKey}
-          userId={user.id}
-          date={selectedDate}
-          onSaved={() => setCheckinKey(k => k + 1)}
-        />
+        {/* Daily Check-in — tik sekiantiems */}
+        {profile?.track_progress && (
+          <DailyCheckin
+            key={checkinKey}
+            userId={user.id}
+            date={selectedDate}
+            onSaved={() => setCheckinKey(k => k + 1)}
+          />
+        )}
 
-        {/* Miegas */}
-        <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>😴 Miegas</p>
-          <SleepTracker userId={user.id} age={profileAge} date={selectedDate} />
-        </div>
+        {/* Miegas — tik sekiantiems */}
+        {profile?.track_progress && (
+          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>😴 Miegas</p>
+            <SleepTracker userId={user.id} age={profileAge} date={selectedDate} />
+          </div>
+        )}
 
-        {/* Vanduo */}
-        <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>💧 Vanduo</p>
-          <WaterTracker goal={waterGoal} userId={user.id} date={selectedDate} />
-        </div>
+        {/* Vanduo — tik sekiantiems */}
+        {profile?.track_progress && (
+          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>💧 Vanduo</p>
+            <WaterTracker goal={waterGoal} userId={user.id} date={selectedDate} />
+          </div>
+        )}
 
       </div>
     </div>
