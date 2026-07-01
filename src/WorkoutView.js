@@ -137,7 +137,12 @@ export default function WorkoutView({ user, onClose }) {
                         <div style={{flex:1}}>
                           <p style={{fontSize:14,fontWeight:700,color:isDone?"#7FFFB0":"#fff",margin:"0 0 4px",textDecoration:isDone?"line-through":"none",opacity:isDone?0.8:1}}>{ex.exercise_name}</p>
                           <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0}}>
-                            {ex.category==="cardio"?`⏱ ${ex.duration_min||"–"} min`:`${ex.sets||"–"} serijos × ${ex.reps||"–"} kartojimai${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`}
+                            {ex.category==="cardio"
+                              ? `⏱ ${ex.duration_min||"–"} min`
+                              : ex.set_weights
+                                ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} ser. × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
+                                : `${ex.sets||"–"} serijos × ${ex.reps||"–"} kartojimai${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`
+                            }
                           </p>
                         </div>
                         <button onClick={()=>!isSav&&!isDone&&markDone(ex)}
