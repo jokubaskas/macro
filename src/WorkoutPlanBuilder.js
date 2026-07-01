@@ -3,6 +3,38 @@ import { pb } from "./pb";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
+const sel = { padding:"9px 4px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:12, fontFamily:"inherit", outline:"none", flex:1, minWidth:0, width:0, WebkitAppearance:"none", textAlign:"center", boxSizing:"border-box" };
+
+function DateSelect({ value, onChange, minDate }) {
+  const today = new Date();
+  const [y, m, d] = value ? value.split("-").map(Number) : [today.getFullYear(), today.getMonth()+1, today.getDate()];
+  const years = Array.from({length:3}, (_,i) => today.getFullYear() + i);
+  const months = Array.from({length:12}, (_,i) => i+1);
+  const days = Array.from({length:new Date(y, m, 0).getDate()}, (_,i) => i+1);
+
+  function update(ny, nm, nd) {
+    const maxDay = new Date(ny, nm, 0).getDate();
+    const safeDay = Math.min(nd, maxDay);
+    const str = `${ny}-${String(nm).padStart(2,"0")}-${String(safeDay).padStart(2,"0")}`;
+    onChange(str);
+  }
+
+  const MONTHS = ["Sau","Vas","Kov","Bal","Geg","Bir","Lie","Rugp","Rugs","Spa","Lap","Gru"];
+
+  return (
+    <div style={{display:"flex",gap:5,width:"100%",overflow:"hidden"}}>
+      <select value={d} onChange={e=>update(y,m,parseInt(e.target.value))} style={sel}>
+        {days.map(n=><option key={n} value={n} style={{background:"#3a0a20"}}>{n}</option>)}
+      </select>
+      <select value={m} onChange={e=>update(y,parseInt(e.target.value),d)} style={sel}>
+        {months.map(n=><option key={n} value={n} style={{background:"#3a0a20"}}>{MONTHS[n-1]}</option>)}
+      </select>
+      <select value={y} onChange={e=>update(parseInt(e.target.value),m,d)} style={sel}>
+        {years.map(n=><option key={n} value={n} style={{background:"#3a0a20"}}>{n}</option>)}
+      </select>
+    </div>
+  );
+}
 
 function ExercisePicker({ onAdd, onClose }) {
   const [exercises, setExercises] = useState([]);
@@ -428,13 +460,14 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
               </div>
             )}
             <div style={{marginBottom:24}}>
-              {[{label:"Pradžia", val:startDate, set:setStartDate, minVal:null},{label:"Pabaiga", val:endDate, set:setEndDate, minVal:startDate}].map(f=>(
-                <div key={f.label} style={{marginBottom:10}}>
-                  <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>{f.label}</label>
-                  <input type="date" value={f.val} min={f.minVal||undefined} onChange={e=>f.set(e.target.value)}
-                    style={{...inp, display:"block", width:"100%"}}/>
-                </div>
-              ))}
+              <div style={{marginBottom:12}}>
+                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pradžia</label>
+                <DateSelect value={startDate} onChange={setStartDate} />
+              </div>
+              <div>
+                <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Pabaiga</label>
+                <DateSelect value={endDate} onChange={setEndDate} minDate={startDate} />
+              </div>
             </div>
             <button onClick={()=>{if(!endDate)return; if(days.length===0) initDays(daysCount); setStep(2);}} disabled={!endDate}
               style={{width:"100%",padding:"14px",borderRadius:14,background:endDate?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:endDate?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:endDate?"pointer":"default",fontFamily:"inherit"}}>
