@@ -11,6 +11,7 @@ import BookingClient from "./BookingClient";
 import ProgressPhotos from "./ProgressPhotos";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
+import TrainingPackages from "./TrainingPackages";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -79,6 +80,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showWorkout,  setShowWorkout]  = useState(false);
   const [showBooking,  setShowBooking]  = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [showPackages, setShowPackages] = useState(false);
   const [hasActivePlan, setHasActivePlan] = useState(false);
 
   const selectedDate    = propDate || todayStr();
@@ -128,6 +130,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {showWorkout && <WorkoutView user={user} onClose={()=>setShowWorkout(false)} />}
       {showBooking && <BookingClient user={user} onClose={()=>setShowBooking(false)} />}
       {showProgress && <ProgressPhotos user={user} onClose={()=>setShowProgress(false)} />}
+      {showPackages && <TrainingPackages user={user} onClose={()=>setShowPackages(false)} />}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
@@ -153,6 +156,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {/* Treniruočių paketai */}
+            {isToday && (
+              <button onClick={() => setShowPackages(true)} title="Paketai"
+                style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                🎟️
+              </button>
+            )}
             {/* Treniruotė */}
             {isToday && hasActivePlan && (
               <button onClick={() => setShowWorkout(true)} title="Treniruotė"
