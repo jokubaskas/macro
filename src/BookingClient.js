@@ -55,7 +55,7 @@ function CancelButton({ booking, userId, onCancelled }) {
   const [saving, setSaving] = useState(false);
 
   const isLate = booking.date <= todayStr(); // šiandien arba praeitis
-  const warning = isLate ? "⚠️ Atšaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
+  const warning = isLate ? "⚠️ Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
 
   async function handleCancel() {
     if (!reason.trim()) return;
@@ -184,7 +184,7 @@ export default function BookingClient({ user, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       {/* Header */}
-      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(10px)"}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
         <div style={{flex:1}}>
           <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>📅 Rezervuoti laiką</h1>
@@ -248,7 +248,7 @@ export default function BookingClient({ user, onClose }) {
             {!activePackage && (
               <div style={{background:"rgba(255,200,0,0.08)",border:"1px solid rgba(255,200,0,0.25)",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
                 <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🎟️ Treniruočių paketo nėra</p>
-                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Pirmiausia įsigykite paketą (🎟️ mygtukas apačioje)</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Įsigykite paketą paspausdami 🎟️ apačioje</p>
               </div>
             )}
             {/* Mėnesio navigacija */}
