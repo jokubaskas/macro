@@ -55,7 +55,7 @@ function CancelButton({ booking, userId, onCancelled }) {
   const [saving, setSaving] = useState(false);
 
   const isLate = booking.date <= todayStr(); // šiandien arba praeitis
-  const warning = isLate ? "⚠️ Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
+  const warning = isLate ? "⚠️ Atšaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
 
   async function handleCancel() {
     if (!reason.trim()) return;
