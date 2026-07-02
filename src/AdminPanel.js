@@ -484,6 +484,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [showStats, setShowStats]       = useState(false);
   const [showPresets, setShowPresets]   = useState(false);
   const [showPackages, setShowPackages] = useState(false);
+  const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
 
   function openAdminTab(tab) {
     setShowBookings(tab === "bookings");
@@ -502,6 +503,13 @@ export default function AdminPanel({ user, onLogout }) {
     const data = await pb.collection("users").getFullList({ filter: 'role="client"', sort: "-created", requestKey: null });
     setClients(data || []);
     setLoading(false);
+    // Badge'ai
+    Promise.all([
+      pb.collection("bookings").getFullList({ filter:'status="pending"', requestKey:null }).catch(()=>[]),
+      pb.collection("training_packages").getFullList({ filter:'status="pending"', requestKey:null }).catch(()=>[]),
+    ]).then(([bks, pkgs]) => {
+      setAdminBadges({ bookings: bks.length, packages: pkgs.length });
+    });
   }, []);
 
   useEffect(() => { loadClients(); }, [loadClients]);
@@ -539,19 +547,26 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Tab bar apačioje */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "env(safe-area-inset-bottom, 16px)" }}>
         {[
-          { id:"clients",  emoji:"👥", label:"Klientai",    onClick: ()=>openAdminTab("clients") },
-          { id:"bookings", emoji:"📅", label:"Rezervacijos", onClick: ()=>openAdminTab("bookings") },
-          { id:"packages", emoji:"🎟️", label:"Paketai",      onClick: ()=>openAdminTab("packages") },
-          { id:"stats",    emoji:"📊", label:"Statistika",   onClick: ()=>openAdminTab("stats") },
-          { id:"presets",  emoji:"📋", label:"Šablonai",     onClick: ()=>openAdminTab("presets") },
+          { id:"clients",  emoji:"👥", label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
+          { id:"bookings", emoji:"📅", label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
+          { id:"packages", emoji:"🎟️", label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
+          { id:"stats",    emoji:"📊", label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
+          { id:"presets",  emoji:"📋", label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
         ].map(tab => {
           const isActive = activeAdminTab === tab.id;
           return (
             <button key={tab.id} onClick={tab.onClick}
-              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", opacity: isActive ? 1 : 0.5 }}>
-              <span style={{ fontSize: 24 }}>{tab.emoji}</span>
-              <span style={{ fontSize: 9, color: isActive ? "#AD1457" : "rgba(255,255,255,0.5)", fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
-              {isActive && <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457" }} />}
+              style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, position:"relative" }}>
+              <div style={{ position:"relative" }}>
+                <span style={{ fontSize:24 }}>{tab.emoji}</span>
+                {tab.badge > 0 && (
+                  <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
+                    {tab.badge}
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize:9, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
+              {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
             </button>
           );
         })}
