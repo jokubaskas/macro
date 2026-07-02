@@ -99,6 +99,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   }
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [nextBooking,   setNextBooking]   = useState(null);
+  const [badges,        setBadges]        = useState({ packages:0, booking:0 });
 
   const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : null;
@@ -126,6 +127,14 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         filter: `client_id="${user.id}" && status="approved" && date>="${today}"`,
         sort: "date,start_time", requestKey: null,
       }).then(bks => { setNextBooking(bks[0] || null); }).catch(() => {});
+
+      // Badge'ai
+      Promise.all([
+        pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
+        pb.collection("bookings").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
+      ]).then(([pkgs, bks]) => {
+        setBadges({ packages: pkgs.length, booking: bks.length });
+      });
     }
     load();
     pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
@@ -202,18 +211,25 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {profile?.track_progress && (
         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", padding: "10px 0 env(safe-area-inset-bottom, 16px)" }}>
           {[
-            { id:"packages", emoji:"🎟️", label:"Paketai" },
-            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė" }] : []),
-            { id:"booking",  emoji:"📆", label:"Rezervacija" },
-            { id:"progress", emoji:"📸", label:"Progresas" },
+            { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
+            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
+            { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
+            { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <button key={tab.id} onClick={() => openTab(isActive ? null : tab.id)}
-                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", opacity: isActive ? 1 : 0.5, transition: "opacity 0.15s" }}>
-                <span style={{ fontSize: 28 }}>{tab.emoji}</span>
-                <span style={{ fontSize: 10, color: isActive ? "#AD1457" : "rgba(255,255,255,0.5)", fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
-                {isActive && <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#AD1457" }} />}
+                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, transition:"opacity 0.15s", position:"relative" }}>
+                <div style={{ position:"relative" }}>
+                  <span style={{ fontSize:28 }}>{tab.emoji}</span>
+                  {tab.badge > 0 && (
+                    <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
+                      {tab.badge}
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize:10, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
+                {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
               </button>
             );
           })}
