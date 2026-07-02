@@ -98,6 +98,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     setShowProgress(tab === "progress");
   }
   const [hasActivePlan, setHasActivePlan] = useState(false);
+  const [nextBooking,   setNextBooking]   = useState(null);
 
   const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : null;
@@ -119,6 +120,12 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       }).then(plans => {
         setHasActivePlan(plans.some(p => p.start_date <= today && p.end_date >= today));
       }).catch(() => {});
+
+      // Kita artimiausia patvirtinta rezervacija
+      pb.collection("bookings").getFullList({
+        filter: `client_id="${user.id}" && status="approved" && date>="${today}"`,
+        sort: "date,start_time", requestKey: null,
+      }).then(bks => { setNextBooking(bks[0] || null); }).catch(() => {});
     }
     load();
     pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
@@ -215,6 +222,20 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {/* Content */}
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
+
+        {/* Kita treniruotė */}
+        {isToday && nextBooking && (
+          <div onClick={() => openTab("booking")} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"12px 16px", marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontSize:28 }}>📆</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"0 0 2px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>Kita treniruotė</p>
+              <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>
+                {new Date(nextBooking.date + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", month:"short", day:"numeric" })} · {nextBooking.start_time}
+              </p>
+            </div>
+            <span style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>→</span>
+          </div>
+        )}
 
         {!isToday && (
           <div style={{ marginBottom: 16, padding: "12px 16px", background: "rgba(255,255,255,0.07)", borderRadius: 14 }}>
