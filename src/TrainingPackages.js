@@ -44,7 +44,7 @@ export default function TrainingPackages({ user, onClose }) {
   const pending = packages.filter(p => p.status === "pending");
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>🎟️ Treniruočių paketai</h1>
@@ -102,9 +102,19 @@ export default function TrainingPackages({ user, onClose }) {
           );
         })}
 
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.3)", textAlign:"center", marginTop:16 }}>
-          Trenerė patvirtins užklausą ir galėsite rezervuoti treniruotes
-        </p>
+        <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:14, padding:"14px 16px", marginTop:16 }}>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5 }}>
+            💳 Išsiuntus užklausą, atlikite apmokėjimą ir trenerė patvirtins jūsų paketą.
+          </p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5 }}>
+            ⏳ Patvirtinimo laukite po apmokėjimo — gausite pranešimą.
+          </p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:0, lineHeight:1.5 }}>
+            📩 Negavote patvirtinimo? Susisiekite Instagram:{" "}
+            <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer"
+              style={{ color:"#AD1457", fontWeight:700, textDecoration:"none" }}>@Vilma_Str</a>
+          </p>
+        </div>
       </div>
     </div>
   );
