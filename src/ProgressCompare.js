@@ -51,8 +51,16 @@ export default function ProgressCompare({ client, onClose }) {
   const photoA = idxA != null ? history[idxA] : null;
   const photoB = idxB != null ? history[idxB] : null;
 
+  const [preview, setPreview] = useState(null);
+
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {preview && (
+        <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button onClick={()=>setPreview(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer" }}>✕</button>
+          <img src={preview} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
+        </div>
+      )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
         <div>
@@ -89,7 +97,7 @@ export default function ProgressCompare({ client, onClose }) {
                   <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginBottom:6, fontWeight:700 }}>{col.label}</p>
                   <div style={{ aspectRatio:"3/4", borderRadius:14, overflow:"hidden", background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {col.photo && col.photo[view] ? (
-                      <img src={pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      <img onClick={()=>setPreview(pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view]))} src={pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", cursor:"pointer" }} />
                     ) : (
                       <span style={{ color:"rgba(255,255,255,0.2)", fontSize:12 }}>Nėra</span>
                     )}
