@@ -99,7 +99,7 @@ export default function ProgressPhotos({ user, onClose }) {
       {/* Preview modal */}
       {preview && (
         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <button onClick={()=>setPreview(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer" }}>✕</button>
+          <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1 }}>✕</button>
           <img src={preview} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
         </div>
       )}
