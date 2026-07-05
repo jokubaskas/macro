@@ -91,8 +91,18 @@ export default function ProgressPhotos({ user, onClose }) {
     { key:"photo_back",  label:"Nugara",  emoji:"⬇️", required:false },
   ];
 
+  const [preview, setPreview] = useState(null);
+
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+
+      {/* Preview modal */}
+      {preview && (
+        <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button onClick={()=>setPreview(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer" }}>✕</button>
+          <img src={preview} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
+        </div>
+      )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📸 Progreso nuotraukos</h1>
@@ -153,7 +163,7 @@ export default function ProgressPhotos({ user, onClose }) {
             </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
               {["photo_front","photo_side","photo_back"].map(k => h[k] ? (
-                <img key={k} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8 }} />
+                <img key={k} onClick={()=>setPreview(pb.files.getURL(h._isProfile ? h._record : h, h[k]))} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer" }} />
               ) : <div key={k} style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />)}
             </div>
           </div>
