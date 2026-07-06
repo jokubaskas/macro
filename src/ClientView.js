@@ -157,7 +157,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
 
   return (
-    <div style={{ height: "100vh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
+    <div style={{ height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
 
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
@@ -209,7 +209,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {/* Tab bar apačioje — tik track_progress vartotojams */}
       {profile?.track_progress && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "10px" }}>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "10px" }}>
           {[
             { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
             ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
