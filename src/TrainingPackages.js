@@ -141,7 +141,7 @@ export default function TrainingPackages({ user, onClose }) {
                   <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{pkg.emoji} {pkg.label}</p>
                   <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Galioja {pkg.duration} nuo apmokėjimo</p>
                 </div>
-                <span style={{ fontSize:20, fontWeight:800, color:"#AD1457" }}>{pkg.price}</span>
+                <span style={{ fontSize:20, fontWeight:800, color:"#FF6EB4" }}>{pkg.price}</span>
               </div>
               <p style={{ fontSize:13, color:"rgba(255,255,255,0.75)", margin:"0 0 8px", lineHeight:1.5 }}>👉 {pkg.tagline}</p>
               {pkg.savings && <p style={{ fontSize:11, color:"#7FFFB0", margin:"0 0 8px" }}>💰 {pkg.savings}</p>}
@@ -158,7 +158,7 @@ export default function TrainingPackages({ user, onClose }) {
           <div key={i} style={{ background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:18, padding:"16px", marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
               <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0 }}>{s.emoji} {s.label}</p>
-              <span style={{ fontSize:18, fontWeight:800, color:"#AD1457" }}>{s.price}</span>
+              <span style={{ fontSize:18, fontWeight:800, color:"#FF6EB4" }}>{s.price}</span>
             </div>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5 }}>👉 {s.tagline}</p>
             <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Daugiau info – žiūrėk DUK žemiau</p>
