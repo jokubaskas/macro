@@ -240,10 +240,11 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
       <div style={{ background:"linear-gradient(135deg,#6D1B3B,#AD1457)", padding:"20px 20px 24px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
           <img src="/logo.png" alt="Coach Vilma" style={{ width:40, height:40, objectFit:"contain", borderRadius:10 }} />
-          <div>
+          <div style={{ flex:1 }}>
             <h1 style={{ fontSize:17, fontWeight:700, color:"#fff", margin:0 }}>Sveiki atvykę!</h1>
             <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Užpildykite anketą – tai užtruks ~3 min.</p>
           </div>
+          <button onClick={()=>pb.authStore.clear()&&window.location.reload()} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"rgba(255,255,255,0.7)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Išeiti</button>
         </div>
 
         {/* Progreso juosta */}
