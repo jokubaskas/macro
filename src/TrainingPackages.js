@@ -75,7 +75,7 @@ export default function TrainingPackages({ user, onClose }) {
       {/* Taisyklių popup */}
       {rulesFor && (
         <div style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"flex-end" }} onClick={e=>e.target===e.currentTarget&&setRulesFor(null)}>
-          <div style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px", maxHeight:"80vh", overflowY:"auto" }}>
+          <div style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"24px 20px 100px", maxHeight:"85vh", overflowY:"auto" }}>
             <p style={{ fontSize:16, fontWeight:700, color:"#fff", margin:"0 0 16px" }}>📋 Taisyklės — {rulesFor.label}</p>
             {RULES.map((r,i) => (
               <div key={i} style={{ display:"flex", gap:10, marginBottom:10, alignItems:"flex-start" }}>
