@@ -545,7 +545,7 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       {/* Tab bar apačioje */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "16px" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: 10 }}>
         {[
           { id:"clients",  emoji:"👥", label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
           { id:"bookings", emoji:"📅", label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
