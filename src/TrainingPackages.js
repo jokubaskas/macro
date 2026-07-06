@@ -182,7 +182,7 @@ export default function TrainingPackages({ user, onClose }) {
           </div>
           <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:"0 0 10px", lineHeight:1.5 }}>{ONLINE.subtitle}</p>
           {ONLINE.features.map((f,i) => <p key={i} style={{ fontSize:12, color:"rgba(255,255,255,0.6)", margin:"0 0 4px" }}>✅ {f}</p>)}
-          <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"10px 0 0", lineHeight:1.5 }}>📩 Norėdamos užsisakyti – susisiekite: <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer" style={{ color:"#AD1457", fontWeight:700, textDecoration:"none" }}>@Vilma_Str</a></p>
+          <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"10px 0 0", lineHeight:1.5 }}>📩 Norėdamos užsisakyti – susisiekite: <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer" style={{ color:"#FF6EB4", fontWeight:700, textDecoration:"underline" }}>@Vilma_Str</a></p>
         </div>
         <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"16px 0 10px" }}>ℹ️ Papildoma informacija</p>
         {INFO_SECTIONS.map((s,i) => (
@@ -198,7 +198,7 @@ export default function TrainingPackages({ user, onClose }) {
         {/* Apmokejimo info */}
         <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:14, padding:"14px 16px", marginTop:8 }}>
           <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5 }}>💳 Išsiuntus užklausą, atlikite apmokėjimą ir trenerė patvirtins jūsų paketą.</p>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:0, lineHeight:1.5 }}>📩 Negavote patvirtinimo? <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer" style={{ color:"#AD1457", fontWeight:700, textDecoration:"none" }}>@Vilma_Str</a></p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:0, lineHeight:1.5 }}>📩 Negavote patvirtinimo? <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer" style={{ color:"#FF6EB4", fontWeight:700, textDecoration:"underline" }}>@Vilma_Str</a></p>
         </div>
       </div>
     </div>
