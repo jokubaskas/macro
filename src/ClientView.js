@@ -157,7 +157,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
 
   return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
+    <div style={{ height: "100vh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
 
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
