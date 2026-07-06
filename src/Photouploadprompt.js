@@ -56,6 +56,9 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
       justifyContent: "center", padding: "24px 20px",
     }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
+          <button onClick={()=>{pb.authStore.clear();window.location.reload();}} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"rgba(255,255,255,0.7)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Išeiti</button>
+        </div>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📸</div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>
