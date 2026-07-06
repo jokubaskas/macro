@@ -178,7 +178,7 @@ export default function ClientMeasurements({ client, onClose }) {
               <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0 }}>
                 📅 {m.measured_at?.slice(0,10)}
                 {m._isReg && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400, marginLeft:6 }}>(registracija)</span>}
-                {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#AD1457", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
+                {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#FF6EB4", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
               </p>
             </div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:"6px 14px" }}>
