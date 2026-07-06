@@ -2,35 +2,25 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 
 const PACKAGES = [
-  { type:"1",  total:1,  label:"1 treniruotė",  price:"45€",  duration:"1 mėn.", emoji:"🏃", features:["Sporto pradžiamokslis – susipažinsime su pratimais ir technika"] },
-  { type:"8",  total:8,  label:"8 treniruotės", price:"320€", duration:"3 mėn.", emoji:"🎯", features:["Asmeninės konsultacijos žinutėmis","Patarimai apie mitybą ir sveiką gyvenseną","Rezultatų siekimas ir progreso palyginimas"], popular:true },
-  { type:"16", total:16, label:"16 treniruočių",price:"600€", duration:"4 mėn.", emoji:"💪", features:["Asmeninės konsultacijos žinutėmis","Sportinių pasiekimų įvertinimas","Ilgalaikių rezultatų siekimas ir nuolatinė trenerės priežiūra – ne tik sporto salėje"] },
+  { type:"1",  total:1,  label:"1 treniruotė",  price:"45€",  duration:"1 mėn.", emoji:"🏃‍♀️", tagline:"Susipažinti su sporto sale ir išmokti saugiai pradėti." },
+  { type:"8",  total:8,  label:"8 treniruotės", price:"320€", duration:"3 mėn.", emoji:"🔥",    tagline:"Įgyti tvirtus sportavimo pagrindus ir pasitikėjimo savimi.", popular:true, popularLabel:"Perkamiausias" },
+  { type:"16", total:16, label:"16 treniruočių",price:"600€", duration:"4 mėn.", emoji:"💪",    tagline:"Kryptingai siekti ryškių ir ilgalaikių rezultatų.", savings:"Sutaupai 120€ lyginant su paviene treniruote" },
 ];
 
-const NUTRITION = {
-  price:"79€",
-  title:"🥗 Mitybos planas",
-  features:[
-    "8 savaičių mitybos patarimai",
-    "3 rotuojamos dienos po 4 patiekalus",
-    "Paprasti ir patogūs receptai – be paveikslėlių",
-    "Asmeninės rekomendacijos pagal Jūsų tikslus",
-  ],
-  note:"Mitybos planą gausite per 7 dienas po apmokėjimo – trenerė atsiųs asmeniškai.",
-};
+const NUTRITION = { price:"79€", emoji:"🥗", label:"Mitybos planas", tagline:"Nebereikės kasdien sukti galvos, ką valgyti siekiant savo tikslo." };
+const ONLINE   = { price:"69€/mėn.", emoji:"💻", label:"Online coaching", tagline:"Turėti trenerę šalia, net sportuojant savarankiškai." };
 
-const ONLINE = {
-  price:"69€/mėn.",
-  title:"💻 Online treniruotės",
-  subtitle:"Sportuok savarankiškai, tačiau turėk trenerės priežiūrą ir reguliarias plano korekcijas.",
-  features:[
-    "Individuali treniruočių programa programėlėje",
-    "Progreso sekimas: svoris, riebalai %, nuotraukos, statistika",
-    "Savaitinė trenerės progreso analizė ir plano korekcija",
-    "Asmeninis grįžtamasis ryšys kiekvieną savaitę",
-    "Klausimai ir technikos analizė el. paštu bet kada",
-  ],
-};
+const FAQ = [
+  { q:"📍 Kur vyksta treniruotės?", a:"Gym+ Dariaus ir Girėno g. 2 (Pelėsos g., TAXIPARKAS), Vilniuje. Būtina galiojanti Gym+ narystė." },
+  { q:"⏱️ Kas vyksta pirmosios treniruotės metu?", a:"Pirmoji treniruotė visada įvadinė (iki 45 min.) – aptarsime tikslus, įvertinsime laikyseną, išmoksime techniką ir sudarysime veiksmų planą." },
+  { q:"👯 Ar galima sportuoti dviese?", a:"Taip! Perkant tą patį paketą kartu su draugu ar šeimos nariu, abu gaunate po 5€ nuolaidą kiekvienai treniruotei." },
+  { q:"📋 Kokios papildomos paslaugos?", a:"Individualus sporto planas – 150€. Individuali konsultacija (iki 50 min., nuotoliu) – 35€." },
+  { q:"🥗 Kas įeina į mitybos planą?", a:"12 subalansuotų receptų (3 dienos × 4 patiekalai), aiškios porcijos, paprasti ingredientai, individualios rekomendacijos. Gausite per 7 darbo dienas po apmokėjimo." },
+  { q:"💻 Kaip vyksta online coaching?", a:"Sportuojate savarankiškai su individualia programa programėlėje. Kas savaitę – progreso analizė, plano korekcija ir asmeninis grįžtamasis ryšys. Klausimai – Instagram'e." },
+  { q:"📅 Kaip užsiregistruoti?", a:"Išsiųskite užklausą programėlėje ir atlikite apmokėjimą. Patvirtinus – galėsite rezervuoti treniruočių laikus." },
+  { q:"❌ Ar galima atšaukti treniruotę?", a:"Taip, bet ne vėliau kaip prieš 24 val. Vėliau atšauktos treniruotės laikomos įvykusiomis." },
+  { q:"📆 Kiek galioja paketai?", a:"1 treniruotė – 1 mėn. · 8 treniruotės – 3 mėn. · 16 treniruočių – 4 mėn." },
+];
 
 const RULES = [
   "Rezervacija patvirtinama tik po apmokėjimo",
@@ -145,7 +135,7 @@ export default function TrainingPackages({ user, onClose }) {
           const isPending = pending.some(p => p.package_type === pkg.type);
           return (
             <div key={pkg.type} style={{ background:pkg.popular?"rgba(173,20,87,0.15)":"rgba(255,255,255,0.08)", border:`1.5px solid ${pkg.popular?"rgba(173,20,87,0.4)":"rgba(255,255,255,0.12)"}`, borderRadius:18, padding:"16px", marginBottom:12, position:"relative" }}>
-              {pkg.popular && <div style={{ position:"absolute", top:-10, right:16, background:"#AD1457", borderRadius:99, padding:"3px 12px", fontSize:10, fontWeight:700, color:"#fff" }}>Populiariausias</div>}
+              {pkg.popular && <div style={{ position:"absolute", top:-10, right:16, background:"#AD1457", borderRadius:99, padding:"3px 12px", fontSize:10, fontWeight:700, color:"#fff" }}>🔥 {pkg.popularLabel}</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
                 <div>
                   <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{pkg.emoji} {pkg.label}</p>
@@ -153,45 +143,44 @@ export default function TrainingPackages({ user, onClose }) {
                 </div>
                 <span style={{ fontSize:20, fontWeight:800, color:"#AD1457" }}>{pkg.price}</span>
               </div>
-              {pkg.features.map((f,i) => <p key={i} style={{ fontSize:12, color:"rgba(255,255,255,0.6)", margin:"0 0 4px" }}>✅ {f}</p>)}
+              <p style={{ fontSize:13, color:"rgba(255,255,255,0.75)", margin:"0 0 8px", lineHeight:1.5 }}>👉 {pkg.tagline}</p>
+              {pkg.savings && <p style={{ fontSize:11, color:"#7FFFB0", margin:"0 0 8px" }}>💰 {pkg.savings}</p>}
               <button onClick={()=>!isPending&&!sending&&setRulesFor(pkg)} disabled={isPending||!!sending}
-                style={{ width:"100%", marginTop:12, padding:"11px", borderRadius:12, border:"none", background:isPending?"rgba(255,255,255,0.05)":"linear-gradient(135deg,#6D1B3B,#AD1457)", color:isPending?"rgba(255,255,255,0.3)":"#fff", fontSize:13, fontWeight:700, cursor:isPending||sending?"default":"pointer", fontFamily:"inherit" }}>
+                style={{ width:"100%", marginTop:8, padding:"11px", borderRadius:12, border:"none", background:isPending?"rgba(255,255,255,0.05)":"linear-gradient(135deg,#6D1B3B,#AD1457)", color:isPending?"rgba(255,255,255,0.3)":"#fff", fontSize:13, fontWeight:700, cursor:isPending||sending?"default":"pointer", fontFamily:"inherit" }}>
                 {isPending?"⏳ Užklausa išsiųsta":"Rinktis paketą →"}
               </button>
             </div>
           );
         })}
 
-        {/* Mitybos planas */}
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"20px 0 10px" }}>🥗 Mitybos planas</p>
-        <div style={{ background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:18, padding:"16px", marginBottom:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0 }}>{NUTRITION.title}</p>
-            <span style={{ fontSize:18, fontWeight:800, color:"#AD1457" }}>{NUTRITION.price}</span>
+        {/* Mitybos ir Online */}
+        {[NUTRITION, ONLINE].map((s,i) => (
+          <div key={i} style={{ background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:18, padding:"16px", marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0 }}>{s.emoji} {s.label}</p>
+              <span style={{ fontSize:18, fontWeight:800, color:"#AD1457" }}>{s.price}</span>
+            </div>
+            <p style={{ fontSize:13, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5 }}>👉 {s.tagline}</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Daugiau info – žiūrėk DUK žemiau</p>
           </div>
-          {NUTRITION.features.map((f,i) => <p key={i} style={{ fontSize:12, color:"rgba(255,255,255,0.6)", margin:"0 0 4px" }}>✅ {f}</p>)}
-          <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"10px 0 0", lineHeight:1.5, fontStyle:"italic" }}>ℹ️ {NUTRITION.note}</p>
+        ))}
+
+        {/* Pirmą kartą */}
+        <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", margin:"20px 0 16px", textAlign:"center" }}>
+          <p style={{ fontSize:18, margin:"0 0 6px" }}>🤍</p>
+          <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 4px" }}>Pirmą kartą sporto salėje? Nesijaudinkite.</p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.55)", margin:0, lineHeight:1.6 }}>Daugelis mano klienčių pradėjo visiškai be patirties. Visus pratimus išmoksite palaipsniui – nereikia būti pasiruošus ar „geros formos".</p>
         </div>
 
-        {/* Online treniruotės */}
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"20px 0 10px" }}>💻 Online treniruotės</p>
-        <div style={{ background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:18, padding:"16px", marginBottom:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
-            <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0 }}>{ONLINE.title}</p>
-            <span style={{ fontSize:18, fontWeight:800, color:"#AD1457" }}>{ONLINE.price}</span>
-          </div>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:"0 0 10px", lineHeight:1.5 }}>{ONLINE.subtitle}</p>
-          {ONLINE.features.map((f,i) => <p key={i} style={{ fontSize:12, color:"rgba(255,255,255,0.6)", margin:"0 0 4px" }}>✅ {f}</p>)}
-          <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"10px 0 0", lineHeight:1.5 }}>📩 Norėdamos užsisakyti – susisiekite: <a href="https://instagram.com/Vilma_Str" target="_blank" rel="noreferrer" style={{ color:"#FF6EB4", fontWeight:700, textDecoration:"underline" }}>@Vilma_Str</a></p>
-        </div>
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"16px 0 10px" }}>ℹ️ Papildoma informacija</p>
-        {INFO_SECTIONS.map((s,i) => (
+        {/* DUK */}
+        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>❓ Dažnai užduodami klausimai</p>
+        {FAQ.map((f,i) => (
           <div key={i} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, marginBottom:8, overflow:"hidden" }}>
             <button onClick={()=>setOpenInfo(openInfo===i?null:i)} style={{ width:"100%", padding:"13px 16px", background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", justifyContent:"space-between", alignItems:"center", textAlign:"left" }}>
-              {s.title}
-              <span style={{ fontSize:12, opacity:0.5 }}>{openInfo===i?"▲":"▼"}</span>
+              <span>{f.q}</span>
+              <span style={{ fontSize:12, opacity:0.5, flexShrink:0, marginLeft:8 }}>{openInfo===i?"▲":"▼"}</span>
             </button>
-            {openInfo===i && <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:0, padding:"0 16px 14px", lineHeight:1.6 }}>{s.content}</p>}
+            {openInfo===i && <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:0, padding:"0 16px 14px", lineHeight:1.7 }}>{f.a}</p>}
           </div>
         ))}
 
