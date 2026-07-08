@@ -307,7 +307,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {/* Tab bar apačioje — tik track_progress vartotojams; brolinis elementas scrollinamos zonos (iOS PWA fixed-in-scroll klaidai išvengti) */}
       {profile?.track_progress && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "10px" }}>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
           {[
             { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
             ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),

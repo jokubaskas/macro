@@ -589,7 +589,7 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       {/* Tab bar apačioje — brolinis elementas scrollinamos zonos, ne jos viduje (iOS PWA fixed-in-scroll klaidai išvengti) */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
         {[
           { id:"clients",  emoji:"👥", label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
           { id:"bookings", emoji:"📅", label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },

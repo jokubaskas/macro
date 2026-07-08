@@ -437,7 +437,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
       </div>
 
       {/* Mygtukai apačioje */}
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"rgba(255,255,255,0.07)", borderTop:"1px solid rgba(255,255,255,0.1)", padding:"12px 20px", display:"flex", gap:10, maxWidth:480, margin:"0 auto" }}>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"rgba(255,255,255,0.07)", borderTop:"1px solid rgba(255,255,255,0.1)", padding:"12px 20px", paddingBottom:"max(12px, env(safe-area-inset-bottom))", display:"flex", gap:10, maxWidth:480, margin:"0 auto" }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s-1)} style={{
             flex:1, padding:"14px 0", border:"1.5px solid rgba(255,255,255,0.2)",
