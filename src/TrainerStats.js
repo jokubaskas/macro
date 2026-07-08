@@ -40,6 +40,11 @@ function ClientRow({ client, stats }) {
         {stats.avgWellbeing != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>💚 {stats.avgWellbeing.toFixed(1)}/3</span>}
         {stats.avgSleep != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>😴 {stats.avgSleep.toFixed(1)}h</span>}
         {stats.waterRate != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>💧 {stats.waterRate}%</span>}
+        {stats.avgSteps != null && (
+          <span style={{ fontSize:10, color: stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "rgba(255,255,255,0.5)" }}>
+            🚶‍♀️ {stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
+          </span>
+        )}
       </div>
     </div>
   );
@@ -81,6 +86,8 @@ export default function TrainerStats({ onClose }) {
         avgWellbeing: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/myCheckins.length : null,
         avgSleep: mySleeps.length ? mySleeps.reduce((a,x)=>a+(x.hours_slept||0),0)/mySleeps.length : null,
         waterRate: myWaters.length ? Math.round(myWaters.filter(w=>w.ml >= (w.goal||2000)).length / myWaters.length * 100) : null,
+        avgSteps: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).reduce((a,x)=>a+(x.steps||0),0)/myCheckins.filter(x=>x.steps>0).length) : null,
+        stepsGoalRate: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).filter(x=>x.steps>=7000).length/myCheckins.filter(x=>x.steps>0).length*100) : null,
       };
     });
     setClientStats(stats);
