@@ -158,28 +158,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 200 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
 
-      {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
-      {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
-      {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
-      {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
-      {showOnboarding && (
-        <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
-      )}
-      {showCalendar && (
-        <DatePickerModal value={selectedDate} minDate={minDate}
-          onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
-      )}
-      {showReport && (
-        <MeasurementReport userId={user.id} onClose={() => { setShowReport(false); setHasReport(false); }} />
-      )}
-      {hasReport && !showReport && (
-        <button onClick={() => setShowReport(true)} style={{ position: "fixed", bottom: 90, right: 20, zIndex: 500, width: 50, height: 50, borderRadius: "50%", background: `linear-gradient(135deg,${PK.dark},${PK.mid})`, border: "2px solid rgba(255,255,255,0.3)", boxShadow: "0 4px 20px rgba(173,20,87,0.5)", cursor: "pointer", fontSize: 20 }}>
-          📊
-          <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, borderRadius: "50%", background: "#FF4444", border: "2px solid #fff", fontSize: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>1</div>
-        </button>
-      )}
+      {/* Scrollinamas turinys — antraštė + content vienoje scroll zonoje */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 200 }}>
 
       {/* Header — paprastas */}
       <div style={{ padding: "env(safe-area-inset-top, 16px) 20px 14px", paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
@@ -207,35 +189,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         </div>
         <Sep />
       </div>
-
-      {/* Tab bar apačioje — tik track_progress vartotojams */}
-      {profile?.track_progress && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "10px" }}>
-          {[
-            { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
-            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
-            { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
-            { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
-          ].map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button key={tab.id} onClick={() => openTab(isActive ? null : tab.id)}
-                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, transition:"opacity 0.15s", position:"relative" }}>
-                <div style={{ position:"relative" }}>
-                  <span style={{ fontSize:28 }}>{tab.emoji}</span>
-                  {tab.badge > 0 && (
-                    <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
-                      {tab.badge}
-                    </div>
-                  )}
-                </div>
-                <span style={{ fontSize:10, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
-                {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Content */}
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
@@ -350,6 +303,58 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         )}
 
       </div>
+      </div>
+
+      {/* Tab bar apačioje — tik track_progress vartotojams; brolinis elementas scrollinamos zonos (iOS PWA fixed-in-scroll klaidai išvengti) */}
+      {profile?.track_progress && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "10px" }}>
+          {[
+            { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
+            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
+            { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
+            { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => openTab(isActive ? null : tab.id)}
+                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, transition:"opacity 0.15s", position:"relative" }}>
+                <div style={{ position:"relative" }}>
+                  <span style={{ fontSize:28 }}>{tab.emoji}</span>
+                  {tab.badge > 0 && (
+                    <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
+                      {tab.badge}
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize:10, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
+                {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {hasReport && !showReport && (
+        <button onClick={() => setShowReport(true)} style={{ position: "fixed", bottom: 90, right: 20, zIndex: 500, width: 50, height: 50, borderRadius: "50%", background: `linear-gradient(135deg,${PK.dark},${PK.mid})`, border: "2px solid rgba(255,255,255,0.3)", boxShadow: "0 4px 20px rgba(173,20,87,0.5)", cursor: "pointer", fontSize: 20 }}>
+          📊
+          <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, borderRadius: "50%", background: "#FF4444", border: "2px solid #fff", fontSize: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>1</div>
+        </button>
+      )}
+
+      {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
+      {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
+      {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
+      {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
+      {showOnboarding && (
+        <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
+      )}
+      {showCalendar && (
+        <DatePickerModal value={selectedDate} minDate={minDate}
+          onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
+      )}
+      {showReport && (
+        <MeasurementReport userId={user.id} onClose={() => { setShowReport(false); setHasReport(false); }} />
+      )}
     </div>
   );
 }

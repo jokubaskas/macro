@@ -538,22 +538,57 @@ export default function AdminPanel({ user, onLogout }) {
   );
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 80 }}>
-      {/* Header — paprastas */}
-      <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: "max(env(safe-area-inset-top), 16px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/logo.png" alt="Coach Vilma" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
-            <div>
-              <h1 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>Vilma · Admin</h1>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>Trenerės panelė</p>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {/* Scrollinamas turinys — antraštė + sąrašas vienoje scroll zonoje */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
+        {/* Header — paprastas */}
+        <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: "max(env(safe-area-inset-top), 16px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/logo.png" alt="Coach Vilma" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
+              <div>
+                <h1 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>Vilma · Admin</h1>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>Trenerės panelė</p>
+              </div>
             </div>
+            <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
           </div>
-          <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
+        </div>
+
+        <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+          <PushPermissionPrompt userId={user.id} />
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {[
+              { v: clients.length, l: "Klientai iš viso", bg: "linear-gradient(135deg,#6D1B3B,#AD1457)", c: "#fff" },
+              { v: clients.filter(c => c.onboarding_done).length, l: "Anketa baigta", bg: "rgba(255,255,255,0.08)", c: "#fff" },
+            ].map((s, i) => (
+              <div key={i} style={{ background: s.bg, borderRadius: 14, padding: "14px 10px", textAlign: "center", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color: s.c }}>{s.v}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => setView("new")} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + Naujas klientas
+          </button>
+
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
+
+          {loading ? (
+            <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "24px 0" }}>Kraunama...</p>
+          ) : clients.length === 0 ? (
+            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
+            </div>
+          ) : clients.map(client => (
+            <ClientCard key={client.id} client={client} onOpen={() => setOpenClient(client)} />
+          ))}
         </div>
       </div>
 
-      {/* Tab bar apačioje */}
+      {/* Tab bar apačioje — brolinis elementas scrollinamos zonos, ne jos viduje (iOS PWA fixed-in-scroll klaidai išvengti) */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: 10 }}>
         {[
           { id:"clients",  emoji:"👥", label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
@@ -586,38 +621,6 @@ export default function AdminPanel({ user, onLogout }) {
       {showStats    && <TrainerStats onClose={() => setShowStats(false)} />}
       {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
       {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} />}
-
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
-        <PushPermissionPrompt userId={user.id} />
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-          {[
-            { v: clients.length, l: "Klientai iš viso", bg: "linear-gradient(135deg,#6D1B3B,#AD1457)", c: "#fff" },
-            { v: clients.filter(c => c.onboarding_done).length, l: "Anketa baigta", bg: "rgba(255,255,255,0.08)", c: "#fff" },
-          ].map((s, i) => (
-            <div key={i} style={{ background: s.bg, borderRadius: 14, padding: "14px 10px", textAlign: "center", border: "1px solid rgba(255,255,255,0.15)" }}>
-              <div style={{ fontSize: 26, fontWeight: 700, color: s.c }}>{s.v}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.l}</div>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={() => setView("new")} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          + Naujas klientas
-        </button>
-
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
-
-        {loading ? (
-          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "24px 0" }}>Kraunama...</p>
-        ) : clients.length === 0 ? (
-          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
-          </div>
-        ) : clients.map(client => (
-          <ClientCard key={client.id} client={client} onOpen={() => setOpenClient(client)} />
-        ))}
-      </div>
     </div>
   );
 }
