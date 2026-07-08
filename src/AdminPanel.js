@@ -140,6 +140,13 @@ function DayView({ clientId, date }) {
         </div>
       )}
 
+      {checkin?.steps > 0 && (
+        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>🚶‍♀️ Žingsniai</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: checkin.steps >= 7000 ? "#7FFFB0" : "#fff" }}>{checkin.steps.toLocaleString()}</span>
+        </div>
+      )}
+
       {sleep && (
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>😴 Miegas</span>
@@ -166,6 +173,8 @@ function DayView({ clientId, date }) {
               if (checkin?.wellbeing_score === 3) parts.push("Savijauta puiki 💚");
               else if (checkin?.wellbeing_score === 1) parts.push("Savijauta bloga 🔴");
               else if (checkin?.wellbeing_score === 2) parts.push("Savijauta vidutinė 🟡");
+              if (checkin?.steps >= 7000) parts.push(`Žingsnių tikslas pasiektas (${checkin.steps.toLocaleString()})`);
+              else if (checkin?.steps > 0) parts.push(`Žingsniai: ${checkin.steps.toLocaleString()}`);
               if (sleep?.hours_slept >= 7) parts.push(`Miegas pakankamas (${sleep.hours_slept}h)`);
               else if (sleep?.hours_slept) parts.push(`Miegas per mažas (${sleep.hours_slept}h) ⚠️`);
               if (water?.ml >= (water?.goal || 2000)) parts.push("Vanduo išgertas ✅");
