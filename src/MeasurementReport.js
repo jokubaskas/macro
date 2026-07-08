@@ -188,7 +188,7 @@ export default function MeasurementReport({ userId, onClose }) {
         </div>
 
         {/* Turinys */}
-        <div style={{ overflowY:"auto", flex:1, padding:"0 20px" }}>
+        <div style={{ overflowY:"auto", flex:1, padding:"0 20px", WebkitOverflowScrolling:"touch" }}>
 
           {/* Pagrindiniai matavimai */}
           <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0 10px" }}>

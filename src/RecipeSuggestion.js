@@ -133,7 +133,7 @@ export default function RecipeSuggestion({ mealId, remaining, res, onClose }) {
           <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
         </div>
 
-        <div style={{ overflowY:"auto", flex:1, padding:"20px 20px 32px" }}>
+        <div style={{ overflowY:"auto", flex:1, padding:"20px 20px 32px", WebkitOverflowScrolling:"touch" }}>
 
           {/* ── Likusios makros ── */}
           <div style={{ background:PK.pale, borderRadius:16, padding:"14px 16px", marginBottom:16, border:"1px solid "+PK.blush }}>

@@ -227,7 +227,7 @@ function FoodSearch({ onAdd, onClose }) {
           <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:8, padding:"6px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
         </div>
 
-        <div style={{ overflowY:"auto", flex:1, padding:"16px" }}>
+        <div style={{ overflowY:"auto", flex:1, padding:"16px", WebkitOverflowScrolling:"touch" }}>
           <div style={{ display:"flex", gap:8, marginBottom:12 }}>
             <input style={{ ...inp, flex:1 }} value={query} onChange={e=>setQuery(e.target.value)}
               placeholder="Ieškoti produkto..." onKeyDown={e => { if(e.key==="Enter"&&!isLocal) searchOnline(); }} />

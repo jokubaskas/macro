@@ -20,7 +20,7 @@ export default function ReportOverlay({ report, userId, onRead }) {
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       background: "rgba(45, 20, 31, 0.9)", zIndex: 9999,
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 20, backdropFilter: "blur(8px)", overflowY: "auto",
+      padding: 20, backdropFilter: "blur(8px)", overflowY: "auto", WebkitOverflowScrolling: "touch",
     }}>
       <div style={{
         background: "#fff", borderRadius: 28, width: "100%", maxWidth: 400,
