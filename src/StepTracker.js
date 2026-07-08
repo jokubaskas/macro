@@ -1,206 +1,99 @@
 import { useState, useEffect } from "react";
-import { pb, pbFirst, pbUpsert } from "./pb";
-import { PK } from "./constants";
+import { pb } from "./pb";
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+const GOAL_LABELS = {
+  "under_5k":  5000,
+  "5k_8k":     8000,
+  "8k_10k":    10000,
+  "over_10k":  12000,
+};
 
-// ── Formulė: papildomos kalorijos iš žingsnių ────────────────────────────────
-// ── Kalorijos iš treniruočių (MET metodas) ────────────────────────────────────
-export function calcWorkoutCalories(workouts, weightKg) {
-  if (!workouts?.length || !weightKg) return 0;
-  let total = 0;
-  for (const w of workouts) {
-    const hours = (w.duration_min || 0) / 60;
-    // MET: kardio 8.0 (vidutinis bėgimas), jėgos 5.5 (vidutinė treniruotė)
-    const met   = w.type === "cardio" ? 8.0 : 5.5;
-    total      += (met - 1.0) * weightKg * hours; // neto (minus poilsio metabolizmas)
-  }
-  return Math.round(total);
+function getMotivation(steps, goal) {
+  if (!steps || steps === 0) return null;
+  const pct = steps / goal;
+  if (pct < 0.5)  return { text: `Dar ${(goal - steps).toLocaleString()} žingsnių iki tikslo — judėk!`, color: "#FFD700", emoji: "🚶‍♀️" };
+  if (pct < 0.85) return { text: `Beveik! Dar truputis — ${(goal - steps).toLocaleString()} žingsnių liko 💪`, color: "#FFA500", emoji: "🏃‍♀️" };
+  if (pct < 1.0)  return { text: `Tikslą pasieksi šiandien! Vos ${(goal - steps).toLocaleString()} žingsnių!`, color: "#7FFFB0", emoji: "🔥" };
+  if (pct < 1.3)  return { text: "Tikslas pasiektas! Puiku, tęsk šiame ritmą! ✨", color: "#7FFFB0", emoji: "✅" };
+  return { text: "Nuostabi diena! Tu judėjai daugiau nei planavai 🌟", color: "#FF6EB4", emoji: "🌟" };
 }
 
-// ── Kalorijos iš žingsnių (MET metodas) ──────────────────────────────────────
-export function calcStepCalories(steps, weightKg) {
-  if (!steps || !weightKg || steps <= 0) return 0;
-  // MET metodas: walking MET=3.5, resting MET=1.0, neto=2.5
-  // Greitis: ~100 žingsnių/min
-  const hours = steps / 6000;
-  const net   = 2.5 * weightKg * hours;
-  return Math.round(net);
-}
-
-const STEP_GOAL = 10000;
-
-// ── Progreso žiedas ───────────────────────────────────────────────────────────
-function StepRing({ steps, goal }) {
-  const pct  = Math.min(1, steps / goal);
-  const r    = 54;
-  const circ = 2 * Math.PI * r;
-  const dash = pct * circ;
-  const color = pct >= 1 ? "#7FFFB0" : pct >= 0.7 ? "#FFD700" : "#FFB3C6";
-
-  return (
-    <svg width="130" height="130" style={{ display:"block", margin:"0 auto" }}>
-      <circle cx="65" cy="65" r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="10"/>
-      <circle cx="65" cy="65" r={r} fill="none" stroke={color} strokeWidth="10"
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        transform="rotate(-90 65 65)" style={{ transition:"stroke-dasharray 0.6s" }}/>
-      <text x="65" y="58" textAnchor="middle" fill="#fff" fontSize="22" fontWeight="800">
-        {steps >= 1000 ? (steps/1000).toFixed(1)+"k" : steps}
-      </text>
-      <text x="65" y="74" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="10">
-        žingsnių
-      </text>
-      <text x="65" y="88" textAnchor="middle" fill={color} fontSize="10" fontWeight="700">
-        {Math.round(pct*100)}%
-      </text>
-    </svg>
-  );
-}
-
-export default function StepTracker({ userId, weightKg, date, onStepsChange }) {
-  const currentDate = date || todayStr();
-  const isToday     = currentDate === todayStr();
-
-  const [steps,   setSteps]   = useState(0);
-  const [editing, setEditing] = useState(false);
-  const [input,   setInput]   = useState("");
-  const [saving,  setSaving]  = useState(false);
-  const [loaded,  setLoaded]  = useState(false);
-  const [history, setHistory] = useState([]);
-
-  const extraKcal = calcStepCalories(steps, weightKg);
+export default function StepsTracker({ userId, date, goal: goalKey }) {
+  const goal = GOAL_LABELS[goalKey] || 8000;
+  const [steps, setSteps]     = useState(0);
+  const [input, setInput]     = useState("");
+  const [recId, setRecId]     = useState(null);
+  const [saving, setSaving]   = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
-    const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
-    Promise.all([
-      pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
-pb.collection("step_log").getFullList({ filter: `user_id="${userId}" && date>="${weekAgo}"`, sort: "date", requestKey: null }),
-]).then(([today, hist]) => {
-      const s = today?.steps || 0;
-      setSteps(s);
-      setHistory(hist || []);
-      onStepsChange?.(s);
-      setLoaded(true);
-    });
-  }, [userId, currentDate]);
+    pb.collection("daily_checkins").getFirstListItem(
+      `user_id="${userId}" && date="${date}"`, { requestKey: null }
+    ).then(r => {
+      setRecId(r.id);
+      setSteps(r.steps || 0);
+      setInput(r.steps ? String(r.steps) : "");
+    }).catch(() => {});
+  }, [userId, date]);
 
-  async function save(newSteps) {
-    if (!isToday) return;
+  async function handleSave(val) {
+    const n = parseInt(val) || 0;
+    setSteps(n);
     setSaving(true);
-    await pbUpsert("step_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, steps:newSteps });    onStepsChange?.(newSteps);
+    try {
+      if (recId) {
+        await pb.collection("daily_checkins").update(recId, { steps: n });
+      } else {
+        const r = await pb.collection("daily_checkins").create({ user_id: userId, date, steps: n });
+        setRecId(r.id);
+      }
+    } catch(e) { console.error(e); }
     setSaving(false);
   }
 
-  function applyInput() {
-    const v = parseInt(input.replace(/\D/g,"")) || 0;
-    const clamped = Math.max(0, Math.min(50000, v));
-    setSteps(clamped);
-    save(clamped);
-    setEditing(false);
-    setInput("");
-  }
-
-  function quickAdd(n) {
-    const next = Math.min(50000, steps + n);
-    setSteps(next);
-    save(next);
-  }
-
-  if (!loaded) return null;
-
-  // Savaitės grafiko duomenys
-  const maxH = Math.max(...history.map(d=>d.steps), STEP_GOAL);
-  const days  = ["P","A","T","K","Pn","Š","S"];
+  const pct = Math.min((steps / goal) * 100, 100);
+  const mot = getMotivation(steps, goal);
+  const barColor = pct >= 100 ? "#7FFFB0" : pct >= 85 ? "#FFA500" : pct >= 50 ? "#FFD700" : "rgba(255,255,255,0.4)";
 
   return (
-    <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:20, padding:"18px 16px", border:"1px solid rgba(255,255,255,0.15)", marginBottom:12 }}>
-
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-        <div>
-          <p style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.85)", margin:"0 0 2px" }}>🚶 Žingsniai šiandien</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>Tikslas: {STEP_GOAL.toLocaleString()} žingsnių</p>
-        </div>
-        {saving && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>●</span>}
-        {isToday && (
-          <button onClick={()=>{ setEditing(true); setInput(steps>0?String(steps):""); }} style={{
-            background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.25)",
-            borderRadius:10, padding:"6px 12px", color:"rgba(255,255,255,0.8)",
-            fontSize:11, cursor:"pointer", fontFamily:"inherit",
-          }}>✏️ Įvesti</button>
-        )}
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>🚶‍♀️ Žingsniai</span>
+        <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tikslas: {goal.toLocaleString()}</span>
       </div>
 
-      {/* Žiedas */}
-      <StepRing steps={steps} goal={STEP_GOAL} />
+      {/* Progress bar */}
+      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:6, marginBottom:12 }}>
+        <div style={{ width:`${pct}%`, height:"100%", borderRadius:99, background:barColor, transition:"width 0.4s" }} />
+      </div>
 
-      {/* Papildomos kalorijos */}
-      {extraKcal > 0 && (
-        <div style={{ background:"rgba(127,255,176,0.15)", borderRadius:12, padding:"10px 14px", margin:"14px 0 10px", border:"1px solid rgba(127,255,176,0.3)" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <p style={{ fontSize:12, color:"rgba(127,255,176,0.9)", margin:0, fontWeight:600 }}>
-              🔥 Papildomai sudeginta
-            </p>
-            <p style={{ fontSize:18, fontWeight:800, color:"#7FFFB0", margin:0 }}>+{extraKcal} kcal</p>
-          </div>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:"4px 0 0" }}>
-            Šiandien gali suvalgyti daugiau — žingsniuoji aktyviai!
-          </p>
-        </div>
-      )}
-
-      {/* Greito pridėjimo mygtukai */}
-      {isToday && !editing && (
-        <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-          {[1000, 2000, 5000, 10000].map(n=>(
-            <button key={n} onClick={()=>quickAdd(n)} style={{
-              flex:1, padding:"8px 0",
-              background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)",
-              borderRadius:10, color:"rgba(255,255,255,0.7)",
-              fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
-            }}>+{n>=1000?(n/1000)+"k":n}</button>
-          ))}
-        </div>
-      )}
-
-      {/* Įvedimo laukas */}
-      {editing && (
-        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <input
-            autoFocus
-            type="number"
-            value={input}
-            onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>e.key==="Enter"&&applyInput()}
-            placeholder="pvz. 8500"
-            style={{ flex:1, padding:"10px 12px", background:"rgba(255,255,255,0.12)", border:"1.5px solid rgba(255,255,255,0.3)", borderRadius:12, color:"#fff", fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none" }}
+      {/* Slider + input */}
+      <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
+        <input type="range" min={0} max={Math.max(goal * 1.5, 20000)} step={100}
+          value={steps}
+          onChange={e=>{ setSteps(parseInt(e.target.value)); setInput(String(e.target.value)); }}
+          onMouseUp={e=>handleSave(e.target.value)}
+          onTouchEnd={e=>handleSave(e.target.value)}
+          style={{ flex:1, accentColor:"#AD1457", cursor:"pointer" }}
+        />
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+          <input type="number" value={input} placeholder="0"
+            onChange={e=>{ setInput(e.target.value); setSteps(parseInt(e.target.value)||0); }}
+            onBlur={e=>handleSave(e.target.value)}
+            style={{ width:72, padding:"6px 8px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", textAlign:"center" }}
           />
-          <button onClick={applyInput} style={{ padding:"10px 16px", background:"rgba(127,255,176,0.2)", border:"1.5px solid rgba(127,255,176,0.4)", borderRadius:12, color:"#7FFFB0", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>✓</button>
-          <button onClick={()=>setEditing(false)} style={{ padding:"10px 12px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)", borderRadius:12, color:"rgba(255,255,255,0.5)", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>✕</button>
+          <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>žgn.</span>
+        </div>
+      </div>
+
+      {/* Motivation */}
+      {mot && (
+        <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:10, padding:"8px 12px", display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontSize:16 }}>{mot.emoji}</span>
+          <p style={{ fontSize:12, color:mot.color, margin:0, lineHeight:1.4 }}>{mot.text}</p>
         </div>
       )}
 
-      {/* 7 dienų grafikas */}
-      {history.length > 1 && (
-        <div>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:"4px 0 8px", textTransform:"uppercase", letterSpacing:"0.08em" }}>7 dienų istorija</p>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:50 }}>
-            {history.slice(-7).map((d,i) => {
-              const h = Math.max(4, Math.round((d.steps/maxH)*46));
-              const color = d.steps >= STEP_GOAL ? "#7FFFB0" : d.steps >= STEP_GOAL*0.7 ? "#FFD700" : "rgba(255,255,255,0.3)";
-              const dow = new Date(d.date+"T12:00:00").getDay();
-              return (
-                <div key={d.date} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                  <div style={{ width:"100%", height:h, borderRadius:"4px 4px 0 0", background:color, transition:"height 0.5s" }}/>
-                  <span style={{ fontSize:8, color:"rgba(255,255,255,0.3)" }}>{days[dow===0?6:dow-1]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {saving && <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textAlign:"right", marginTop:4 }}>Saugoma...</p>}
     </div>
   );
 }
-// Fri May 15 14:47:19 EEST 2026
