@@ -11,6 +11,7 @@ import BookingClient from "./BookingClient";
 import ProgressPhotos from "./ProgressPhotos";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
+import StepsTracker from "./StepsTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 
@@ -157,7 +158,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
 
   return (
-<div style={{ minHeight: "100%", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 120 }}>
+    <div style={{ height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 200 }}>
+
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
       {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
@@ -329,6 +331,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>😴 Miegas</p>
             <SleepTracker userId={user.id} age={profileAge} date={selectedDate} />
+          </div>
+        )}
+
+        {/* Žingsniai — tik sekiantiems */}
+        {profile?.track_progress && (
+          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
+            <StepsTracker userId={user.id} date={selectedDate} goal={profile?.steps_per_day} />
           </div>
         )}
 
