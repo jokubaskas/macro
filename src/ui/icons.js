@@ -153,6 +153,21 @@ export function Timer(props) {
   </IconBase>;
 }
 
+export function Footprints(props) {
+  return (
+    <IconBase {...props}>
+      <ellipse cx="7.6" cy="16.2" rx="2.6" ry="4" transform="rotate(-14 7.6 16.2)"/>
+      <circle cx="5.8" cy="10.6" r="0.9" fill="currentColor" stroke="none"/>
+      <circle cx="7.8" cy="9.6" r="0.95" fill="currentColor" stroke="none"/>
+      <circle cx="9.6" cy="10.5" r="0.8" fill="currentColor" stroke="none"/>
+      <ellipse cx="16.4" cy="7.8" rx="2.6" ry="4" transform="rotate(14 16.4 7.8)"/>
+      <circle cx="14.6" cy="14.2" r="0.8" fill="currentColor" stroke="none"/>
+      <circle cx="16.6" cy="15.2" r="0.95" fill="currentColor" stroke="none"/>
+      <circle cx="18.6" cy="14.3" r="0.9" fill="currentColor" stroke="none"/>
+    </IconBase>
+  );
+}
+
 export function Heart(props) {
   return <IconBase {...props}><path d="M12 20.2s-7.5-4.5-9.7-9C.9 8 2.2 4.5 5.6 4c2.2-.3 4 .9 6.4 3.5C14.4 4.9 16.2 3.7 18.4 4c3.4.5 4.7 4 3.3 7.2-2.2 4.5-9.7 9-9.7 9Z"/></IconBase>;
 }

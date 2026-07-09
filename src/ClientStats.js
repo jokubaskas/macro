@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Walk, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
+import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
 import { ProgressBar } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
@@ -208,7 +208,7 @@ export default function ClientStats({ user, onClose }) {
           <>
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Vidurkiai ({period} d.)</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-              <StatCard icon={Walk} c1="#FFC15E" c2="#FF9F43"
+              <StatCard icon={Footprints} c1="#FFC15E" c2="#FF9F43"
                 value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai"
                 pct={avgs.avgSteps ? Math.min(100, avgs.avgSteps/7000*100) : null} />
               <StatCard icon={Droplet} c1="#6EC6FF" c2="#2F8FE0"

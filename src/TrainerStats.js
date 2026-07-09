@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { Clipboard, Salad, Heart, Moon, Droplet, Walk, ChevronLeft, BarChart, Users } from "./ui/icons";
+import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
@@ -43,7 +43,7 @@ function ClientRow({ client, stats }) {
         {stats.waterRate != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Droplet size={11} />{stats.waterRate}%</span>}
         {stats.avgSteps != null && (
           <span style={{ fontSize:10, color: stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}>
-            <Walk size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
+            <Footprints size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
           </span>
         )}
       </div>

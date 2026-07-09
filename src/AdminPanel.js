@@ -10,7 +10,7 @@ import StreakBadge from "./StreakBadge";
 import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
-import { Clipboard, Walk, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
 const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
@@ -154,7 +154,7 @@ function DayView({ clientId, date }) {
 
       {checkin?.steps > 0 && (
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Walk size={13} />Žingsniai</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Footprints size={13} />Žingsniai</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: checkin.steps >= 7000 ? "#7FFFB0" : "#fff" }}>{checkin.steps.toLocaleString()}</span>
         </div>
       )}

@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { MOOD } from "./constants";
-import { Walk, Edit, Save, Sparkle } from "./ui/icons";
+import { Footprints, Edit, Save, Sparkle } from "./ui/icons";
 
 const GOAL = 7000;
 
 function getMotivation(steps) {
   if (!steps || steps === 0) return null;
   const pct = steps / GOAL;
-  if (pct < 0.5)  return { text: `Dar ${(GOAL - steps).toLocaleString()} žingsnių iki tikslo — judėk!`, color: "#FFD700", Icon: Walk };
-  if (pct < 0.85) return { text: `Beveik! Liko tik ${(GOAL - steps).toLocaleString()} žingsnių`, color: "#FFA500", Icon: Walk };
+  if (pct < 0.5)  return { text: `Dar ${(GOAL - steps).toLocaleString()} žingsnių iki tikslo — judėk!`, color: "#FFD700", Icon: Footprints };
+  if (pct < 0.85) return { text: `Beveik! Liko tik ${(GOAL - steps).toLocaleString()} žingsnių`, color: "#FFA500", Icon: Footprints };
   if (pct < 1.0)  return { text: `Tikslą pasieksi šiandien! Vos ${(GOAL - steps).toLocaleString()} žingsnių!`, color: "#7FFFB0", Icon: Sparkle };
   if (pct < 1.3)  return { text: "Tikslas pasiektas! Puiku, tęsk šį ritmą!", color: "#7FFFB0", Icon: Sparkle };
   return { text: "Nuostabi diena! Tu judėjai daugiau nei planavai", color: "#FF6EB4", Icon: Sparkle };
@@ -56,7 +56,7 @@ export default function StepsTracker({ userId, date }) {
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-        <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Walk size={14} />Žingsniai</span>
+        <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Footprints size={14} />Žingsniai</span>
         <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tikslas: {GOAL.toLocaleString()}</span>
       </div>
 
