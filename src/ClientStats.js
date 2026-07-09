@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
@@ -22,32 +22,82 @@ const FIELDS = [
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
 
+// Catmull-Rom → kubinės Bezier kreivės konversija: glotnesnė linija nei laužtė.
+function smoothPath(pts) {
+  if (pts.length < 2) return "";
+  if (pts.length === 2) return `M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`;
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
 function MiniChart({ data, field }) {
-  if (data.length < 2) return null;
+  const pathRef = useRef(null);
+
   const vals = data.map(d => parseFloat(d[field])).filter(v => !isNaN(v));
+
+  useEffect(() => {
+    const el = pathRef.current;
+    if (!el) return;
+    const len = el.getTotalLength();
+    el.style.transition = "none";
+    el.style.strokeDasharray = len;
+    el.style.strokeDashoffset = len;
+    requestAnimationFrame(() => {
+      el.style.transition = "stroke-dashoffset 0.9s cubic-bezier(.23,1,.32,1)";
+      el.style.strokeDashoffset = 0;
+    });
+  }, [vals.length, field]);
+
   if (vals.length < 2) return null;
 
   const min = Math.min(...vals), max = Math.max(...vals);
   const range = max - min || 1;
   const W = 90, H = 30;
 
-  const points = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * W;
-    const y = H - ((v - min) / range) * H;
-    return `${x},${y}`;
-  }).join(" ");
+  const pts = vals.map((v, i) => [
+    (i / (vals.length - 1)) * W,
+    H - ((v - min) / range) * H,
+  ]);
+  const linePath = smoothPath(pts);
+  const areaPath = `${linePath} L${W},${H} L0,${H} Z`;
+  const [lastX, lastY] = pts[pts.length - 1];
 
   const first = vals[0], last = vals[vals.length - 1];
   const diff = last - first;
   const color = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm"
     ? (diff < 0 ? "#7FFFB0" : diff > 0 ? "#FF8888" : "rgba(255,255,255,0.4)")
     : (diff > 0 ? "#7FFFB0" : diff < 0 ? "#FF8888" : "rgba(255,255,255,0.4)");
+  const gid = "mcg-" + field;
 
   return (
     <div style={{ display:"flex", alignItems:"center", gap:8 }}>
       <svg width={W} height={H} style={{ overflow:"visible" }}>
-        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-        <circle cx={points.split(" ").pop().split(",")[0]} cy={points.split(" ").pop().split(",")[1]} r="2.5" fill={color} />
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
+            <stop offset="100%" stopColor={color} stopOpacity="1"/>
+          </linearGradient>
+          <linearGradient id={gid+"-area"} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={`url(#${gid}-area)`} stroke="none" />
+        <path ref={pathRef} d={linePath} fill="none" stroke={`url(#${gid})`}
+          strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={lastX} cy={lastY} r="5" fill={color} opacity="0.18" />
+        <circle cx={lastX} cy={lastY} r="2.5" fill={color} />
       </svg>
       <span style={{ fontSize:11, fontWeight:700, color }}>
         {diff > 0 ? "+" : ""}{diff.toFixed(1)}
