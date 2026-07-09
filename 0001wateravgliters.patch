@@ -1,0 +1,41 @@
+From 1eba9e5c7158b6359e6c3298b172cf7431c43176 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 9 Jul 2026 17:05:37 +0000
+Subject: [PATCH] Show average liters drunk instead of goal-hit rate in stats
+
+The water card in ClientStats now averages actual ml logged per day
+(shown in liters, e.g. "1.8L") against the average daily goal for
+the period, instead of the percentage of days the goal was reached.
+---
+ src/ClientStats.js | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/src/ClientStats.js b/src/ClientStats.js
+index e1beb1d..23319f1 100644
+--- a/src/ClientStats.js
++++ b/src/ClientStats.js
+@@ -171,7 +171,8 @@ export default function ClientStats({ user, onClose }) {
+       checkinDays:  checkins.length,
+       avgSteps:     stepsWithData.length ? Math.round(stepsWithData.reduce((a,c)=>a+(c.steps||0),0)/stepsWithData.length) : null,
+       avgSleep:     sleeps.length ? sleeps.reduce((a,s)=>a+(s.hours_slept||0),0)/sleeps.length : null,
+-      waterRate:    waters.length ? Math.round(waters.filter(w=>w.ml >= (w.goal||2000)).length/waters.length*100) : null,
++      avgWaterL:     waters.length ? waters.reduce((a,w)=>a+(w.ml||0),0)/waters.length/1000 : null,
++      avgWaterGoalL: waters.length ? waters.reduce((a,w)=>a+(w.goal||2000),0)/waters.length/1000 : null,
+       avgNutrition: checkins.length ? checkins.reduce((a,c)=>a+(c.nutrition_score||0),0)/checkins.length : null,
+       avgWellbeing: checkins.length ? checkins.reduce((a,c)=>a+(c.wellbeing_score||0),0)/checkins.length : null,
+     });
+@@ -211,8 +212,9 @@ export default function ClientStats({ user, onClose }) {
+                 value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai"
+                 pct={avgs.avgSteps ? Math.min(100, avgs.avgSteps/7000*100) : null} />
+               <StatCard icon={Droplet} c1="#6EC6FF" c2="#2F8FE0"
+-                value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas"
+-                pct={avgs.waterRate} />
++                value={avgs.avgWaterL!=null ? avgs.avgWaterL.toFixed(1)+"L" : "–"} label="Vid. vanduo"
++                sub={avgs.avgWaterGoalL ? `iš ${avgs.avgWaterGoalL.toFixed(1)}L` : null}
++                pct={avgs.avgWaterGoalL ? Math.min(100, avgs.avgWaterL/avgs.avgWaterGoalL*100) : null} />
+               <StatCard icon={Moon} c1="#B39DFF" c2="#8B6FE8"
+                 value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas"
+                 pct={avgs.avgSleep ? Math.min(100, avgs.avgSleep/8*100) : null} />
+-- 
+2.43.0
+
