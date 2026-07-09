@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { pb, pbFirst } from "./pb";
+import { pb } from "./pb";
 import { PK, GOALS, calcMacros } from "./constants";
 import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
 import DailyCheckin from "./DailyCheckin";
-import MeasurementReport from "./MeasurementReport";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
@@ -14,6 +13,7 @@ import StreakBadge from "./StreakBadge";
 import StepsTracker from "./StepsTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
+import ClientStats from "./ClientStats";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -75,14 +75,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [profile,      setProfile]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [hasReport,    setHasReport]    = useState(false);
-  const [showReport,   setShowReport]   = useState(false);
   const [minDate,      setMinDate]      = useState(null);
   const [checkinKey,   setCheckinKey]   = useState(0);
   const [showWorkout,  setShowWorkout]  = useState(false);
   const [showBooking,  setShowBooking]  = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
+  const [showStats,    setShowStats]    = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Aktyvus tab (null = pagrindinis)
@@ -90,6 +89,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     : showWorkout ? "workout"
     : showBooking ? "booking"
     : showProgress ? "progress"
+    : showStats ? "stats"
     : null;
 
   function openTab(tab) {
@@ -97,6 +97,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     setShowWorkout(tab === "workout");
     setShowBooking(tab === "booking");
     setShowProgress(tab === "progress");
+    setShowStats(tab === "stats");
   }
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [nextBooking,   setNextBooking]   = useState(null);
@@ -138,8 +139,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       });
     }
     load();
-    pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
-      .then(data => { if (data) { setHasReport(true); setShowReport(true); } });
   }, [user.id]);
 
   if (loading) return (
@@ -313,6 +312,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
             { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
             { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
+            { id:"stats",    emoji:"📈", label:"Statistika",  badge:0 },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -334,26 +334,17 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         </div>
       )}
 
-      {hasReport && !showReport && (
-        <button onClick={() => setShowReport(true)} style={{ position: "fixed", bottom: 90, right: 20, zIndex: 500, width: 50, height: 50, borderRadius: "50%", background: `linear-gradient(135deg,${PK.dark},${PK.mid})`, border: "2px solid rgba(255,255,255,0.3)", boxShadow: "0 4px 20px rgba(173,20,87,0.5)", cursor: "pointer", fontSize: 20 }}>
-          📊
-          <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, borderRadius: "50%", background: "#FF4444", border: "2px solid #fff", fontSize: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>1</div>
-        </button>
-      )}
-
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
       {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
+      {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
       {showOnboarding && (
         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
       )}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
-      )}
-      {showReport && (
-        <MeasurementReport userId={user.id} onClose={() => { setShowReport(false); setHasReport(false); }} />
       )}
     </div>
   );

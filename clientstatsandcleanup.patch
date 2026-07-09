@@ -1,0 +1,1734 @@
+diff --git a/src/ActivityView.js b/src/ActivityView.js
+deleted file mode 100644
+index 29a05b6..0000000
+--- a/src/ActivityView.js
++++ /dev/null
+@@ -1,147 +0,0 @@
+-import { useState, useEffect } from "react";
+-import { pb, pbFirst, pbUpsert } from "./pb";
+-import { PK, calcMacros } from "./constants";
+-import ActivityWidget from "./ActivityWidget";
+-
+-function todayStr() { return new Date().toISOString().split("T")[0]; }
+-
+-function DatePickerModal({ value, minDate, onSelect, onClose }) {
+-  const today = todayStr();
+-  const init  = new Date(value+"T12:00:00");
+-  const [year,  setYear]  = useState(init.getFullYear());
+-  const [month, setMonth] = useState(init.getMonth());
+-  const minD = new Date((minDate||"2020-01-01")+"T12:00:00");
+-  const days = [];
+-  const first = new Date(year, month, 1).getDay();
+-  const daysInMonth = new Date(year, month+1, 0).getDate();
+-  const offset = first===0?6:first-1;
+-  for (let i=0;i<offset;i++) days.push(null);
+-  for (let i=1;i<=daysInMonth;i++) days.push(i);
+-
+-  function pick(d) {
+-    const s = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+-    if (s>today||new Date(s+"T12:00:00")<minD) return;
+-    onSelect(s); onClose();
+-  }
+-  function prevMonth() { if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); }
+-  function nextMonth() {
+-    const next = month===11?new Date(year+1,0,1):new Date(year,month+1,1);
+-    if(next<=new Date(today+"T12:00:00")) { if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); }
+-  }
+-  const months=["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
+-
+-  return (
+-    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+-      <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:`linear-gradient(160deg,#3a0a20,${PK.dark})`,borderRadius:"20px 20px 0 0",padding:"20px 16px 32px"}}>
+-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+-          <button onClick={prevMonth} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:18,cursor:"pointer"}}>‹</button>
+-          <span style={{fontSize:15,fontWeight:700,color:"#fff"}}>{months[month]} {year}</span>
+-          <button onClick={nextMonth} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:18,cursor:"pointer"}}>›</button>
+-        </div>
+-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
+-          {["P","A","T","K","Pn","Š","S"].map(d=><div key={d} style={{textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.4)",padding:"4px 0"}}>{d}</div>)}
+-        </div>
+-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+-          {days.map((d,i)=>{
+-            if(!d) return <div key={i}/>;
+-            const s=`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+-            const isToday=s===today,isSel=s===value,isFut=s>today,isPast=new Date(s+"T12:00:00")<minD;
+-            return (
+-              <button key={i} onClick={()=>pick(d)} disabled={isFut||isPast} style={{
+-                padding:"8px 4px",border:"none",borderRadius:10,cursor:isFut||isPast?"default":"pointer",
+-                background:isSel?"rgba(255,255,255,0.3)":isToday?"rgba(255,255,255,0.15)":"transparent",
+-                color:isFut||isPast?"rgba(255,255,255,0.2)":"#fff",
+-                fontSize:13,fontWeight:isSel||isToday?700:400,fontFamily:"inherit",
+-              }}>{d}</button>
+-            );
+-          })}
+-        </div>
+-        <button onClick={onClose} style={{width:"100%",marginTop:16,padding:"12px",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:14,color:"rgba(255,255,255,0.7)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+-          Uždaryti
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-// ── Separator linija ──────────────────────────────────────────────────────────
+-
+-export default function ActivityView({ user, onLogout, selectedDate, onDateChange, onActivityChange }) {
+-  const [profile, setProfile] = useState(null);
+-  const [loading, setLoading] = useState(true);
+-  const [showCalendar, setShowCalendar] = useState(false);
+-  const isToday = (selectedDate||todayStr()) === todayStr();
+-
+-  useEffect(() => {
+-  if (!user) return;
+-  console.log("ActivityView: loading user", user.id);
+-  pb.collection("users").getOne(user.id)
+-    .then(data => { 
+-      console.log("ActivityView: got data", data);
+-      setProfile(data); 
+-      setLoading(false); 
+-    })
+-    .catch(e => { 
+-      console.error("ActivityView load:", e); 
+-      setLoading(false); 
+-    });
+-}, [user.id]);
+-
+-  if (loading || !profile) return (
+-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(160deg,#2d0a1a,${PK.dark},${PK.mid})`}}>
+-      <p style={{color:"rgba(255,255,255,0.6)",fontSize:14}}>Kraunama...</p>
+-    </div>
+-  );
+-
+-  const wt = parseFloat(profile.weight) || 60;
+-  const minDate = new Date(Date.now()-90*24*60*60*1000).toISOString().split("T")[0];
+-
+-  function handleDateSelect(d) {
+-    onDateChange?.(d);
+-    setShowCalendar(false);
+-  }
+-
+-  return (
+-    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,#2d0a1a 0%,${PK.dark} 40%,${PK.mid} 100%)`,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",paddingBottom:80}}>
+-
+-      {showCalendar && (
+-        <DatePickerModal
+-          value={selectedDate||todayStr()}
+-          minDate={minDate}
+-          onSelect={handleDateSelect}
+-          onClose={()=>setShowCalendar(false)}
+-        />
+-      )}
+-
+-      {/* Header */}
+-      <div style={{background:"rgba(0,0,0,0.15)",backdropFilter:"blur(10px)",padding:"16px 20px 14px",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
+-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+-            <img src="/logo.png" alt="" style={{width:34,height:34,objectFit:"contain",borderRadius:8}}/>
+-            <div>
+-              <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0}}>🏃 Aktyvumas</p>
+-              <p style={{fontSize:9,color:"rgba(255,255,255,0.5)",margin:0}}>{profile.name?.split(" ")[0]}</p>
+-            </div>
+-          </div>
+-          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"7px 12px",color:"rgba(255,255,255,0.7)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Išeiti</button>
+-        </div>
+-        <div style={{display:"flex",justifyContent:"center",gap:8}}>
+-          <button onClick={()=>setShowCalendar(true)} style={{background:"rgba(255,255,255,0.12)",border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 14px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+-            📅 {isToday?new Date().toLocaleDateString("lt-LT",{month:"short",day:"numeric"}):selectedDate}
+-            <span style={{fontSize:9,opacity:0.6}}>▼</span>
+-          </button>
+-          {!isToday&&<button onClick={()=>handleDateSelect(todayStr())} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:12,padding:"6px 10px",color:"rgba(255,255,255,0.6)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Šiandien</button>}
+-        </div>
+-      </div>
+-
+-      <div style={{maxWidth:480,margin:"0 auto",padding:"16px 16px 0"}}>
+-        <ActivityWidget
+-          userId={user.id}
+-          weightKg={wt}
+-          date={selectedDate||todayStr()}
+-          onActivityChange={(st, wt2) => onActivityChange?.(st, wt2)}
+-        />
+-      </div>
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/src/ActivityWidget.js b/src/ActivityWidget.js
+deleted file mode 100644
+index abd3850..0000000
+--- a/src/ActivityWidget.js
++++ /dev/null
+@@ -1,201 +0,0 @@
+-import { useState, useEffect } from "react";
+-import { pb, pbFirst, pbUpsert } from "./pb";
+-import { calcStepCalories, calcWorkoutCalories } from "./StepTracker";
+-
+-function todayStr() { return new Date().toISOString().split("T")[0]; }
+-
+-const STEP_GOAL = 10000;
+-const WT = {
+-  strength: { emoji:"🏋️", label:"Jėgos",  color:"#FFB3C6", met:5.5 },
+-  cardio:   { emoji:"🏃", label:"Kardio", color:"#89CFF0", met:8.0 },
+-};
+-
+-function StepRing({ steps }) {
+-  const pct = Math.min(1, steps / STEP_GOAL);
+-  const r = 42, circ = 2 * Math.PI * r;
+-  const color = pct >= 1 ? "#7FFFB0" : pct >= 0.7 ? "#FFD700" : "#FFB3C6";
+-  return (
+-    <svg width="100" height="100">
+-      <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/>
+-      <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8"
+-        strokeDasharray={`${pct*circ} ${circ}`} strokeLinecap="round"
+-        transform="rotate(-90 50 50)" style={{transition:"stroke-dasharray 0.5s"}}/>
+-      <text x="50" y="46" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="800">
+-        {steps>=1000?(steps/1000).toFixed(1)+"k":steps}
+-      </text>
+-      <text x="50" y="60" textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="9">žingsnių</text>
+-      <text x="50" y="72" textAnchor="middle" fill={color} fontSize="9" fontWeight="700">{Math.round(pct*100)}%</text>
+-    </svg>
+-  );
+-}
+-
+-export default function ActivityWidget({ userId, weightKg, date, onActivityChange }) {
+-  const currentDate = date || todayStr();
+-  const isToday = currentDate === todayStr();
+-
+-  const [steps,     setSteps]     = useState(0);
+-  const [workouts,  setWorkouts]  = useState([]);
+-  const [stepEdit,  setStepEdit]  = useState(false);
+-  const [stepInput, setStepInput] = useState("");
+-  const [adding,    setAdding]    = useState(null);
+-  const [duration,  setDuration]  = useState("");
+-  const [saving,    setSaving]    = useState(false);
+-  const [loaded,    setLoaded]    = useState(false);
+-
+-  useEffect(() => {
+-    if (!userId) return;
+-    Promise.all([
+-      pbFirst("step_log", `user_id="${userId}" && date="${currentDate}"`),
+-pb.collection("workout_log").getFullList({ filter: `user_id="${userId}" && date="${currentDate}"`, sort: "created", requestKey: null }),
+-    ]).then(([s, w]) => {
+-  const st = s?.steps || 0;
+-  const wt = w || [];
+-      setSteps(st); setWorkouts(wt); setLoaded(true);
+-      onActivityChange?.(st, wt);
+-    });
+-  }, [userId, currentDate]);
+-
+-  async function saveSteps(val) {
+-    if (!isToday) return;
+-    const n = Math.min(50000, Math.max(0, val));
+-    setSteps(n);
+-    onActivityChange?.(n, workouts);
+-await pbUpsert("step_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, steps:n });
+-  }
+-
+-  function applyStep() {
+-    saveSteps(parseInt(stepInput.replace(/\D/g,""))||0);
+-    setStepEdit(false); setStepInput("");
+-  }
+-
+-  async function saveWorkout() {
+-  const dur = parseInt(duration);
+-  if (!dur || !adding) return;
+-  setSaving(true);
+-  const data = await pb.collection("workout_log")
+-    .create({ user_id:userId, date:currentDate, type:adding, duration_min:dur });
+-  const next = data ? [...workouts, data] : workouts;
+-  setWorkouts(next);
+-  onActivityChange?.(steps, next);
+-  setAdding(null); setDuration(""); setSaving(false);
+-}
+-
+-  async function deleteWorkout(id) {
+-await pb.collection("workout_log").delete(id);
+-    const next = workouts.filter(w => w.id !== id);
+-    setWorkouts(next);
+-    onActivityChange?.(steps, next);
+-  }
+-
+-  if (!loaded) return null;
+-
+-  const xSteps   = calcStepCalories(steps, weightKg);
+-  const xWorkout = calcWorkoutCalories(workouts, weightKg);
+-  const xTotal   = xSteps + xWorkout;
+-  const strMin   = workouts.filter(w=>w.type==="strength").reduce((a,w)=>a+w.duration_min,0);
+-  const carMin   = workouts.filter(w=>w.type==="cardio").reduce((a,w)=>a+w.duration_min,0);
+-
+-  return (
+-    <div style={{background:"rgba(0,0,0,0.2)",borderRadius:22,border:"1px solid rgba(255,255,255,0.15)",marginBottom:14,overflow:"hidden"}}>
+-
+-      {/* ŽINGSNIAI */}
+-      <div style={{padding:"16px 16px 12px"}}>
+-        <div style={{display:"flex",alignItems:"center",gap:14}}>
+-          <StepRing steps={steps}/>
+-          <div style={{flex:1}}>
+-            <p style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.85)",margin:"0 0 8px"}}>🚶 Žingsniai</p>
+-            {isToday && !stepEdit && (
+-              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+-                {[1000,2000,5000,10000].map(n=>(
+-                  <button key={n} onClick={()=>saveSteps(steps+n)} style={{padding:"5px 8px",borderRadius:8,background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+-                    +{n>=1000?(n/1000)+"k":n}
+-                  </button>
+-                ))}
+-                <button onClick={()=>{setStepEdit(true);setStepInput(steps>0?String(steps):"");}} style={{padding:"5px 8px",borderRadius:8,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.45)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+-              </div>
+-            )}
+-            {!isToday && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0}}>{steps>0?steps.toLocaleString()+" žingsnių":"—"}</p>}
+-          </div>
+-        </div>
+-        {stepEdit && (
+-          <div style={{display:"flex",gap:8,marginTop:10}}>
+-            <input autoFocus type="number" value={stepInput} onChange={e=>setStepInput(e.target.value)}
+-              onKeyDown={e=>e.key==="Enter"&&applyStep()} placeholder="pvz. 8500"
+-              style={{flex:1,padding:"9px 12px",background:"rgba(255,255,255,0.1)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",outline:"none"}}/>
+-            <button onClick={applyStep} style={{padding:"9px 14px",borderRadius:10,background:"rgba(127,255,176,0.2)",border:"1.5px solid rgba(127,255,176,0.4)",color:"#7FFFB0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+-            <button onClick={()=>setStepEdit(false)} style={{padding:"9px 12px",borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.4)",fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+-          </div>
+-        )}
+-      </div>
+-
+-      {/* SKYRIKLIS */}
+-      <div style={{height:1,background:"rgba(255,255,255,0.1)",margin:"0 16px"}}/>
+-
+-      {/* TRENIRUOTĖS */}
+-      <div style={{padding:"12px 16px 16px"}}>
+-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+-          <p style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.85)",margin:0}}>💪 Treniruotės</p>
+-          <div style={{display:"flex",gap:6}}>
+-            {strMin>0&&<span style={{fontSize:10,background:"rgba(255,179,198,0.15)",color:"#FFB3C6",borderRadius:8,padding:"2px 8px"}}>🏋️ {strMin}min</span>}
+-            {carMin>0&&<span style={{fontSize:10,background:"rgba(137,207,240,0.15)",color:"#89CFF0",borderRadius:8,padding:"2px 8px"}}>🏃 {carMin}min</span>}
+-          </div>
+-        </div>
+-
+-        {workouts.length>0&&(
+-          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+-            {workouts.map(w=>(
+-              <div key={w.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 12px"}}>
+-                <span style={{fontSize:18}}>{WT[w.type]?.emoji}</span>
+-                <span style={{flex:1,marginLeft:8,fontSize:12,fontWeight:600,color:WT[w.type]?.color}}>{WT[w.type]?.label} · {w.duration_min} min</span>
+-                <span style={{fontSize:11,color:"rgba(127,255,176,0.7)"}}>+{Math.round((WT[w.type]?.met-1)*weightKg*(w.duration_min/60))} kcal</span>
+-                {isToday&&<button onClick={()=>deleteWorkout(w.id)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:14,cursor:"pointer",marginLeft:8}}>✕</button>}
+-              </div>
+-            ))}
+-          </div>
+-        )}
+-
+-        {isToday&&adding===null&&(
+-          <div style={{display:"flex",gap:8}}>
+-            {Object.entries(WT).map(([type,info])=>(
+-              <button key={type} onClick={()=>setAdding(type)} style={{flex:1,padding:"10px 8px",borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1.5px solid rgba(255,255,255,0.18)",color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+-                <span style={{fontSize:18}}>{info.emoji}</span>
+-                <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.7)"}}>+ {info.label}</span>
+-              </button>
+-            ))}
+-          </div>
+-        )}
+-
+-        {isToday&&adding&&(
+-          <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px"}}>
+-            <p style={{fontSize:12,color:"rgba(255,255,255,0.7)",margin:"0 0 10px",fontWeight:700}}>{WT[adding].emoji} {WT[adding].label} — trukmė</p>
+-            <div style={{display:"flex",gap:6,marginBottom:10}}>
+-              {[20,30,45,60,90].map(n=>(
+-                <button key={n} onClick={()=>setDuration(String(n))} style={{flex:1,padding:"8px 0",borderRadius:10,background:duration===String(n)?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)",border:`1px solid rgba(255,255,255,${duration===String(n)?".5":".15"})`,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{n}'</button>
+-              ))}
+-            </div>
+-            <input type="number" value={duration} onChange={e=>setDuration(e.target.value)}
+-              placeholder="arba įvesk min." style={{width:"100%",padding:"8px 12px",background:"rgba(255,255,255,0.08)",border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:10,color:"#fff",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+-            <div style={{display:"flex",gap:8}}>
+-              <button onClick={saveWorkout} disabled={saving||!duration} style={{flex:2,padding:"11px 0",borderRadius:12,background:duration?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)",border:`1.5px solid rgba(255,255,255,${duration?".35":".1"})`,color:duration?"#fff":"rgba(255,255,255,0.3)",fontSize:13,fontWeight:700,cursor:duration?"pointer":"default",fontFamily:"inherit"}}>
+-                {saving?"...":"✓ Išsaugoti"}
+-              </button>
+-              <button onClick={()=>{setAdding(null);setDuration("");}} style={{flex:1,padding:"11px 0",borderRadius:12,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
+-            </div>
+-          </div>
+-        )}
+-      </div>
+-
+-      {/* SUVESTINĖ */}
+-      {xTotal>0&&(
+-        <div style={{background:"rgba(127,255,176,0.12)",borderTop:"1px solid rgba(127,255,176,0.2)",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+-          <span style={{fontSize:11,color:"rgba(127,255,176,0.8)"}}>
+-            🔥 Papildomai sudeginta
+-            {xSteps>0&&<span style={{color:"rgba(255,255,255,0.4)",marginLeft:6}}>🚶+{xSteps}</span>}
+-            {xWorkout>0&&<span style={{color:"rgba(255,255,255,0.4)",marginLeft:4}}>💪+{xWorkout}</span>}
+-          </span>
+-          <span style={{fontSize:18,fontWeight:800,color:"#7FFFB0"}}>+{xTotal} kcal</span>
+-        </div>
+-      )}
+-    </div>
+-  );
+-}
+diff --git a/src/ClientStats.js b/src/ClientStats.js
+new file mode 100644
+index 0000000..e40721b
+--- /dev/null
++++ b/src/ClientStats.js
+@@ -0,0 +1,161 @@
++import { useState, useEffect, useCallback } from "react";
++import { pb } from "./pb";
++
++const PK = { dark:"#6D1B3B", mid:"#AD1457" };
++
++const PERIOD_OPTIONS = [
++  { k:7,  l:"7 d." },
++  { k:14, l:"14 d." },
++  { k:30, l:"30 d." },
++];
++
++const FIELDS = [
++  { key:"weight_measured", label:"Svoris",    unit:"kg",  emoji:"⚖️" },
++  { key:"body_fat",        label:"Riebalai",  unit:"%",   emoji:"📊" },
++  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  emoji:"📏" },
++  { key:"hips_cm",         label:"Klubai",    unit:"cm",  emoji:"📏" },
++  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  emoji:"📏" },
++  { key:"arm_cm",          label:"Ranka",     unit:"cm",  emoji:"💪" },
++  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  emoji:"📏" },
++];
++
++function todayStr() { return new Date().toISOString().split("T")[0]; }
++function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
++
++function MiniChart({ data, field }) {
++  if (data.length < 2) return null;
++  const vals = data.map(d => parseFloat(d[field])).filter(v => !isNaN(v));
++  if (vals.length < 2) return null;
++
++  const min = Math.min(...vals), max = Math.max(...vals);
++  const range = max - min || 1;
++  const W = 90, H = 30;
++
++  const points = vals.map((v, i) => {
++    const x = (i / (vals.length - 1)) * W;
++    const y = H - ((v - min) / range) * H;
++    return `${x},${y}`;
++  }).join(" ");
++
++  const first = vals[0], last = vals[vals.length - 1];
++  const diff = last - first;
++  const color = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm"
++    ? (diff < 0 ? "#7FFFB0" : diff > 0 ? "#FF8888" : "rgba(255,255,255,0.4)")
++    : (diff > 0 ? "#7FFFB0" : diff < 0 ? "#FF8888" : "rgba(255,255,255,0.4)");
++
++  return (
++    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
++      <svg width={W} height={H} style={{ overflow:"visible" }}>
++        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
++        <circle cx={points.split(" ").pop().split(",")[0]} cy={points.split(" ").pop().split(",")[1]} r="2.5" fill={color} />
++      </svg>
++      <span style={{ fontSize:11, fontWeight:700, color }}>
++        {diff > 0 ? "+" : ""}{diff.toFixed(1)}
++      </span>
++    </div>
++  );
++}
++
++function StatCard({ icon, value, label, sub, color }) {
++  return (
++    <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 12px", border:`1px solid ${color||"rgba(255,255,255,0.12)"}` }}>
++      <div style={{ fontSize:20, marginBottom:5 }}>{icon}</div>
++      <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>{value}</div>
++      <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{label}</div>
++      {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", marginTop:3 }}>{sub}</div>}
++    </div>
++  );
++}
++
++export default function ClientStats({ user, onClose }) {
++  const [period, setPeriod]   = useState(7);
++  const [loading, setLoading] = useState(true);
++  const [avgs, setAvgs]       = useState(null);
++  const [measurements, setMeasurements] = useState([]);
++
++  const load = useCallback(async () => {
++    setLoading(true);
++    const from = daysAgoStr(period - 1);
++    const today = todayStr();
++
++    const [checkins, sleeps, waters, meas] = await Promise.all([
++      pb.collection("daily_checkins").getFullList({ filter:`user_id="${user.id}" && date>="${from}" && date<="${today}" && is_done=true`, requestKey:null }).catch(()=>[]),
++      pb.collection("sleep_log").getFullList({ filter:`user_id="${user.id}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
++      pb.collection("water_log").getFullList({ filter:`user_id="${user.id}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
++      pb.collection("trainer_measurements").getFullList({ filter:`user_id="${user.id}"`, sort:"measured_at", requestKey:null }).catch(()=>[]),
++    ]);
++
++    const stepsWithData = checkins.filter(c => c.steps > 0);
++
++    setAvgs({
++      checkinDays:  checkins.length,
++      avgSteps:     stepsWithData.length ? Math.round(stepsWithData.reduce((a,c)=>a+(c.steps||0),0)/stepsWithData.length) : null,
++      avgSleep:     sleeps.length ? sleeps.reduce((a,s)=>a+(s.hours_slept||0),0)/sleeps.length : null,
++      waterRate:    waters.length ? Math.round(waters.filter(w=>w.ml >= (w.goal||2000)).length/waters.length*100) : null,
++      avgNutrition: checkins.length ? checkins.reduce((a,c)=>a+(c.nutrition_score||0),0)/checkins.length : null,
++      avgWellbeing: checkins.length ? checkins.reduce((a,c)=>a+(c.wellbeing_score||0),0)/checkins.length : null,
++    });
++    setMeasurements(meas);
++    setLoading(false);
++  }, [user.id, period]);
++
++  useEffect(() => { load(); }, [load]);
++
++  const latest = measurements[measurements.length-1];
++
++  return (
++    <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
++      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
++        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📈 Mano statistika</h1>
++      </div>
++
++      <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
++
++        {/* Periodo pasirinkimas */}
++        <div style={{ display:"flex", gap:6, marginBottom:16 }}>
++          {PERIOD_OPTIONS.map(p => (
++            <button key={p.k} onClick={()=>setPeriod(p.k)} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:period===p.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
++              {p.l}
++            </button>
++          ))}
++        </div>
++
++        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
++
++        {!loading && avgs && (
++          <>
++            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Vidurkiai ({period} d.)</p>
++            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
++              <StatCard icon="🚶‍♀️" value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai" />
++              <StatCard icon="💧" value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas" />
++              <StatCard icon="😴" value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas" />
++              <StatCard icon="📋" value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`} />
++              <StatCard icon="🥗" value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
++              <StatCard icon="💚" value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
++            </div>
++
++            {/* Kūno matavimų kreivės */}
++            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Kūno matavimai</p>
++            {!latest ? (
++              <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Matavimų dar nėra — trenerė juos įves po kito matavimo.</p>
++            ) : (
++              <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px" }}>
++                <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:"0 0 12px" }}>Paskutinis matavimas · {latest.measured_at?.slice(0,10)}</p>
++                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
++                  {FIELDS.filter(f => latest[f.key]).map(f => (
++                    <div key={f.key} style={{ textAlign:"center" }}>
++                      <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{latest[f.key]}</p>
++                      <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{f.emoji} {f.label}</p>
++                      <MiniChart data={measurements} field={f.key} />
++                    </div>
++                  ))}
++                </div>
++              </div>
++            )}
++          </>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/ClientView.js b/src/ClientView.js
+index 7d3d072..33b3d56 100644
+--- a/src/ClientView.js
++++ b/src/ClientView.js
+@@ -1,10 +1,9 @@
+ import { useState, useEffect, useCallback } from "react";
+-import { pb, pbFirst } from "./pb";
++import { pb } from "./pb";
+ import { PK, GOALS, calcMacros } from "./constants";
+ import WaterTracker from "./WaterTracker";
+ import SleepTracker from "./SleepTracker";
+ import DailyCheckin from "./DailyCheckin";
+-import MeasurementReport from "./MeasurementReport";
+ import MotivationalCard from "./MotivationalCard";
+ import WorkoutView from "./WorkoutView";
+ import BookingClient from "./BookingClient";
+@@ -14,6 +13,7 @@ import StreakBadge from "./StreakBadge";
+ import StepsTracker from "./StepsTracker";
+ import TrainingPackages from "./TrainingPackages";
+ import Onboarding from "./Onboarding";
++import ClientStats from "./ClientStats";
+ 
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
+ function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
+@@ -75,14 +75,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+   const [profile,      setProfile]      = useState(null);
+   const [loading,      setLoading]      = useState(true);
+   const [showCalendar, setShowCalendar] = useState(false);
+-  const [hasReport,    setHasReport]    = useState(false);
+-  const [showReport,   setShowReport]   = useState(false);
+   const [minDate,      setMinDate]      = useState(null);
+   const [checkinKey,   setCheckinKey]   = useState(0);
+   const [showWorkout,  setShowWorkout]  = useState(false);
+   const [showBooking,  setShowBooking]  = useState(false);
+   const [showProgress, setShowProgress] = useState(false);
+   const [showPackages, setShowPackages] = useState(false);
++  const [showStats,    setShowStats]    = useState(false);
+   const [showOnboarding, setShowOnboarding] = useState(false);
+ 
+   // Aktyvus tab (null = pagrindinis)
+@@ -90,6 +89,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+     : showWorkout ? "workout"
+     : showBooking ? "booking"
+     : showProgress ? "progress"
++    : showStats ? "stats"
+     : null;
+ 
+   function openTab(tab) {
+@@ -97,6 +97,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+     setShowWorkout(tab === "workout");
+     setShowBooking(tab === "booking");
+     setShowProgress(tab === "progress");
++    setShowStats(tab === "stats");
+   }
+   const [hasActivePlan, setHasActivePlan] = useState(false);
+   const [nextBooking,   setNextBooking]   = useState(null);
+@@ -138,8 +139,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+       });
+     }
+     load();
+-    pbFirst("trainer_measurements", `user_id="${user.id}" && client_read_at=""`)
+-      .then(data => { if (data) { setHasReport(true); setShowReport(true); } });
+   }, [user.id]);
+ 
+   if (loading) return (
+@@ -313,6 +312,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+             ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
+             { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
+             { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
++            { id:"stats",    emoji:"📈", label:"Statistika",  badge:0 },
+           ].map(tab => {
+             const isActive = activeTab === tab.id;
+             return (
+@@ -334,17 +334,11 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+         </div>
+       )}
+ 
+-      {hasReport && !showReport && (
+-        <button onClick={() => setShowReport(true)} style={{ position: "fixed", bottom: 90, right: 20, zIndex: 500, width: 50, height: 50, borderRadius: "50%", background: `linear-gradient(135deg,${PK.dark},${PK.mid})`, border: "2px solid rgba(255,255,255,0.3)", boxShadow: "0 4px 20px rgba(173,20,87,0.5)", cursor: "pointer", fontSize: 20 }}>
+-          📊
+-          <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, borderRadius: "50%", background: "#FF4444", border: "2px solid #fff", fontSize: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>1</div>
+-        </button>
+-      )}
+-
+       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
+       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
+       {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
+       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
++      {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
+       {showOnboarding && (
+         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
+       )}
+@@ -352,9 +346,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+         <DatePickerModal value={selectedDate} minDate={minDate}
+           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
+       )}
+-      {showReport && (
+-        <MeasurementReport userId={user.id} onClose={() => { setShowReport(false); setHasReport(false); }} />
+-      )}
+     </div>
+   );
+ }
+diff --git a/src/MeasurementReport.js b/src/MeasurementReport.js
+deleted file mode 100644
+index 94b5372..0000000
+--- a/src/MeasurementReport.js
++++ /dev/null
+@@ -1,263 +0,0 @@
+-import { useState, useEffect } from "react";
+-import { pb, pbFirst, pbUpsert } from "./pb";
+-import { PK } from "./constants";
+-
+-function fmt(d) {
+-  if (!d) return "–";
+-  return new Date(d).toLocaleDateString("lt-LT", { month:"long", day:"numeric" });
+-}
+-function diff(a, b, unit="", invert=false) {
+-  if (a==null||b==null) return null;
+-  const d = +(b-a).toFixed(1);
+-  if (d===0) return { text:"nepasikeitė", color:"rgba(255,255,255,0.5)", d:0 };
+-  const good = invert ? d<0 : d>0;
+-  return {
+-    text: (d>0?"+":"")+d+unit,
+-    color: good?"#7FFFB0":"#FFB3B3",
+-    d,
+-  };
+-}
+-
+-// ── Rodiklio kortelė ──────────────────────────────────────────────────────────
+-function StatCard({ emoji, label, from, to, unit="", invert=false, big=false }) {
+-  if (to==null) return null;
+-  const d = diff(from, to, unit, invert);
+-  return (
+-    <div style={{
+-      background:"rgba(255,255,255,0.1)", borderRadius:16, padding:"14px 12px",
+-      textAlign:"center", border:"1px solid rgba(255,255,255,0.15)",
+-    }}>
+-      <div style={{ fontSize: big?28:22, marginBottom:4 }}>{emoji}</div>
+-      <div style={{ fontSize: big?26:20, fontWeight:800, color:"#fff" }}>{to}{unit}</div>
+-      {from!=null && from!==to && (
+-        <div style={{ fontSize:11, color: d?.color||"rgba(255,255,255,0.5)", marginTop:2 }}>
+-          {from}{unit} → {d?.text}
+-        </div>
+-      )}
+-      {from==null && <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pirmas matavimas</div>}
+-      <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:4 }}>{label}</div>
+-    </div>
+-  );
+-}
+-
+-// ── Vidurkio blokas ───────────────────────────────────────────────────────────
+-function AvgBlock({ emoji, label, value, max=5, color="#7FFFB0" }) {
+-  if (value==null) return null;
+-  const pct = Math.round((value/max)*100);
+-  const display = max===5 ? value.toFixed(1)+"/5" : value.toFixed(1);
+-  return (
+-    <div style={{ marginBottom:10 }}>
+-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+-        <span style={{ fontSize:12, color:"rgba(255,255,255,0.75)" }}>{emoji} {label}</span>
+-        <span style={{ fontSize:13, fontWeight:700, color }}>{display}</span>
+-      </div>
+-      <div style={{ background:"rgba(255,255,255,0.12)", borderRadius:99, height:6 }}>
+-        <div style={{ width:pct+"%", height:"100%", borderRadius:99, background:color, transition:"width 1s" }}/>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-// ── Pagrindinis komponentas ───────────────────────────────────────────────────
+-export default function MeasurementReport({ userId, onClose }) {
+-  const [report,  setReport]  = useState(null);
+-  const [loading, setLoading] = useState(true);
+-  const [marking, setMarking] = useState(false);
+-
+-  useEffect(() => {
+-    if (!userId) return;
+-    loadReport();
+-  }, [userId]);
+-
+-  async function loadReport() {
+-  const measures = await pb.collection("trainer_measurements").getList(1, 1, {
+-    filter: `user_id="${userId}" && client_read_at=""`,
+-    sort: "-measured_at", requestKey: null,
+-  }).then(r => r.items).catch(() => []);
+-
+-  if (!measures?.length) { setLoading(false); return; }
+-  const current = measures[0];
+-
+-  const prevList = await pb.collection("trainer_measurements").getList(1, 1, {
+-    filter: `user_id="${userId}" && id!="${current.id}" && client_read_at!=""`,
+-    sort: "-measured_at", requestKey: null,
+-  }).then(r => r.items).catch(() => []);
+-  const prev = prevList[0] || null;
+-
+-  const cycleStart = new Date(current.measured_at);
+-  cycleStart.setDate(cycleStart.getDate() - 56);
+-  const cycleStartStr = cycleStart.toISOString().split("T")[0];
+-  const cycleEndStr   = current.measured_at.split("T")[0];
+-
+-  const checkins = await pb.collection("client_checkins").getFullList({
+-    filter: `user_id="${userId}" && is_done=true && week_start>="${cycleStartStr}" && week_start<="${cycleEndStr}"`,
+-    requestKey: null,
+-  }).catch(() => []);
+-
+-    // Vidurkiai
+-    const avg = (key) => {
+-      const vals = checkins?.map(c=>c[key]).filter(v=>v!=null);
+-      if (!vals?.length) return null;
+-      return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+-    };
+-
+-    setReport({
+-      current,
+-      prev: prev?.[0] || null,
+-      cycleStart: cycleStartStr,
+-      avgs: {
+-        sleep:    avg("sleep_quality"),
+-        energy:   avg("energy"),
+-        diet:     avg("diet_adherence"),
+-        water:    avg("water_score"),
+-        stress:   avg("stress_level"),
+-        workouts: avg("workouts_done"),
+-      },
+-    });
+-    setLoading(false);
+-  }
+-
+-  async function handleRead() {
+-    if (!report) return;
+-    setMarking(true);
+-    await adminDb
+-      .from("trainer_measurements")
+-      .update({ client_read_at: new Date().toISOString() })
+-      .eq("id", report.current.id);
+-    setMarking(false);
+-    onClose();
+-  }
+-
+-  if (loading) return null;
+-  if (!report)  return null;
+-
+-  const { current, prev, avgs } = report;
+-  const cycle = current.cycle_number || "–";
+-
+-  // Motyvacinis tekstas pagal svorio pokytį
+-  const weightDiff = prev?.weight_measured != null
+-    ? +(current.weight_measured - prev.weight_measured).toFixed(1)
+-    : null;
+-  const motivText = weightDiff == null
+-    ? "Pirmasis tavo matavimas – pradžia visų pradžia! 💪"
+-    : weightDiff < -0.5
+-      ? `Svoriui sumažėjus ${Math.abs(weightDiff)} kg – fantastiškas darbas! 🌟`
+-      : weightDiff > 0.5
+-        ? "Kartais svoris kyla – tai dar nereiškia blogo rezultato! Žiūrime į visą vaizdą 💙"
+-        : "Svoris stabilus – puiku jei tikslas palaikyti! ⚖️";
+-
+-  return (
+-    <div style={{
+-      position:"fixed", inset:0, zIndex:1000,
+-      background:"rgba(0,0,0,0.75)",
+-      display:"flex", alignItems:"flex-end", justifyContent:"center",
+-      fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+-    }}>
+-      <div style={{
+-        width:"100%", maxWidth:480,
+-        maxHeight:"92vh",
+-        background:`linear-gradient(160deg, ${PK.dark} 0%, #3a0a20 40%, #1a0010 100%)`,
+-        borderRadius:"24px 24px 0 0",
+-        display:"flex", flexDirection:"column",
+-        overflow:"hidden",
+-        boxShadow:"0 -8px 40px rgba(0,0,0,0.5)",
+-      }}>
+-        {/* Header */}
+-        <div style={{ padding:"20px 20px 0", flexShrink:0 }}>
+-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+-            <div>
+-              <p style={{ fontSize:11, color:PK.blush, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:700 }}>
+-                📊 Trenerės ataskaita · {cycle} ciklas
+-              </p>
+-              <h2 style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 4px", lineHeight:1.2 }}>
+-                8 savaičių rezultatai
+-              </h2>
+-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>
+-                {fmt(report.cycleStart)} – {fmt(current.measured_at)}
+-              </p>
+-            </div>
+-            <div style={{ fontSize:40 }}>🏆</div>
+-          </div>
+-
+-          {/* Motyvacinis tekstas */}
+-          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"10px 14px", margin:"12px 0" }}>
+-            <p style={{ fontSize:13, color:"rgba(255,255,255,0.85)", margin:0, lineHeight:1.5, fontStyle:"italic" }}>
+-              {motivText}
+-            </p>
+-          </div>
+-        </div>
+-
+-        {/* Turinys */}
+-        <div style={{ overflowY:"auto", flex:1, padding:"0 20px", WebkitOverflowScrolling:"touch" }}>
+-
+-          {/* Pagrindiniai matavimai */}
+-          <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0 10px" }}>
+-            Kūno matavimai
+-          </p>
+-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+-            <StatCard emoji="⚖️" label="Svoris"       from={prev?.weight_measured}  to={current.weight_measured}  unit=" kg" big />
+-            <StatCard emoji="📉" label="Riebalai"      from={prev?.body_fat}          to={current.body_fat}          unit="%"  invert />
+-            <StatCard emoji="📏" label="Liemuo"        from={prev?.waist_cm}          to={current.waist_cm}          unit=" cm" invert />
+-            <StatCard emoji="📐" label="Klubai"        from={prev?.hips_cm}           to={current.hips_cm}           unit=" cm" invert />
+-            <StatCard emoji="💪" label="Rankos"        from={prev?.arms_cm}           to={current.arms_cm}           unit=" cm" />
+-            <StatCard emoji="🦵" label="Šlaunys"       from={prev?.thighs_cm}         to={current.thighs_cm}         unit=" cm" />
+-          </div>
+-
+-          {/* Check-in'ų vidurkiai */}
+-          {Object.values(avgs).some(v=>v!=null) && (
+-            <>
+-              <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0 12px" }}>
+-                Savaitinių check-in'ų vidurkiai
+-              </p>
+-              <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:"14px 16px", marginBottom:16 }}>
+-                <AvgBlock emoji="😴" label="Miego kokybė"   value={avgs.sleep}   color="#89CFF0" />
+-                <AvgBlock emoji="⚡" label="Energija"        value={avgs.energy}  color="#FFD700" />
+-                <AvgBlock emoji="🥗" label="Mityba"          value={avgs.diet}    color="#90EE90" />
+-                <AvgBlock emoji="💧" label="Vanduo"          value={avgs.water}   color="#89CFF0" />
+-                <AvgBlock emoji="🧘" label="Stresas (mažiau = geriau)" value={avgs.stress!=null?6-avgs.stress:null} color="#FFB3C6" />
+-                {avgs.workouts!=null && (
+-                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+-                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.75)" }}>🏋️ Vid. treniruotės per savaitę</span>
+-                    <span style={{ fontSize:13, fontWeight:700, color:"#FFD700" }}>{avgs.workouts.toFixed(1)}k</span>
+-                  </div>
+-                )}
+-              </div>
+-            </>
+-          )}
+-
+-          {/* Trenerės pastaba */}
+-          {current.trainer_note && (
+-            <>
+-              <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"4px 0 10px" }}>
+-                Trenerės pastaba
+-              </p>
+-              <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", marginBottom:16, borderLeft:"3px solid "+PK.mid }}>
+-                <p style={{ fontSize:13, color:"rgba(255,255,255,0.85)", margin:0, lineHeight:1.6 }}>
+-                  {current.trainer_note}
+-                </p>
+-              </div>
+-            </>
+-          )}
+-
+-          <div style={{ height:10 }} />
+-        </div>
+-
+-        {/* Mygtukas */}
+-        <div style={{ padding:"16px 20px", flexShrink:0, borderTop:"1px solid rgba(255,255,255,0.08)" }}>
+-          <button onClick={handleRead} disabled={marking} style={{
+-            width:"100%", padding:"16px 0",
+-            background:`linear-gradient(135deg, ${PK.mid}, ${PK.bright})`,
+-            border:"none", borderRadius:16, color:"#fff",
+-            fontSize:16, fontWeight:800, cursor:"pointer", fontFamily:"inherit",
+-            boxShadow:"0 4px 20px rgba(173,20,87,0.4)",
+-          }}>
+-            {marking ? "Saugoma..." : "✓ Perskaičiau, ačiū!"}
+-          </button>
+-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textAlign:"center", margin:"8px 0 0" }}>
+-            Po patvirtinimo pranešimas dingsta
+-          </p>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-}
+diff --git a/src/ProgressPhotoUpload.js b/src/ProgressPhotoUpload.js
+deleted file mode 100644
+index 32f91da..0000000
+--- a/src/ProgressPhotoUpload.js
++++ /dev/null
+@@ -1,114 +0,0 @@
+-import { useState } from "react";
+-import { pb } from "./pb";
+-
+-export default function ProgressPhotoUpload({ userId, onComplete }) {
+-  const [photos,   setPhotos]   = useState({ photo_front: null, photo_side: null, photo_back: null });
+-  const [previews, setPreviews] = useState({ photo_front: null, photo_side: null, photo_back: null });
+-  const [saving,   setSaving]   = useState(false);
+-
+-  async function handleFile(field, e) {
+-    const file = e.target.files[0];
+-    if (!file) return;
+-    const reader = new FileReader();
+-    reader.onload = ev => setPreviews(p => ({ ...p, [field]: ev.target.result }));
+-    reader.readAsDataURL(file);
+-    setPhotos(p => ({ ...p, [field]: file }));
+-  }
+-
+-  async function handleSave() {
+-    setSaving(true);
+-    try {
+-      // Sukurti naują progress_photos įrašą
+-      const formData = new FormData();
+-      formData.append("user_id", userId);
+-      if (photos.photo_front) formData.append("photo_front", photos.photo_front);
+-      if (photos.photo_side)  formData.append("photo_side",  photos.photo_side);
+-      if (photos.photo_back)  formData.append("photo_back",  photos.photo_back);
+-      await pb.collection("progress_photos").create(formData);
+-
+-      // Ištrinti seniausius jei >2
+-      const all = await pb.collection("progress_photos").getFullList({
+-        filter: `user_id="${userId}"`, sort: "created", requestKey: null,
+-      });
+-      if (all.length > 2) {
+-        const toDelete = all.slice(0, all.length - 2);
+-        await Promise.all(toDelete.map(r => pb.collection("progress_photos").delete(r.id)));
+-      }
+-    } catch(e) { console.error("Progress photo upload:", e); }
+-    setSaving(false);
+-    onComplete();
+-  }
+-
+-  const fields = [
+-    { key: "photo_front", label: "Priekis", emoji: "⬆️" },
+-    { key: "photo_side",  label: "Šonas",   emoji: "➡️" },
+-    { key: "photo_back",  label: "Nugara",  emoji: "⬇️" },
+-  ];
+-
+-  const hasAny = photos.photo_front || photos.photo_side || photos.photo_back;
+-
+-  return (
+-    <div style={{
+-      background: "rgba(0,0,0,0.3)", borderRadius: 20, padding: "20px 16px",
+-      border: "1px solid rgba(255,255,255,0.15)", marginTop: 16,
+-    }}>
+-      <div style={{ textAlign: "center", marginBottom: 16 }}>
+-        <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 6px" }}>
+-          📸 Progresas nuotraukose
+-        </p>
+-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+-          Įkelk naujausias nuotraukas trenerės palyginimui
+-        </p>
+-      </div>
+-
+-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+-        {fields.map(f => (
+-          <label key={f.key} style={{ cursor: "pointer" }}>
+-            <input type="file" accept="image/*"
+-              onChange={e => handleFile(f.key, e)} style={{ display: "none" }} />
+-            <div style={{
+-              aspectRatio: "3/4", borderRadius: 12,
+-              border: previews[f.key] ? "2px solid rgba(255,255,255,0.5)" : "2px dashed rgba(255,255,255,0.2)",
+-              background: "rgba(255,255,255,0.05)", overflow: "hidden",
+-              display: "flex", flexDirection: "column",
+-              alignItems: "center", justifyContent: "center", gap: 4,
+-            }}>
+-              {previews[f.key] ? (
+-                <img src={previews[f.key]} alt={f.label}
+-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+-              ) : (
+-                <>
+-                  <span style={{ fontSize: 20 }}>{f.emoji}</span>
+-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>{f.label}</span>
+-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>+ Pridėti</span>
+-                </>
+-              )}
+-            </div>
+-          </label>
+-        ))}
+-      </div>
+-
+-      <button onClick={handleSave} disabled={saving} style={{
+-        width: "100%", padding: "13px 0", marginBottom: 8,
+-        background: hasAny ? "linear-gradient(135deg,#6D1B3B,#AD1457)" : "rgba(255,255,255,0.08)",
+-        border: "none", borderRadius: 14,
+-        color: hasAny ? "#fff" : "rgba(255,255,255,0.3)",
+-        fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+-        opacity: saving ? 0.7 : 1,
+-      }}>
+-        {saving ? "Saugoma..." : hasAny ? "💾 Išsaugoti nuotraukas" : "Praleisti"}
+-      </button>
+-
+-      {hasAny && (
+-        <button onClick={onComplete} style={{
+-          width: "100%", padding: "10px 0",
+-          background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
+-          borderRadius: 14, color: "rgba(255,255,255,0.35)",
+-          fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+-        }}>
+-          Praleisti
+-        </button>
+-      )}
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/src/ReportOverlay.js b/src/ReportOverlay.js
+deleted file mode 100644
+index c6a20be..0000000
+--- a/src/ReportOverlay.js
++++ /dev/null
+@@ -1,64 +0,0 @@
+-import { useState } from 'react';
+-import { PK } from './constants';
+-import { pb } from './pb';
+-import ProgressPhotoUpload from "./ProgressPhotoUpload";
+-
+-export default function ReportOverlay({ report, userId, onRead }) {
+-  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+-
+-  if (!report) return null;
+-
+-  const isLoss = report.weightDiff < 0;
+-
+-  async function handleRead() {
+-    await pb.collection("users").update(userId, { last_read_report_id: report.id });
+-    setShowPhotoUpload(true);
+-  }
+-
+-  return (
+-    <div style={{
+-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+-      background: "rgba(45, 20, 31, 0.9)", zIndex: 9999,
+-      display: "flex", alignItems: "center", justifyContent: "center",
+-      padding: 20, backdropFilter: "blur(8px)", overflowY: "auto", WebkitOverflowScrolling: "touch",
+-    }}>
+-      <div style={{
+-        background: "#fff", borderRadius: 28, width: "100%", maxWidth: 400,
+-        overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+-        border: `1px solid ${PK.blush}`
+-      }}>
+-        <div style={{ background: `linear-gradient(135deg, ${PK.dark}, ${PK.mid})`, padding: "30px 20px", textAlign: "center", color: "#fff" }}>
+-          <div style={{ fontSize: 40, marginBottom: 10 }}>🏆</div>
+-          <h2 style={{ margin: 0, fontSize: 22 }}>8 savaičių apžvalga</h2>
+-          <p style={{ margin: "5px 0 0", opacity: 0.8, fontSize: 13 }}>Tavo progresas pas trenerį</p>
+-        </div>
+-
+-        <div style={{ padding: "24px 20px" }}>
+-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+-            <div style={{ background: PK.pale, padding: 15, borderRadius: 20, textAlign: "center" }}>
+-              <p style={{ fontSize: 10, fontWeight: 700, color: PK.rose, textTransform: "uppercase", margin: 0 }}>Svoris</p>
+-              <p style={{ fontSize: 24, fontWeight: 800, color: PK.dark, margin: "4px 0" }}>
+-                {report.weightDiff > 0 ? "+" : ""}{report.weightDiff}kg
+-              </p>
+-              <div style={{ fontSize: 10, color: isLoss ? "#276749" : PK.mid }}>
+-                {isLoss ? "🔥 Puiku!" : "Raumenys?"}
+-              </div>
+-            </div>
+-          </div>
+-
+-          {!showPhotoUpload ? (
+-            <button onClick={handleRead} style={{
+-              width: "100%", padding: "14px", background: PK.mid, border: "none",
+-              borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700,
+-              cursor: "pointer", fontFamily: "inherit",
+-            }}>
+-              Perskaičiau ✓
+-            </button>
+-          ) : (
+-            <ProgressPhotoUpload userId={userId} onComplete={onRead} />
+-          )}
+-        </div>
+-      </div>
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/src/TrainerMeasurements.js b/src/TrainerMeasurements.js
+deleted file mode 100644
+index 5eed2f4..0000000
+--- a/src/TrainerMeasurements.js
++++ /dev/null
+@@ -1,636 +0,0 @@
+-import { useState, useEffect, useCallback } from "react";
+-import { pb, pbFirst, pbUpsert } from "./pb";
+-import { PK } from "./constants";
+-
+-function fmt(dateStr) {
+-  return new Date(dateStr+"T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" });
+-}
+-function fmtFull(dateStr) {
+-  return new Date(dateStr+"T12:00:00").toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" });
+-}
+-function weeksAgo(dateStr) {
+-  return Math.floor((new Date() - new Date(dateStr+"T12:00:00")) / (7*24*60*60*1000));
+-}
+-function weeksUntil(dateStr) {
+-  return Math.ceil((new Date(dateStr+"T12:00:00") - new Date()) / (7*24*60*60*1000));
+-}
+-function addDays(dateStr, days) {
+-  const d = new Date(dateStr+"T12:00:00");
+-  d.setDate(d.getDate()+days);
+-  return d.toISOString().split("T")[0];
+-}
+-
+-// ── Progreso grafikas (rodomas trenerei) ─────────────────────────────────────
+-function DualChart({ clientData, trainerData, cKey, tKey, label, cColor, tColor, unit="" }) {
+-  const cVals = clientData.map(d=>d[cKey]).filter(Boolean);
+-  const tVals = trainerData.map(d=>d[tKey]).filter(Boolean);
+-  const all   = [...cVals, ...tVals];
+-  if (!all.length) return null;
+-
+-  const allDates = [...new Set([
+-    ...clientData.map(d=>d.week_start),
+-    ...trainerData.map(d=>d.measured_at),
+-  ])].sort();
+-  if (allDates.length < 1) return null;
+-
+-  const W=300, H=110, PAD={t:14,r:12,b:24,l:36};
+-  const cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+-  const minV=Math.min(...all)*0.985, maxV=Math.max(...all)*1.015, range=maxV-minV||1;
+-
+-  function x(dateStr) {
+-    const i=allDates.indexOf(dateStr);
+-    return PAD.l+(i/Math.max(allDates.length-1,1))*cW;
+-  }
+-  function y(v) { return PAD.t+cH-((v-minV)/range)*cH; }
+-
+-  const cPts=clientData.filter(d=>d[cKey]).map(d=>({x:x(d.week_start),y:y(d[cKey]),v:d[cKey]}));
+-  const tPts=trainerData.filter(d=>d[tKey]).map(d=>({x:x(d.measured_at),y:y(d[tKey]),v:d[tKey]}));
+-
+-  const cPath=cPts.map((p,i)=>(i===0?"M":"L")+p.x.toFixed(1)+","+p.y.toFixed(1)).join(" ");
+-  const tPath=tPts.map((p,i)=>(i===0?"M":"L")+p.x.toFixed(1)+","+p.y.toFixed(1)).join(" ");
+-  const tFill=tPath+(tPts.length>1?` L${tPts[tPts.length-1].x},${PAD.t+cH} L${tPts[0].x},${PAD.t+cH} Z`:"");
+-
+-  const ticks=[minV,(minV+maxV)/2,maxV].map(v=>+v.toFixed(1));
+-
+-  return (
+-    <div style={{ marginBottom:16 }}>
+-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+-        <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", margin:0 }}>{label}</p>
+-        <div style={{ display:"flex", gap:10 }}>
+-          {cPts.length>0&&<span style={{ fontSize:9, color:cColor, display:"flex", alignItems:"center", gap:3 }}>
+-            <svg width="14" height="4"><line x1="0" y1="2" x2="14" y2="2" stroke={cColor} strokeWidth="1.5" strokeDasharray="3,2"/></svg>Kliento
+-          </span>}
+-          {tPts.length>0&&<span style={{ fontSize:9, color:tColor, display:"flex", alignItems:"center", gap:3 }}>
+-            <svg width="14" height="4"><line x1="0" y1="2" x2="14" y2="2" stroke={tColor} strokeWidth="2"/></svg>Matuota
+-          </span>}
+-        </div>
+-      </div>
+-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ overflow:"visible" }}>
+-        <defs>
+-          <linearGradient id={"tmc"+tKey} x1="0" y1="0" x2="0" y2="1">
+-            <stop offset="0%" stopColor={tColor} stopOpacity="0.25"/>
+-            <stop offset="100%" stopColor={tColor} stopOpacity="0"/>
+-          </linearGradient>
+-        </defs>
+-        {ticks.map(t=>{
+-          const yy=y(t);
+-          return (
+-            <g key={t}>
+-              <line x1={PAD.l} y1={yy} x2={PAD.l+cW} y2={yy} stroke={PK.blush} strokeWidth="0.5"/>
+-              <text x={PAD.l-4} y={yy+3} textAnchor="end" fontSize="8" fill={PK.rose}>{t}{unit}</text>
+-            </g>
+-          );
+-        })}
+-        {tPts.map((p,i)=>(
+-          <text key={i} x={p.x} y={H-4} textAnchor="middle" fontSize="7" fill={PK.rose}>{fmt(trainerData.filter(d=>d[tKey])[i]?.measured_at)}</text>
+-        ))}
+-        {cPath&&<path d={cPath} fill="none" stroke={cColor} strokeWidth="1.5" strokeDasharray="4,3" strokeLinecap="round"/>}
+-        {cPts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="2" fill={cColor} fillOpacity="0.5"/>)}
+-        {tPts.length>1&&<path d={tFill} fill={`url(#tmc${tKey})`}/>}
+-        {tPath&&<path d={tPath} fill="none" stroke={tColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>}
+-        {tPts.map((p,i)=>(
+-          <g key={i}>
+-            <circle cx={p.x} cy={p.y} r="5" fill={tColor} stroke="#fff" strokeWidth="1.5"/>
+-            {i===tPts.length-1&&<text x={p.x} y={p.y-9} textAnchor="middle" fontSize="9" fontWeight="700" fill={tColor}>{p.v}{unit}</text>}
+-          </g>
+-        ))}
+-      </svg>
+-    </div>
+-  );
+-}
+-
+-// ── Pagrindinis komponentas ───────────────────────────────────────────────────
+-export default function TrainerMeasurements({ clientId, clientName }) {
+-  const [measures,  setMeasures]  = useState([]);
+-  const [checkins,  setCheckins]  = useState([]);
+-  const [showForm,  setShowForm]  = useState(false);
+-  const [editId,    setEditId]    = useState(null);
+-  const [saving,    setSaving]    = useState(false);
+-  const [tab,       setTab]       = useState("overview"); // overview | form | charts | history
+-
+-  const [form, setForm] = useState({
+-    weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"",
+-    chest_cm:"", arms_cm:"", thighs_cm:"", trainer_note:"",
+-  });
+-  const set = k => v => setForm(f=>({...f,[k]:v}));
+-
+-  const load = useCallback(async () => {
+-  const [m, c] = await Promise.all([
+-    pb.collection("trainer_measurements").getFullList({ filter: `user_id="${clientId}"`, sort: "measured_at", requestKey: null }),
+-    pb.collection("client_checkins").getList(1, 24, { filter: `user_id="${clientId}"`, sort: "week_start", requestKey: null }).then(r => r.items),
+-  ]);
+-  setMeasures(m||[]);
+-
+-  const ciList = c || [];
+-  if (ciList.length > 0) {
+-    const oldestWeek = ciList[0].week_start;
+-
+-    const [waterRaw, foodData] = await Promise.all([
+-      pb.collection("water_log").getFullList({ filter: `user_id="${clientId}" && date>="${oldestWeek}"`, sort: "date", requestKey: null }),
+-      pb.collection("food_log").getFullList({ filter: `user_id="${clientId}" && date>="${oldestWeek}"`, requestKey: null }),
+-    ]);
+-
+-      // Normalizuoti water datas (pašalinti laiko komponentą jei yra)
+-      const waterData = waterRaw?.map(w => ({ ...w, date: String(w.date).substring(0,10) }));
+-
+-      const wkEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
+-
+-      // Kalorių vidurkis iš visų duomenų – kaip "tikslas"
+-      let globalAvgKcal = null, globalAvgProt = null;
+-      if (foodData?.length) {
+-        const allByDate = {};
+-        foodData.forEach(e => {
+-          if (!allByDate[e.date]) allByDate[e.date] = { kcal:0, protein:0 };
+-          allByDate[e.date].kcal    += e.kcal    || 0;
+-          allByDate[e.date].protein += e.protein || 0;
+-        });
+-        const vals = Object.values(allByDate);
+-        globalAvgKcal = vals.reduce((a,d)=>a+d.kcal,0)/vals.length;
+-        globalAvgProt = vals.reduce((a,d)=>a+d.protein,0)/vals.length;
+-      }
+-
+-      const enriched = ciList.map(ci => {
+-        const wEnd = wkEnd(ci.week_start);
+-        let result = { ...ci };
+-
+-        // Vanduo – visada perskaičiuoti iš water_log
+-        if (waterData?.length) {
+-          const ww = waterData.filter(w => w.date >= ci.week_start && w.date <= wEnd);
+-          if (ww.length) {
+-            const daysLogged = ww.length;
+-            const avgMl      = ww.reduce((a,w)=>a+(+w.ml||0),0) / daysLogged;
+-            const goal       = ww[0]?.goal || 2000;
+-            const mlRate     = Math.min(1, avgMl / goal);   // 0–1
+-            const consRate   = daysLogged / 7;              // 0–1
+-            const combined   = mlRate * 0.6 + consRate * 0.4;
+-            result.water_score = Math.max(1, Math.min(5, Math.round(combined * 4) + 1));
+-          }
+-        }
+-
+-        // Mityba – perskaičiuoti iš food_log
+-        if (foodData?.length) {
+-          const wf = foodData.filter(f => f.date >= ci.week_start && f.date <= wEnd);
+-          if (wf.length) {
+-            const byDate = {};
+-            wf.forEach(e => {
+-              if (!byDate[e.date]) byDate[e.date] = { kcal:0, protein:0 };
+-              byDate[e.date].kcal    += e.kcal    || 0;
+-              byDate[e.date].protein += e.protein || 0;
+-            });
+-            const days  = Object.keys(byDate).length;
+-            const avgK  = Object.values(byDate).reduce((a,d)=>a+d.kcal,0)/days;
+-            const avgP  = Object.values(byDate).reduce((a,d)=>a+d.protein,0)/days;
+-            // Lyginame su kliento vidurkiu (konsistencija + nuokrypis nuo savo normos)
+-            const refK   = globalAvgKcal || avgK;
+-            const refP   = globalAvgProt || avgP;
+-            const kcalAcc  = Math.max(0, 1-Math.abs(avgK-refK)/(refK||1));
+-            const protAcc  = Math.max(0, 1-Math.abs(avgP-refP)/(refP||1));
+-            const consRate = days/7;
+-            const combined = kcalAcc*0.35 + protAcc*0.25 + consRate*0.4;
+-            result.diet_adherence = Math.max(1, Math.min(5, Math.round(combined*4)+1));
+-          }
+-        }
+-
+-        return result;
+-      });
+-      setCheckins(enriched);
+-    } else {
+-      setCheckins([]);
+-    }
+-  }, [clientId]);
+-
+-  useEffect(() => { load(); }, [load]);
+-
+-  const last      = measures[measures.length-1];
+-  const prev      = measures[measures.length-2];
+-  const nextDate  = last ? addDays(last.measured_at, 56) : null; // +8 savaičių
+-  const weeksLeft = nextDate ? weeksUntil(nextDate) : null;
+-  const isOverdue = weeksLeft !== null && weeksLeft <= 0;
+-  const isDue     = weeksLeft !== null && weeksLeft <= 1;
+-
+-  function openForm(measurement=null) {
+-    if (measurement) {
+-      setForm({
+-        weight_measured: measurement.weight_measured ?? "",
+-        body_fat:        measurement.body_fat        ?? "",
+-        waist_cm:        measurement.waist_cm        ?? "",
+-        hips_cm:         measurement.hips_cm         ?? "",
+-        chest_cm:        measurement.chest_cm        ?? "",
+-        arms_cm:         measurement.arms_cm         ?? "",
+-        thighs_cm:       measurement.thighs_cm       ?? "",
+-        trainer_note:    measurement.trainer_note    ?? "",
+-      });
+-      setEditId(measurement.id);
+-    } else {
+-      setForm({ weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arms_cm:"", thighs_cm:"", trainer_note:"" });
+-      setEditId(null);
+-    }
+-    setTab("form");
+-  }
+-
+-  async function handleSave() {
+-    setSaving(true);
+-    const payload = {
+-      user_id:          clientId,
+-      measured_at:      new Date().toISOString().split("T")[0],
+-      cycle_number:     (last?.cycle_number||0)+1,
+-      weight_measured:  parseFloat(form.weight_measured)||null,
+-      body_fat:         parseFloat(form.body_fat)||null,
+-      waist_cm:         parseFloat(form.waist_cm)||null,
+-      hips_cm:          parseFloat(form.hips_cm)||null,
+-      chest_cm:         parseFloat(form.chest_cm)||null,
+-      arms_cm:          parseFloat(form.arms_cm)||null,
+-      thighs_cm:        parseFloat(form.thighs_cm)||null,
+-      trainer_note:     form.trainer_note||null,
+-    };
+-    if (editId) {
+-      await pb.collection("trainer_measurements").update(payload).eq("id",editId);
+-    } else {
+-      await pb.collection("trainer_measurements").create(payload);
+-    }
+-    await load();
+-    setTab("overview");
+-    setEditId(null);
+-    setSaving(false);
+-  }
+-
+-  // Skirtumas tarp paskutinių dviejų matavimų
+-  function diff(key) {
+-    if (!last||!prev||!last[key]||!prev[key]) return null;
+-    return +(last[key]-prev[key]).toFixed(1);
+-  }
+-
+-  function DiffBadge({ d, invertGood=false }) {
+-    if (d===null) return null;
+-    const good   = invertGood ? d<0 : d<0;
+-    const color  = d===0?"rgba(0,0,0,0.3)":good?"#276749":"#9B2335";
+-    const bg     = d===0?"#f5f5f5":good?"#F0FFF4":"#FFF5F5";
+-    return (
+-      <span style={{ fontSize:10, fontWeight:700, color, background:bg, borderRadius:6, padding:"2px 6px", marginLeft:6 }}>
+-        {d>0?"+":""}{d}
+-      </span>
+-    );
+-  }
+-
+-  const MEASURES_FIELDS = [
+-    { k:"weight_measured", l:"Svoris",       u:"kg",  invertGood:true  },
+-    { k:"body_fat",        l:"Kūno riebalai",u:"%",   invertGood:true  },
+-    { k:"waist_cm",        l:"Liemuo",       u:"cm",  invertGood:true  },
+-    { k:"hips_cm",         l:"Klubai",       u:"cm",  invertGood:false },
+-    { k:"chest_cm",        l:"Krūtinė",      u:"cm",  invertGood:false },
+-    { k:"arms_cm",         l:"Rankos",       u:"cm",  invertGood:false },
+-    { k:"thighs_cm",       l:"Šlaunys",      u:"cm",  invertGood:false },
+-  ];
+-
+-  // Kliento savaitiniai duomenys (suvestinė)
+-  const recentCheckins = checkins.slice(-4).reverse();
+-
+-  return (
+-    <div>
+-      {/* Tab bar */}
+-      <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto" }}>
+-        {[
+-          { id:"overview",  l:"Apžvalga" },
+-          { id:"checkins",  l:"📋 Check-inai" },
+-          { id:"form",      l: measures.length===0?"+ Pirmas mat.":isDue||isOverdue?"⚡ Matuoti":"+ Matuoti" },
+-          { id:"charts",    l:"📈 Grafikai" },
+-          { id:"history",   l:"Istorija" },
+-        ].map(t => (
+-          <button key={t.id} onClick={()=>t.id==="form"?openForm():setTab(t.id)} style={{
+-            padding:"8px 12px", borderRadius:10, fontSize:12, fontWeight:700,
+-            cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0,
+-            border:"2px solid "+(tab===t.id?PK.mid:PK.blush),
+-            background: tab===t.id?PK.light:
+-              (t.id==="form"&&(isDue||isOverdue))?"#FFF3CD":"#fff",
+-            color: tab===t.id?PK.dark:
+-              (t.id==="form"&&isOverdue)?"#9B2335":
+-              (t.id==="form"&&isDue)?"#856404":PK.rose,
+-          }}>{t.l}</button>
+-        ))}
+-      </div>
+-
+-      {/* ── APŽVALGA ── */}
+-      {tab==="overview" && (
+-        <>
+-          {/* Kitas matavimas */}
+-          <div style={{
+-            background: isOverdue?"#FFF5F5":isDue?"#FFFBEB":"#fff",
+-            borderRadius:14, padding:"12px 14px", marginBottom:12,
+-            border:"1px solid "+(isOverdue?"#FEB2B2":isDue?"#FAD389":PK.blush),
+-          }}>
+-            <p style={{ fontSize:12, fontWeight:700, color:isOverdue?"#9B2335":isDue?"#744210":PK.dark, margin:"0 0 3px" }}>
+-              {!last ? "📏 Dar nėra matavimų" :
+-               isOverdue ? "⚠️ Matavimas vėluoja!" :
+-               isDue ? "⏰ Matavimo laikas atėjo!" :
+-               `🗓️ Kitas matavimas po ${weeksLeft} sav.`}
+-            </p>
+-            <p style={{ fontSize:11, color:"rgba(0, 0, 0, 0.5)", margin:0 }}>
+-              {!last ? 'Įvesk pirmus matavimus mygtuku "+ Matuoti"' :
+-               `Paskutinis: ${fmtFull(last.measured_at)} · ${weeksAgo(last.measured_at)} sav. atgal`}
+-            </p>
+-          </div>
+-
+-          {/* Paskutinis matavimas */}
+-          {last && (
+-            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", marginBottom:12, border:"1px solid rgba(255,255,255,0.15)" }}>
+-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+-                <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>
+-                  📏 Matavimas #{last.cycle_number} · {fmt(last.measured_at)}
+-                </p>
+-                <button onClick={()=>openForm(last)} style={{ fontSize:11, color:"rgba(255,255,255,0.75)", background:"none", border:"none", cursor:"pointer" }}>✏️</button>
+-              </div>
+-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+-                {MEASURES_FIELDS.filter(f=>last[f.k]!=null).map(f=>(
+-                  <div key={f.k} style={{ background:"rgba(255,255,255,0.07)", borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
+-                    <div style={{ display:"flex", justifyContent:"center", alignItems:"baseline", gap:2 }}>
+-                      <span style={{ fontSize:15, fontWeight:700, color:PK.dark }}>{last[f.k]}</span>
+-                      <span style={{ fontSize:10, color:PK.rose }}>{f.u}</span>
+-                      <DiffBadge d={diff(f.k)} invertGood={f.invertGood}/>
+-                    </div>
+-                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{f.l}</div>
+-                  </div>
+-                ))}
+-              </div>
+-              {last.trainer_note && (
+-                <p style={{ fontSize:12, color:"#fff", marginTop:10, padding:"8px 10px", background:"rgba(255,255,255,0.07)", borderRadius:8, margin:"10px 0 0" }}>
+-                  💬 {last.trainer_note}
+-                </p>
+-              )}
+-            </div>
+-          )}
+-
+-          {/* Kliento paskutiniai check-in'ai */}
+-          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+-            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
+-              Kliento savaitiniai check-in'ai
+-            </p>
+-            {recentCheckins.length===0 ? (
+-              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:12 }}>Dar nėra savaitinių check-in'ų</p>
+-            ) : recentCheckins.map(ci=>(
+-              <div key={ci.id} style={{ padding:"8px 0", borderBottom:"1px solid "+PK.light, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+-                <span style={{ fontSize:12, color:"#fff", fontWeight:600 }}>{fmt(ci.week_start)}</span>
+-                <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+-                  {[
+-                    { e:"😴", v:ci.sleep_quality },
+-                    { e:"⚡", v:ci.energy },
+-                    { e:"🥗", v:ci.diet_adherence },
+-                  ].filter(x=>x.v).map(x=>(
+-                    <span key={x.e} style={{ fontSize:11, color:PK.mid }}>{x.e}{x.v}/5</span>
+-                  ))}
+-                  {ci.weight_self&&<span style={{ fontSize:11, fontWeight:700, color:PK.dark }}>⚖️{ci.weight_self}kg</span>}
+-                  {!ci.is_done&&<span style={{ fontSize:9, background:"#FFF3CD", color:"#856404", borderRadius:5, padding:"1px 5px" }}>neatsakyta</span>}
+-                </div>
+-              </div>
+-            ))}
+-            {recentCheckins.length>0&&checkins.length>4&&(
+-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"8px 0 0", textAlign:"center" }}>
+-                Iš viso savaitinių: {checkins.length}
+-              </p>
+-            )}
+-          </div>
+-        </>
+-      )}
+-
+-      {/* ── KLIENTO CHECK-IN'AI ── */}
+-      {tab==="checkins" && (
+-        <div>
+-          {checkins.length===0 ? (
+-            <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+-              <p style={{ fontSize:32, marginBottom:8 }}>📋</p>
+-              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Klientė dar neatliko nė vieno check-in'o</p>
+-            </div>
+-          ) : [...checkins].reverse().map((ci) => {
+-            const weekEnd = (ws) => { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+6); return d.toISOString().split("T")[0]; };
+-            const fmtD = (s) => new Date(s+"T12:00:00").toLocaleDateString("lt-LT",{month:"short",day:"numeric"});
+-            const isThisWeek = ci.week_start === (()=>{ const d=new Date(),day=d.getDay(); d.setDate(d.getDate()-day+(day===0?-6:1)); return d.toISOString().split("T")[0]; })();
+-
+-            const METRICS = [
+-              { e:"😴", l:"Miegas",   k:"sleep_quality",  inv:false },
+-              { e:"⚡", l:"Energija", k:"energy",          inv:false },
+-              { e:"🥗", l:"Mityba",   k:"diet_adherence",  inv:false },
+-              { e:"💧", l:"Vanduo",   k:"water_score",     inv:false },
+-              { e:"🧘", l:"Stresas",  k:"stress_level",    inv:true  },
+-              { e:"🏋️", l:"Sport.",   k:"workouts_done",   inv:false, suffix:"k" },
+-              { e:"⚖️", l:"Svoris",   k:"weight_self",     inv:false, suffix:"kg" },
+-            ];
+-
+-            // Spalva pagal vertę (1-5 skalė)
+-            function scoreColor(v) {
+-              if (v==null) return "rgba(255,255,255,0.3)";
+-              if (v>=4) return "#7FFFB0";
+-              if (v>=3) return "#FFD700";
+-              return "#FF8C69";
+-            }
+-
+-            return (
+-              <div key={ci.id} style={{
+-                background:"rgba(255,255,255,0.07)", borderRadius:16, padding:"14px 16px", marginBottom:12,
+-                border:"2px solid "+(isThisWeek?PK.mid:PK.blush),
+-                boxShadow: isThisWeek?"0 2px 16px rgba(173,20,87,0.15)":"none",
+-              }}>
+-                {/* Savaitės header */}
+-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+-                  <div>
+-                    <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>
+-                      {isThisWeek ? "🟢 Ši savaitė" : fmtD(ci.week_start)+" – "+fmtD(weekEnd(ci.week_start))}
+-                    </p>
+-                    {!isThisWeek && <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:0 }}>{ci.week_start}</p>}
+-                  </div>
+-                  {ci.is_done
+-                    ? <span style={{ fontSize:11, background:"#F0FFF4", color:"#276749", borderRadius:8, padding:"3px 10px", fontWeight:700 }}>✅ Užpildyta</span>
+-                    : <span style={{ fontSize:11, background:"#FFF3CD", color:"#856404", borderRadius:8, padding:"3px 10px", fontWeight:700 }}>⏳ Laukia</span>}
+-                </div>
+-
+-                {ci.is_done ? (
+-                  <>
+-                    {/* Metrikos tinklelis */}
+-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:10 }}>
+-                      {METRICS.map(m => {
+-                        const v = ci[m.k];
+-                        if (v==null) return null;
+-                        const isScore = !m.suffix || m.suffix==="";
+-                        const displayV = m.suffix ? v+m.suffix : v+"/5";
+-                        const bg = m.suffix ? "rgba(255,255,255,0.1)" : scoreColor(v)+"33";
+-                        const col = "#fff";
+-                        return (
+-                          <div key={m.k} style={{ background:bg, borderRadius:10, padding:"9px 6px", textAlign:"center", border:"1px solid "+(col+"44") }}>
+-                            <div style={{ fontSize:18 }}>{m.e}</div>
+-                            <div style={{ fontSize:14, fontWeight:700, color:col }}>{displayV}</div>
+-                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.5)", marginTop:1 }}>{m.l}</div>
+-                            {/* Progreso juosta (tik 1-5 metrikos) */}
+-                            {!m.suffix && (
+-                              <div style={{ width:"100%", height:3, borderRadius:99, background:"rgba(0,0,0,0.08)", marginTop:5 }}>
+-                                <div style={{ width:(v/5*100)+"%", height:"100%", borderRadius:99, background:scoreColor(v) }}/>
+-                              </div>
+-                            )}
+-                          </div>
+-                        );
+-                      })}
+-                    </div>
+-
+-                    {/* Bendra savaitės įvertinimas */}
+-                    {(() => {
+-                      const scores = [ci.sleep_quality, ci.energy, ci.diet_adherence].filter(Boolean);
+-                      const stressInv = ci.stress_level ? 6-ci.stress_level : null;
+-                      if (stressInv) scores.push(stressInv);
+-                      if (!scores.length) return null;
+-                      const avg = scores.reduce((a,b)=>a+b,0)/scores.length;
+-                      const avgR = +avg.toFixed(1);
+-                      const color = avgR>=4?"#27ae60":avgR>=3?"#f39c12":"#e74c3c";
+-                      const label = avgR>=4?"Puiki savaitė 🌟":avgR>=3?"Vidutinė savaitė":"Sunki savaitė 💙";
+-                      return (
+-                        <div style={{ background:color+"15", borderRadius:10, padding:"7px 12px", marginBottom:8, border:"1px solid "+color+"44", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+-                          <span style={{ fontSize:12, fontWeight:700, color }}>{label}</span>
+-                          <span style={{ fontSize:16, fontWeight:700, color }}>{avgR}/5</span>
+-                        </div>
+-                      );
+-                    })()}
+-
+-                    {/* Pastaba */}
+-                    {ci.client_note && (
+-                      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:10, padding:"8px 12px", border:"1px solid rgba(255,255,255,0.15)" }}>
+-                        <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", margin:"0 0 3px", textTransform:"uppercase" }}>Klientės pastaba</p>
+-                        <p style={{ fontSize:12, color:"#fff", margin:0, lineHeight:1.5, fontStyle:"italic" }}>{ci.client_note}</p>
+-                      </div>
+-                    )}
+-                  </>
+-                ) : (
+-                  <p style={{ fontSize:12, color:PK.blush, fontStyle:"italic" }}>Klientė dar neatliko šios savaitės check-in'o</p>
+-                )}
+-              </div>
+-            );
+-          })}
+-        </div>
+-      )}
+-
+-      {/* ── MATAVIMO FORMA ── */}
+-      {tab==="form" && (
+-        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+-          <p style={{ fontSize:13, fontWeight:700, color:"#fff", marginBottom:4 }}>
+-            {editId ? "✏️ Redaguoti matavimus" : `📏 Matavimas #${(last?.cycle_number||0)+1}`}
+-          </p>
+-          <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginBottom:14 }}>
+-            {editId ? `Matavimo data: ${fmtFull(last?.measured_at)}` : `Data: ${fmtFull(new Date().toISOString().split("T")[0])}`}
+-          </p>
+-
+-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+-            {[
+-              { l:"Svoris (kg)",       k:"weight_measured", ph:"68.5" },
+-              { l:"Kūno riebalai (%)", k:"body_fat",        ph:"22.0" },
+-              { l:"Liemuo (cm)",       k:"waist_cm",         ph:"72"   },
+-              { l:"Klubai (cm)",       k:"hips_cm",          ph:"96"   },
+-              { l:"Krūtinė (cm)",      k:"chest_cm",         ph:"88"   },
+-              { l:"Rankos (cm)",       k:"arms_cm",          ph:"30"   },
+-              { l:"Šlaunys (cm)",      k:"thighs_cm",        ph:"55"   },
+-            ].map(f=>(
+-              <div key={f.k} style={{ gridColumn: f.k==="thighs_cm"?"1 / -1":undefined }}>
+-                <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>{f.l}</label>
+-                <input type="number" step="0.1" value={form[f.k]} placeholder={f.ph} onChange={e=>set(f.k)(e.target.value)}
+-                  style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:14, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}/>
+-                {/* Rodyti skirtumą nuo paskutinio matavimo */}
+-                {last&&last[f.k]&&form[f.k]&&!isNaN(parseFloat(form[f.k]))&&(
+-                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", margin:"3px 0 0" }}>
+-                    Ankstesnis: {last[f.k]}{f.l.includes("kg")?"kg":f.l.includes("%")?"%":"cm"}
+-                    {" → "}{+(parseFloat(form[f.k])-last[f.k]).toFixed(1)>0?"+":""}{+(parseFloat(form[f.k])-last[f.k]).toFixed(1)}
+-                  </p>
+-                )}
+-              </div>
+-            ))}
+-          </div>
+-
+-          <div style={{ marginTop:12, marginBottom:14 }}>
+-            <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", display:"block", marginBottom:4 }}>Komentaras klientei</label>
+-            <textarea value={form.trainer_note} onChange={e=>set("trainer_note")(e.target.value)} rows={3}
+-              placeholder="Progresas, rekomendacijos kitai savaitei, pokyčiai plane..."
+-              style={{ width:"100%", padding:"9px 12px", border:"2px solid "+PK.blush, borderRadius:10, fontSize:13, color:"#fff", background:"rgba(255,255,255,0.07)", outline:"none", fontFamily:"inherit", resize:"vertical", boxSizing:"border-box" }}/>
+-          </div>
+-
+-          <div style={{ display:"flex", gap:8 }}>
+-            <button onClick={()=>{setTab("overview");setEditId(null);}} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"2px solid "+PK.blush, background:"#fff", color:"rgba(255,255,255,0.75)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+-              Atšaukti
+-            </button>
+-            <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"11px 0", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
+-              {saving?"Saugoma...":"💾 Išsaugoti"}
+-            </button>
+-          </div>
+-        </div>
+-      )}
+-
+-      {/* ── GRAFIKAI ── */}
+-      {tab==="charts" && (
+-        <div>
+-          {measures.length===0&&checkins.length===0 ? (
+-            <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"24px 16px", textAlign:"center", border:"2px dashed "+PK.blush }}>
+-              <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Dar nėra duomenų grafikams 📊</p>
+-            </div>
+-          ) : (
+-            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:14, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+-              <DualChart clientData={checkins} trainerData={measures}
+-                cKey="weight_self" tKey="weight_measured"
+-                label="Svoris (kg)" cColor={PK.blush} tColor={PK.mid} unit="kg"/>
+-              {measures.some(m=>m.body_fat)&&(
+-                <DualChart clientData={[]} trainerData={measures}
+-                  cKey="body_fat" tKey="body_fat"
+-                  label="Kūno riebalai (%)" cColor={PK.rose} tColor="#E91E8C" unit="%"/>
+-              )}
+-              {measures.some(m=>m.waist_cm)&&(
+-                <DualChart clientData={[]} trainerData={measures}
+-                  cKey="waist_cm" tKey="waist_cm"
+-                  label="Liemuo (cm)" cColor={PK.blush} tColor="#5BB8D4" unit="cm"/>
+-              )}
+-              {measures.some(m=>m.hips_cm)&&(
+-                <DualChart clientData={[]} trainerData={measures}
+-                  cKey="hips_cm" tKey="hips_cm"
+-                  label="Klubai (cm)" cColor={PK.blush} tColor="#FF80AB" unit="cm"/>
+-              )}
+-              {/* Kliento savijauta */}
+-              {checkins.length>=2&&(
+-                <>
+-                  <div style={{ borderTop:"1px solid "+PK.light, paddingTop:14, marginTop:6 }}>
+-                    <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Kliento savijauta (savaitiniai)</p>
+-                    {[
+-                      { k:"sleep_quality",  l:"😴 Miegas",   c:"#89CFF0" },
+-                      { k:"energy",         l:"⚡ Energija", c:"#FFD700" },
+-                      { k:"diet_adherence", l:"🥗 Mityba",   c:"#90EE90" },
+-                    ].map(line => (
+-                      <DualChart key={line.k} clientData={checkins} trainerData={[]}
+-                        cKey={line.k} tKey={line.k}
+-                        label={line.l} cColor={line.c} tColor={line.c} unit="/5"/>
+-                    ))}
+-                  </div>
+-                </>
+-              )}
+-            </div>
+-          )}
+-        </div>
+-      )}
+-
+-      {/* ── ISTORIJA ── */}
+-      {tab==="history" && (
+-        <div>
+-          {measures.length===0 ? (
+-            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Dar nėra matavimų istorijos</p>
+-          ) : [...measures].reverse().map((m,i)=>(
+-            <div key={m.id} style={{ background:"#fff", borderRadius:14, padding:"12px 14px", marginBottom:8, border:"1px solid rgba(255,255,255,0.15)" }}>
+-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+-                <div>
+-                  <span style={{ fontSize:12, fontWeight:700, color:PK.dark }}>Matavimas #{m.cycle_number}</span>
+-                  <span style={{ fontSize:11, color:"rgba(0, 0, 0, 0.5)", marginLeft:8 }}>{fmtFull(m.measured_at)}</span>
+-                </div>
+-                <button onClick={()=>openForm(m)} style={{ fontSize:11, color:"rgba(255,255,255,0.75)", background:"none", border:"none", cursor:"pointer" }}>✏️</button>
+-              </div>
+-              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+-                {MEASURES_FIELDS.filter(f=>m[f.k]!=null).map(f=>(
+-                  <span key={f.k} style={{ fontSize:12, color:"#fff", background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"3px 8px" }}>
+-                    {f.l}: <strong>{m[f.k]}{f.u}</strong>
+-                  </span>
+-                ))}
+-              </div>
+-              {m.trainer_note&&<p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"8px 0 0", fontStyle:"italic" }}>💬 {m.trainer_note}</p>}
+-            </div>
+-          ))}
+-        </div>
+-      )}
+-    </div>
+-  );
+-}
+\ No newline at end of file
