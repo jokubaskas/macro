@@ -1,0 +1,15 @@
+diff --git a/public/index.html b/public/index.html
+index e67aedb..7cf4179 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -20,8 +20,8 @@
+     <title>Coach Vilma</title>
+     <style>
+   * { box-sizing: border-box; margin: 0; padding: 0; }
+-  html { height: -webkit-fill-available; }
+-  body { height: 100vh; height: -webkit-fill-available; background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
++  html, body { height: 100%; }
++  body { background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+   #root { height: 100%; overflow-y: auto; }
+   input[type=number]::-webkit-inner-spin-button,
+   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
