@@ -1,0 +1,88 @@
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index 784ea5d..21c6445 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -108,6 +108,8 @@ export default function BookingClient({ user, onClose }) {
+   const [activePackage, setActivePackage] = useState(null);
+   const [recurringSlots, setRecurringSlots] = useState([]);
+   const [confirmingRecurring, setConfirmingRecurring] = useState(false);
++  const [decliningRecurring, setDecliningRecurring] = useState(false);
++  const [declinedRecurringStarts, setDeclinedRecurringStarts] = useState([]);
+ 
+   const load = useCallback(async () => {
+     const [sched, bk, exc, pkgs, rec] = await Promise.all([
+@@ -127,13 +129,16 @@ export default function BookingClient({ user, onClose }) {
+ 
+   useEffect(() => { load(); }, [load]);
+ 
+-  // Kai pasirenkama data — krauti užimtus laikus
++  // Kai pasirenkama data — krauti užimtus ir atsisakytus laikus tai dienai
+   useEffect(() => {
+     if (!selectedDate) return;
+     pb.collection("bookings").getFullList({
+-      filter: `date="${selectedDate}" && (status="approved" || status="pending")`,
++      filter: `date="${selectedDate}"`,
+       requestKey: null,
+-    }).then(bk => setTakenSlots(bk.map(b => b.start_time))).catch(()=>{});
++    }).then(bk => {
++      setTakenSlots(bk.filter(b => b.status==="approved"||b.status==="pending").map(b => b.start_time));
++      setDeclinedRecurringStarts(bk.filter(b => b.status==="cancelled" && b.recurring_slot_id).map(b => b.start_time));
++    }).catch(()=>{});
+   }, [selectedDate]);
+ 
+   function getScheduleForDate(dateStr) {
+@@ -157,8 +162,10 @@ export default function BookingClient({ user, onClose }) {
+   }
+ 
+   // Ar šiai datai/laikui yra priskirtas kažkieno įprastas (recurring) laikas,
+-  // kuris dar nepasibaigus terminui laikomas rezervuotas jam vienam.
++  // kuris dar nepasibaigus terminui (ir kol savininkas jo neatsisakė) laikomas
++  // rezervuotas jam vienam.
+   function reservedRecurringAt(dateStr, slotStart) {
++    if (declinedRecurringStarts.includes(slotStart)) return null; // savininkas jau atsisakė — atviras iškart
+     if (!isRecurringHoldActive(dateStr)) return null;
+     const dow = dowOf(dateStr);
+     return recurringSlots.find(r => r.day_of_week === dow && r.start_time === slotStart) || null;
+@@ -218,6 +225,24 @@ export default function BookingClient({ user, onClose }) {
+     setSelectedDate(null); setSelectedSlot(null);
+   }
+ 
++  async function handleDeclineRecurring() {
++    if (!myReservedSlot || !selectedDate) return;
++    setDecliningRecurring(true);
++    await pb.collection("bookings").create({
++      client_id:     user.id,
++      date:          selectedDate,
++      start_time:    myReservedSlot.start_time,
++      end_time:      myReservedSlot.end_time,
++      status:        "cancelled",
++      notes:         "",
++      cancel_reason: "Klientas atsisakė šios savaitės įprasto laiko",
++      cancelled_by:  "client",
++      recurring_slot_id: myReservedSlot.id,
++    }).catch(()=>{});
++    setDeclinedRecurringStarts(prev => [...prev, myReservedSlot.start_time]);
++    setDecliningRecurring(false);
++  }
++
+   const today = todayStr();
+   const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
+   const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
+@@ -363,9 +388,14 @@ export default function BookingClient({ user, onClose }) {
+                 <p style={{fontSize:11,color:"rgba(255,255,255,0.6)",margin:"0 0 10px"}}>
+                   Patvirtink iki {DOW_LABEL[RECURRING_DEADLINE_DOW-1]} {RECURRING_DEADLINE_TIME}, kitaip laikas atsilaisvins kitiems klientams.
+                 </p>
+-                <button onClick={handleConfirmRecurring} disabled={confirmingRecurring} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1}}>
+-                  {confirmingRecurring ? "Tvirtinama..." : "✅ Patvirtinti savo laiką"}
+-                </button>
++                <div style={{display:"flex",gap:8}}>
++                  <button onClick={handleDeclineRecurring} disabled={decliningRecurring||confirmingRecurring} style={{flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:decliningRecurring?0.7:1}}>
++                    {decliningRecurring ? "..." : "✕ Negaliu šią savaitę"}
++                  </button>
++                  <button onClick={handleConfirmRecurring} disabled={confirmingRecurring||decliningRecurring} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1}}>
++                    {confirmingRecurring ? "Tvirtinama..." : "✅ Patvirtinti"}
++                  </button>
++                </div>
+               </div>
+             )}
+ 
