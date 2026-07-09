@@ -10,11 +10,13 @@ import StreakBadge from "./StreakBadge";
 import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
+import LiveTraining from "./LiveTraining";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `
 @keyframes bdayCardGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,215,0,0.35), 0 0 14px rgba(255,215,0,0.15); } 50% { box-shadow: 0 0 0 1px rgba(255,215,0,0.6), 0 0 22px rgba(255,215,0,0.35); } }
 @keyframes bdayBadgeBounce { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.15) rotate(4deg); } }
+@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }
 `;
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
@@ -332,6 +334,7 @@ function ClientDetail({ client, onClose }) {
   const [showPlanBuilder, setShowPlanBuilder] = useState(false);
   const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
+  const [showLiveTraining, setShowLiveTraining] = useState(false);
   const [allPlans, setAllPlans]           = useState([]);
   const [planForDate, setPlanForDate]     = useState(null);
   const [planDays, setPlanDays]           = useState([]);
@@ -431,6 +434,10 @@ function ClientDetail({ client, onClose }) {
       {showMeasurements && (
         <ClientMeasurements client={client} onClose={()=>setShowMeasurements(false)} />
       )}
+      {showLiveTraining && (
+        <LiveTraining client={client} onClose={()=>setShowLiveTraining(false)} />
+      )}
+      <style>{BDAY_KEYFRAMES}</style>
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
@@ -440,6 +447,12 @@ function ClientDetail({ client, onClose }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+
+        {/* Gyva treniruotė */}
+        <button onClick={() => setShowLiveTraining(true)} style={{ width:"100%", padding:"14px", marginBottom:12, borderRadius:16, background:"linear-gradient(135deg,#AD1457,#E91E8C)", border:"none", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <Dot color="#FF6B6B" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />
+          <Dumbbell size={16} />Gyva treniruotė
+        </button>
 
         {/* Matavimai ir progreso nuotraukos */}
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>

@@ -37,7 +37,7 @@ function DateSelect({ value, onChange, minDate }) {
   );
 }
 
-function ExercisePicker({ onAdd, onClose }) {
+export function ExercisePicker({ onAdd, onClose }) {
   const [exercises, setExercises] = useState([]);
   const [filter, setFilter]       = useState("Visi");
   const [search, setSearch]       = useState("");
@@ -214,7 +214,7 @@ function ExercisePicker({ onAdd, onClose }) {
 }
 
 // ── Esamo pratimo parametrų redagavimas ───────────────────────────────────────
-function ExerciseEditModal({ exercise, onSave, onClose }) {
+export function ExerciseEditModal({ exercise, onSave, onClose }) {
   const isCardio = exercise.category === "cardio";
 
   // Parsiname esamus set_weights jei yra
