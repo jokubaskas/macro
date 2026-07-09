@@ -110,6 +110,7 @@ export default function BookingClient({ user, onClose }) {
   const [confirmingRecurring, setConfirmingRecurring] = useState(false);
   const [decliningRecurring, setDecliningRecurring] = useState(false);
   const [declinedRecurringStarts, setDeclinedRecurringStarts] = useState([]);
+  const [declineDone, setDeclineDone] = useState(false);
 
   const load = useCallback(async () => {
     const [sched, bk, exc, pkgs, rec] = await Promise.all([
@@ -131,6 +132,7 @@ export default function BookingClient({ user, onClose }) {
 
   // Kai pasirenkama data — krauti užimtus ir atsisakytus laikus tai dienai
   useEffect(() => {
+    setDeclineDone(false);
     if (!selectedDate) return;
     pb.collection("bookings").getFullList({
       filter: `date="${selectedDate}"`,
@@ -241,6 +243,7 @@ export default function BookingClient({ user, onClose }) {
     }).catch(()=>{});
     setDeclinedRecurringStarts(prev => [...prev, myReservedSlot.start_time]);
     setDecliningRecurring(false);
+    setDeclineDone(true);
   }
 
   const today = todayStr();
@@ -380,6 +383,12 @@ export default function BookingClient({ user, onClose }) {
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0}}>📅 {selectedDate}</p>
               <button onClick={()=>{ setView("calendar"); setSelectedSlot(null); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Keisti datą</button>
             </div>
+
+            {declineDone && (
+              <div style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:16,padding:"14px 16px",marginBottom:16,textAlign:"center"}}>
+                <p style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)",margin:0}}>✕ Atsisakyta — laikas atlaisvintas kitiems klientams</p>
+              </div>
+            )}
 
             {myReservedSlot && (
               <div style={{background:"rgba(255,215,0,0.1)",border:"1.5px solid rgba(255,215,0,0.4)",borderRadius:16,padding:"14px 16px",marginBottom:16}}>
