@@ -267,9 +267,12 @@ export default function BookingClient({ user, onClose }) {
     ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !myRecurringResponded(selectedDate, r.start_time)) || null
     : null;
 
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
   const availableSlots = slots.filter(s => {
     if (takenSlots.includes(s.start)) return false;
     if (selectedDate && isSlotBlocked(selectedDate, s.start, s.end)) return false;
+    if (selectedDate === today && timeToMin(s.start) <= nowMin) return false; // šiandien — tik dar nepraėję laikai
     const reserved = selectedDate ? reservedRecurringAt(selectedDate, s.start) : null;
     if (reserved) return false; // arba mano (rodoma atskirai), arba kito kliento (dar nepasibaigęs terminas)
     return true;
