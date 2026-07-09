@@ -1,0 +1,63 @@
+From 1daeee88891810d581263ad6d4afa376845d6878 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 9 Jul 2026 19:29:19 +0000
+Subject: [PATCH] Fix measurement history/chart order when a back-dated entry
+ is added
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ClientMeasurements built its history as [...realMeasurements, regEntry],
+always placing the synthetic registration data point last regardless
+of its actual date. If a trainer registered a client today but later
+entered a real measurement dated earlier than today, that back-dated
+entry would sort before the registration point in the query (correct)
+but the registration point was still appended after it in the array —
+so the chart (which reverses history for its x-axis) and the history
+list both showed points out of chronological order.
+
+Now the registration point is merged in and the whole list is sorted
+by measured_at, so ordering is always correct regardless of when
+entries were added.
+---
+ src/ClientMeasurements.js | 19 ++++++++-----------
+ 1 file changed, 8 insertions(+), 11 deletions(-)
+
+diff --git a/src/ClientMeasurements.js b/src/ClientMeasurements.js
+index 791328f..fd084f1 100644
+--- a/src/ClientMeasurements.js
++++ b/src/ClientMeasurements.js
+@@ -64,22 +64,19 @@ export default function ClientMeasurements({ client, onClose }) {
+       filter: `user_id="${client.id}"`, sort: "-measured_at", requestKey: null,
+     }).catch(() => []);
+ 
+-    // Jei nėra įrašų, patikrinti ar yra pradinis svoris registracijoje
+-    if (meas.length === 0 && client.weight) {
++    // Pridėti registracijos svorį kaip papildomą tašką, jei tos dienos matavimo dar nėra
++    let combined = meas;
++    if (client.weight) {
+       const regDate = client.created ? client.created.slice(0,10) : todayStr();
+-      setHistory([{ id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }]);
+-    } else if (client.weight) {
+-      // Pridėti registracijos svorį kaip pirmą įrašą jei jo dar nėra
+-      const regDate = client.created ? client.created.slice(0,10) : "0000-00-00";
+       const hasReg = meas.some(m => m.measured_at?.slice(0,10) === regDate);
+       if (!hasReg) {
+-        setHistory([...meas, { id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }]);
+-      } else {
+-        setHistory(meas);
++        combined = [...meas, { id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }];
+       }
+-    } else {
+-      setHistory(meas);
+     }
++    // Rikiuoti pagal realią datą (naujausias pirmas) — registracijos taškas gali
++    // atsidurti bet kur, jei trenerė vėliau įveda atgalinės datos matavimą
++    combined = [...combined].sort((a, b) => (b.measured_at || "").localeCompare(a.measured_at || ""));
++    setHistory(combined);
+     setLoading(false);
+   }
+ 
+-- 
+2.43.0
+
