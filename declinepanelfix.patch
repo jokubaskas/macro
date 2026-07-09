@@ -1,0 +1,13 @@
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index 42ea483..73aa542 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -256,7 +256,7 @@ export default function BookingClient({ user, onClose }) {
+ 
+   // Mano įprastas laikas šiai pasirinktai datai (jei terminas dar nepraėjęs ir dar nepatvirtintas)
+   const myReservedSlot = selectedDate
+-    ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !hasBookingFor(selectedDate, r.start_time)) || null
++    ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !hasBookingFor(selectedDate, r.start_time) && !declinedRecurringStarts.includes(r.start_time)) || null
+     : null;
+ 
+   const availableSlots = slots.filter(s => {
