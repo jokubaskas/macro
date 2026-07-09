@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { PK } from "./constants";
 import { Heart, Sparkle, Smile, Lightbulb } from "./ui/icons";
+import { Skeleton } from "./ui/kit";
 
 function dayInt() {
   return parseInt(new Date().toISOString().split("T")[0].replace(/-/g, ""));
@@ -80,15 +81,15 @@ async function analyzeAndGenerateMessage(userId, goalId) {
   const negatives = signals.filter(s => s.score < 0).sort((a, b) => a.score - b.score);
 
   if (positives.length >= 2 && negatives.length === 0) {
-    return { icon: Sparkle, main: pick(["Fantastiška savaitė! Vanduo, miegas, mityba – viskas top!", "Puiki savaitė! Matosi pastangos – ir jos tikrai vertos!"]), tip: positives[0]?.msg, science: positives[0]?.science || SCIENCE.general, type: "great" };
+    return { icon: Sparkle, iconColor: "#7FFFB0", main: pick(["Fantastiška savaitė! Vanduo, miegas, mityba – viskas top!", "Puiki savaitė! Matosi pastangos – ir jos tikrai vertos!"]), tip: positives[0]?.msg, science: positives[0]?.science || SCIENCE.general, type: "great" };
   }
   if (positives.length > 0 && negatives.length > 0) {
-    return { icon: Sparkle, main: positives[0].msg, tip: "Atkreipk dėmesį: " + negatives[0].msg, science: negatives[0].science, type: "good" };
+    return { icon: Sparkle, iconColor: "#FFC15E", main: positives[0].msg, tip: "Atkreipk dėmesį: " + negatives[0].msg, science: negatives[0].science, type: "good" };
   }
   if (negatives.length > 0) {
     return { icon: Heart, iconColor: "#6EC6FF", main: pick(["Sunkesnė savaitė – bet tai tik informacija, ne nesėkmė. Rytoj nauja proga!", "Kiekviena diena – nauja pradžia. Nesibark, tiesiog žerk kitą žingsnį!"]), tip: negatives[0].msg, science: negatives[0].science, type: "encourage" };
   }
-  return { icon: Smile, main: positives[0]?.msg || "Taip laikykis!", tip: null, science: positives[0]?.science || SCIENCE.general, type: "neutral" };
+  return { icon: Smile, iconColor: "#FFD37A", main: positives[0]?.msg || "Taip laikykis!", tip: null, science: positives[0]?.science || SCIENCE.general, type: "neutral" };
 }
 
 export default function MotivationalCard({ userId, goalId }) {
@@ -104,21 +105,33 @@ export default function MotivationalCard({ userId, goalId }) {
 
   if (loading) return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
-      <Heart size={28} color="#FF6EB4" />
-      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, margin: 0 }}>Analizuojami duomenys...</p>
+      <Skeleton width={44} height={44} radius={22} />
+      <div style={{ flex:1 }}>
+        <Skeleton height={12} style={{ marginBottom:6, width:"80%" }} />
+        <Skeleton height={12} style={{ width:"55%" }} />
+      </div>
     </div>
   );
   if (!msg) return null;
 
   const today = new Date().toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" });
   const MsgIcon = msg.icon;
+  const iconColor = msg.iconColor || "#FF6EB4";
 
   return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
+      <style>{`@keyframes mcIconPop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }`}</style>
       <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: "0 0 10px", textTransform: "capitalize", letterSpacing: "0.05em" }}>{today}</p>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: msg.tip ? 10 : 0 }}>
-        <MsgIcon size={32} color={msg.iconColor || "currentColor"} style={{ flexShrink: 0 }} />
-        <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0, lineHeight: 1.5 }}>{msg.main}</p>
+        <div style={{
+          position:"relative", flexShrink: 0, width:44, height:44, borderRadius:"50%",
+          background:`radial-gradient(circle, ${iconColor}33, transparent 72%)`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          animation:"mcIconPop 0.5s cubic-bezier(.23,1,.32,1) both",
+        }}>
+          <MsgIcon size={26} color={iconColor} />
+        </div>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0, lineHeight: 1.5, paddingTop:4 }}>{msg.main}</p>
       </div>
       {msg.tip && (
         <div style={{ background: "rgba(255,255,255,0.09)", borderRadius: 12, padding: "9px 12px", marginTop: 10, marginBottom: msg.science ? 8 : 0, borderLeft: "2.5px solid rgba(255,255,255,0.25)" }}>

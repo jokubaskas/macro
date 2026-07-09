@@ -2,6 +2,26 @@ import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Flame, Sparkle } from "./ui/icons";
 
+const KEYFRAMES = `
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1,1) rotate(0deg); }
+  20% { transform: scale(0.94,1.07) rotate(-3deg); }
+  40% { transform: scale(1.06,0.94) rotate(3deg); }
+  60% { transform: scale(0.96,1.05) rotate(-2deg); }
+  80% { transform: scale(1.04,0.96) rotate(2deg); }
+}
+@keyframes emberPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+@keyframes sparkleTwinkle { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.2) rotate(18deg); opacity: 0.8; } }
+@keyframes emberFloat { 0% { transform: translateY(0) scale(1); opacity: .9; } 100% { transform: translateY(-22px) scale(.3); opacity: 0; } }
+`;
+
+const TIER_ANIM = {
+  blaze:   "flameFlicker 1.1s ease-in-out infinite",
+  flicker: "flameFlicker 1.9s ease-in-out infinite",
+  ember:   "emberPulse 2.2s ease-in-out infinite",
+  sparkle: "sparkleTwinkle 1.6s ease-in-out infinite",
+};
+
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgo(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
 
@@ -31,10 +51,10 @@ function calcStreak(checkinDates) {
 }
 
 function getStreakStyle(streak) {
-  if (streak >= 14) return { Icon: Flame,   color: "#FF4500", label: "Nesustabdoma!", glow: true };
-  if (streak >= 7)  return { Icon: Flame,   color: "#FF6B00", label: "Puikus tempas!", glow: true };
-  if (streak >= 3)  return { Icon: Flame,   color: "#FFA500", label: "Įsibėgėji!", glow: false };
-  if (streak >= 1)  return { Icon: Sparkle, color: "#FFD700", label: "Pradžia!", glow: false };
+  if (streak >= 14) return { Icon: Flame,   color: "#FF4500", label: "Nesustabdoma!", glow: true,  tier: "blaze" };
+  if (streak >= 7)  return { Icon: Flame,   color: "#FF6B00", label: "Puikus tempas!", glow: true,  tier: "flicker" };
+  if (streak >= 3)  return { Icon: Flame,   color: "#FFA500", label: "Įsibėgėji!",     glow: false, tier: "ember" };
+  if (streak >= 1)  return { Icon: Sparkle, color: "#FFD700", label: "Pradžia!",       glow: false, tier: "sparkle" };
   return null;
 }
 
@@ -81,7 +101,8 @@ export default function StreakBadge({ userId, compact }) {
   if (compact) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 4, background: `${style.color}22`, border: `1px solid ${style.color}55`, borderRadius: 20, padding: "4px 10px" }}>
-        <style.Icon size={14} color={style.color} />
+        <style>{KEYFRAMES}</style>
+        <style.Icon size={14} color={style.color} style={{ animation: TIER_ANIM[style.tier] }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: style.color }}>{streak}</span>
       </div>
     );
@@ -99,8 +120,16 @@ export default function StreakBadge({ userId, compact }) {
       gap: 14,
       boxShadow: style.glow ? `0 0 20px ${style.color}33` : "none",
     }}>
-      <div style={{ filter: style.glow ? `drop-shadow(0 0 8px ${style.color})` : "none" }}>
-        <style.Icon size={36} color={style.color} />
+      <style>{KEYFRAMES}</style>
+      <div style={{ position:"relative", filter: style.glow ? `drop-shadow(0 0 8px ${style.color})` : "none" }}>
+        <style.Icon size={36} color={style.color} style={{ animation: TIER_ANIM[style.tier] }} />
+        {style.tier === "blaze" && Array.from({ length: 3 }).map((_, i) => (
+          <span key={i} style={{
+            position:"absolute", left:`${28 + i * 16}%`, bottom:2, width:4, height:4, borderRadius:"50%",
+            background: style.color,
+            animation:`emberFloat ${1.3 + i * 0.3}s ease-in infinite`, animationDelay:`${i * 0.4}s`,
+          }}/>
+        ))}
       </div>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.1 }}>
