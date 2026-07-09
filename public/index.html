@@ -20,12 +20,25 @@
     <title>Coach Vilma</title>
     <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body { background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+  html { height: calc(var(--app-vh, 1vh) * 100); }
+  body { height: calc(var(--app-vh, 1vh) * 100); background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   #root { height: 100%; overflow-y: auto; }
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 </style>
+    <script>
+      (function () {
+        function setAppVh() {
+          document.documentElement.style.setProperty("--app-vh", (window.innerHeight * 0.01) + "px");
+        }
+        setAppVh();
+        window.addEventListener("resize", setAppVh);
+        window.addEventListener("orientationchange", setAppVh);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", setAppVh);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
