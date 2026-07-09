@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
 const STATUS_LABEL = { pending:"⏳ Laukia", approved:"✅ Patvirtinta", rejected:"❌ Atmesta", cancelled:"🚫 Atšaukta" };
@@ -255,9 +256,126 @@ function ScheduleSettings({ onClose }) {
   );
 }
 
+// ── Klientų įprasti (pastovūs) laikai ─────────────────────────────────────────
+function RecurringSlotsSettings({ onClose }) {
+  const [slots, setSlots]     = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm]       = useState({ client_id:"", day_of_week:1, start_time:"18:00", end_time:"19:00" });
+  const [saving, setSaving]   = useState(false);
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      pb.collection("recurring_slots").getFullList({ sort:"day_of_week,start_time", requestKey:null }).catch(()=>[]),
+      pb.collection("users").getFullList({ filter:'role="client"', sort:"name", requestKey:null }).catch(()=>[]),
+    ]).then(([sl, cl]) => { setSlots(sl); setClients(cl); setLoading(false); });
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const clientMap = {};
+  clients.forEach(c => { clientMap[c.id] = c; });
+
+  async function handleAdd() {
+    if (!form.client_id) return;
+    setSaving(true);
+    await pb.collection("recurring_slots").create({ ...form, is_active: true }).catch(()=>{});
+    setSaving(false);
+    setShowAdd(false);
+    setForm({ client_id:"", day_of_week:1, start_time:"18:00", end_time:"19:00" });
+    load();
+  }
+
+  async function toggleActive(slot) {
+    await pb.collection("recurring_slots").update(slot.id, { is_active: !slot.is_active }).catch(()=>{});
+    load();
+  }
+
+  async function handleDelete(id) {
+    await pb.collection("recurring_slots").delete(id).catch(()=>{});
+    load();
+  }
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>🔁 Įprasti laikai</h1>
+      </div>
+      <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+        <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:16}}>
+          Priskirkite klientui pastovų savaitės laiką — jis automatiškai laikomas rezervuotas jam kiekvieną savaitę.
+          Jei klientas nepatvirtina (paketo kreditu) iki {DAYS[RECURRING_DEADLINE_DOW-1].toLowerCase()}os {RECURRING_DEADLINE_TIME},
+          laikas nuo kitos dienos atsilaisvina ir tampa matomas visiems klientams tai savaitei.
+        </p>
+
+        {loading && <p style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Kraunama...</p>}
+        {!loading && slots.length===0 && !showAdd && (
+          <p style={{color:"rgba(255,255,255,0.35)",fontSize:12,marginBottom:12}}>Įprastų laikų nėra</p>
+        )}
+
+        {slots.map(s => (
+          <div key={s.id} style={{background:s.is_active?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${s.is_active?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.08)"}`,borderRadius:14,padding:"12px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <p style={{fontSize:13,fontWeight:700,color:s.is_active?"#fff":"rgba(255,255,255,0.4)",margin:"0 0 2px"}}>{clientMap[s.client_id]?.name || "Nežinomas klientas"}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{DAYS[s.day_of_week-1]} · {s.start_time}–{s.end_time}</p>
+            </div>
+            <div style={{display:"flex",gap:6,flexShrink:0}}>
+              <button onClick={()=>toggleActive(s)} style={{padding:"5px 10px",borderRadius:8,border:"none",background:s.is_active?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                {s.is_active?"Aktyvus":"Pristabdyta"}
+              </button>
+              <button onClick={()=>handleDelete(s.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}>✕</button>
+            </div>
+          </div>
+        ))}
+
+        {!showAdd ? (
+          <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"11px",borderRadius:12,border:"2px dashed rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>
+            + Priskirti įprastą laiką
+          </button>
+        ) : (
+          <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:14,marginTop:4}}>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Klientas</label>
+              <select value={form.client_id} onChange={e=>setForm(f=>({...f,client_id:e.target.value}))} style={{...inp,width:"100%"}}>
+                <option value="" style={{background:"#3a0a20"}}>— Pasirinkite —</option>
+                {clients.map(c => <option key={c.id} value={c.id} style={{background:"#3a0a20"}}>{c.name}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Savaitės diena</label>
+              <select value={form.day_of_week} onChange={e=>setForm(f=>({...f,day_of_week:parseInt(e.target.value)}))} style={{...inp,width:"100%"}}>
+                {DAYS.map((d,i) => <option key={i} value={i+1} style={{background:"#3a0a20"}}>{d}</option>)}
+              </select>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo</label>
+                <TimeSelect value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))} />
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki</label>
+                <TimeSelect value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))} />
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
+              <button onClick={handleAdd} disabled={saving||!form.client_id} style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                {saving?"Saugoma...":"Priskirti"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Rezervacijų sąrašas (admin) ───────────────────────────────────────────────
 export default function BookingAdmin({ onClose }) {
-  const [view, setView]           = useState("list"); // list | schedule
+  const [view, setView]           = useState("list"); // list | schedule | recurring
   const [bookings, setBookings]   = useState([]);
   const [clients, setClients]     = useState({});
   const [loading, setLoading]     = useState(true);
@@ -284,14 +402,16 @@ export default function BookingAdmin({ onClose }) {
   }
 
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
+  if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
 
   const filtered = bookings.filter(b => filter==="all" || b.status===filter);
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
-      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1}}>📅 Rezervacijos</h1>
+        <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>🔁 Įprasti</button>
         <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>⚙️ Darbo laikas</button>
       </div>
 

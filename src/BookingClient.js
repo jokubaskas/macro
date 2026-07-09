@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
+const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį","Penktadienį","Šeštadienį","Sekmadienį"];
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
 const STATUS_INFO = {
   pending:   { emoji:"⏳", label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
@@ -13,6 +15,7 @@ const STATUS_INFO = {
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
+function dowOf(dateStr) { const d = new Date(dateStr + "T12:00:00"); return d.getDay() === 0 ? 7 : d.getDay(); }
 
 // Generuoti laikų tarpus — visada prasideda lygia valanda, žingsnis 60 min
 function generateSlots(start, end, duration) {
@@ -103,19 +106,23 @@ export default function BookingClient({ user, onClose }) {
   const [view, setView]             = useState("calendar"); // calendar | book | mybookings
   const [calMonth, setCalMonth]     = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
   const [activePackage, setActivePackage] = useState(null);
+  const [recurringSlots, setRecurringSlots] = useState([]);
+  const [confirmingRecurring, setConfirmingRecurring] = useState(false);
 
   const load = useCallback(async () => {
-    const [sched, bk, exc, pkgs] = await Promise.all([
+    const [sched, bk, exc, pkgs, rec] = await Promise.all([
       pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null }).catch(()=>[]),
       pb.collection("bookings").getFullList({ filter:`client_id="${user.id}"`, sort:"-date", requestKey:null }).catch(()=>[]),
       pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
       pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, requestKey:null }).catch(()=>[]),
+      pb.collection("recurring_slots").getFullList({ filter:`is_active=true`, requestKey:null }).catch(()=>[]),
     ]);
     setSchedule(sched);
     setMyBookings(bk);
     setExceptions(exc);
     const active = pkgs.find(p => (p.credits_total - p.credits_used) > 0) || null;
     setActivePackage(active);
+    setRecurringSlots(rec);
   }, [user.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -149,6 +156,22 @@ export default function BookingClient({ user, onClose }) {
     });
   }
 
+  // Ar šiai datai/laikui yra priskirtas kažkieno įprastas (recurring) laikas,
+  // kuris dar nepasibaigus terminui laikomas rezervuotas jam vienam.
+  function reservedRecurringAt(dateStr, slotStart) {
+    if (!isRecurringHoldActive(dateStr)) return null;
+    const dow = dowOf(dateStr);
+    return recurringSlots.find(r => r.day_of_week === dow && r.start_time === slotStart) || null;
+  }
+
+  function hasBookingFor(dateStr, slotStart) {
+    return myBookings.some(b => b.date === dateStr && b.start_time === slotStart && b.status !== "cancelled" && b.status !== "rejected");
+  }
+
+  function hasMyPendingRecurringOn(dateStr) {
+    return recurringSlots.some(r => r.client_id === user.id && r.day_of_week === dowOf(dateStr) && isRecurringHoldActive(dateStr) && !hasBookingFor(dateStr, r.start_time));
+  }
+
   async function handleBook() {
     if (!selectedSlot || !selectedDate) return;
     if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
@@ -172,6 +195,29 @@ export default function BookingClient({ user, onClose }) {
     setSelectedDate(null); setSelectedSlot(null); setNotes("");
   }
 
+  async function handleConfirmRecurring() {
+    if (!myReservedSlot || !selectedDate) return;
+    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    setConfirmingRecurring(true);
+    await pb.collection("bookings").create({
+      client_id:  user.id,
+      date:       selectedDate,
+      start_time: myReservedSlot.start_time,
+      end_time:   myReservedSlot.end_time,
+      status:     "approved",
+      notes:      "",
+      package_id: activePackage.id,
+      recurring_slot_id: myReservedSlot.id,
+    }).catch(()=>{});
+    await pb.collection("training_packages").update(activePackage.id, {
+      credits_used: (activePackage.credits_used || 0) + 1,
+    }).catch(()=>{});
+    await load();
+    setConfirmingRecurring(false);
+    setView("mybookings");
+    setSelectedDate(null); setSelectedSlot(null);
+  }
+
   const today = todayStr();
   const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
   const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
@@ -179,7 +225,19 @@ export default function BookingClient({ user, onClose }) {
 
   const sched = selectedDate ? getScheduleForDate(selectedDate) : null;
   const slots = sched ? generateSlots(sched.start_time, sched.end_time, sched.slot_duration) : [];
-  const availableSlots = slots.filter(s => !takenSlots.includes(s.start) && !(selectedDate && isSlotBlocked(selectedDate, s.start, s.end)));
+
+  // Mano įprastas laikas šiai pasirinktai datai (jei terminas dar nepraėjęs ir dar nepatvirtintas)
+  const myReservedSlot = selectedDate
+    ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !hasBookingFor(selectedDate, r.start_time)) || null
+    : null;
+
+  const availableSlots = slots.filter(s => {
+    if (takenSlots.includes(s.start)) return false;
+    if (selectedDate && isSlotBlocked(selectedDate, s.start, s.end)) return false;
+    const reserved = selectedDate ? reservedRecurringAt(selectedDate, s.start) : null;
+    if (reserved) return false; // arba mano (rodoma atskirai), arba kito kliento (dar nepasibaigęs terminas)
+    return true;
+  });
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
@@ -271,20 +329,22 @@ export default function BookingClient({ user, onClose }) {
                   const avail=isDayAvailable(ds);
                   const isSel=selectedDate===ds;
                   const isPast=ds<today;
+                  const isMyRecurring = avail && !isPast && hasMyPendingRecurringOn(ds);
                   return (
                     <button key={d} onClick={()=>{ if(!avail)return; setSelectedDate(ds); setSelectedSlot(null); setView("book"); }}
-                      style={{aspectRatio:"1",borderRadius:8,border:isSel?"2px solid rgba(255,255,255,0.9)":"none",
+                      style={{aspectRatio:"1",borderRadius:8,border:isSel?"2px solid rgba(255,255,255,0.9)":isMyRecurring?"1.5px solid #FFD700":"none",
                         background:isSel?"rgba(255,255,255,0.25)":avail?"rgba(173,20,87,0.3)":"transparent",
                         cursor:avail?"pointer":"default",color:isPast?"rgba(255,255,255,0.15)":avail?"#fff":"rgba(255,255,255,0.3)",
                         fontSize:12,fontWeight:avail?700:400,fontFamily:"inherit",position:"relative"}}>
                       {d}
-                      {avail&&!isPast&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#AD1457"}}/>}
+                      {isMyRecurring && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>🌟</span>}
+                      {avail&&!isPast&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:isMyRecurring?"#FFD700":"#AD1457"}}/>}
                     </button>
                   );
                 })}
               </div>
             </div>
-            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center"}}>Rožiniai langeliai — laisvi laikai. Pasirinkite dieną.</p>
+            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center"}}>Rožiniai langeliai — laisvi laikai · 🌟 — tavo įprastas laikas laukia patvirtinimo. Pasirinkite dieną.</p>
           </div>
         )}
 
@@ -295,6 +355,19 @@ export default function BookingClient({ user, onClose }) {
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0}}>📅 {selectedDate}</p>
               <button onClick={()=>{ setView("calendar"); setSelectedSlot(null); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Keisti datą</button>
             </div>
+
+            {myReservedSlot && (
+              <div style={{background:"rgba(255,215,0,0.1)",border:"1.5px solid rgba(255,215,0,0.4)",borderRadius:16,padding:"14px 16px",marginBottom:16}}>
+                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🌟 Tavo įprastas laikas</p>
+                <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 6px"}}>⏰ {myReservedSlot.start_time}–{myReservedSlot.end_time}</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.6)",margin:"0 0 10px"}}>
+                  Patvirtink iki {DOW_LABEL[RECURRING_DEADLINE_DOW-1]} {RECURRING_DEADLINE_TIME}, kitaip laikas atsilaisvins kitiems klientams.
+                </p>
+                <button onClick={handleConfirmRecurring} disabled={confirmingRecurring} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1}}>
+                  {confirmingRecurring ? "Tvirtinama..." : "✅ Patvirtinti savo laiką"}
+                </button>
+              </div>
+            )}
 
             {availableSlots.length===0 ? (
               <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"24px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>

@@ -1,3 +1,27 @@
+// Įprastų (pastovių) treniruočių laikų patvirtinimo terminas.
+// Kiekvieną savaitę klientas turi patvirtinti savo įprastą laiką iki šio
+// termino, kitaip nuo kitos dienos jis atsilaisvina visiems klientams.
+export const RECURRING_DEADLINE_DOW  = 4;      // 1=Pr..7=Sk (4 = ketvirtadienis)
+export const RECURRING_DEADLINE_TIME = "23:59";
+
+// Konkrečiam treniruotės datos terminui (pvz. kito pirmadienio) apskaičiuoja
+// artimiausią praeityje esantį terminą (pvz. praėjusio ketvirtadienio 23:59).
+export function recurringDeadline(sessionDateStr) {
+  const d = new Date(sessionDateStr + "T00:00:00");
+  const sessionDow = d.getDay() === 0 ? 7 : d.getDay();
+  let diff = sessionDow - RECURRING_DEADLINE_DOW;
+  if (diff <= 0) diff += 7;
+  const deadline = new Date(d);
+  deadline.setDate(d.getDate() - diff);
+  const [hh, mm] = RECURRING_DEADLINE_TIME.split(":").map(Number);
+  deadline.setHours(hh, mm, 0, 0);
+  return deadline;
+}
+
+export function isRecurringHoldActive(sessionDateStr) {
+  return new Date() < recurringDeadline(sessionDateStr);
+}
+
 export const PK = {
   dark:   "#6D1B3B",
   mid:    "#AD1457",
