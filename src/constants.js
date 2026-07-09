@@ -22,6 +22,22 @@ export function isRecurringHoldActive(sessionDateStr) {
   return new Date() < recurringDeadline(sessionDateStr);
 }
 
+// Kiek dienų liko iki artimiausio gimtadienio (0 = šiandien). null, jei dob nežinomas/blogas.
+export function daysUntilBirthday(dob) {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (isNaN(d)) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+  next.setHours(0, 0, 0, 0);
+  if (next < today) next.setFullYear(today.getFullYear() + 1);
+  return Math.round((next - today) / 86400000);
+}
+
+export function isBirthdayToday(dob) {
+  return daysUntilBirthday(dob) === 0;
+}
+
 // Bendra gradientinė paletė progreso indikatoriams (žingsniai, vanduo, miegas,
 // šviesoforo įvertinimai) — vieninga vizualinė kalba visame appe.
 export const MOOD = {

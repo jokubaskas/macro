@@ -12,6 +12,18 @@ function IconBase({ size = "1em", color = "currentColor", strokeWidth = 1.75, vi
   );
 }
 
+export function Cake(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 21v-6.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2V21"/>
+      <path d="M4 21h16"/>
+      <path d="M4 17.3c1.3.9 2.4.9 3.5 0s2.3-.9 3.5 0 2.3.9 3.5 0 2.3-.9 3.5 0"/>
+      <path d="M8 12.5V10M12 12.5V9M16 12.5V10"/>
+      <path d="M8 10a1 1 0 1 0 0-2M12 9a1 1 0 1 0 0-2M16 10a1 1 0 1 0 0-2"/>
+    </IconBase>
+  );
+}
+
 export function Droplet(props) {
   return <IconBase {...props}><path d="M12 2.5c3.5 4.5 7 8.9 7 12.7A7 7 0 1 1 5 15.2c0-3.8 3.5-8.2 7-12.7Z"/></IconBase>;
 }

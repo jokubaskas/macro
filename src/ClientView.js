@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { PK, GOALS, calcMacros } from "./constants";
+import { PK, GOALS, calcMacros, isBirthdayToday } from "./constants";
 import WaterTracker from "./WaterTracker";
 import SleepTracker from "./SleepTracker";
 import DailyCheckin from "./DailyCheckin";
@@ -14,8 +14,10 @@ import StepsTracker from "./StepsTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
-import { LoadingScreen } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp } from "./ui/icons";
+import { LoadingScreen, ConfettiBurst } from "./ui/kit";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake } from "./ui/icons";
+
+const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -150,6 +152,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     : parseInt(profile?.age || 30);
   const goalLabel = GOALS.find(g => g.id === profile?.goal)?.label ?? "";
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
+  const isBirthday = isBirthdayToday(profile?.dob);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -186,6 +189,26 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {/* Content */}
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
+
+        {/* Gimtadienio pasveikinimas */}
+        {isToday && isBirthday && (
+          <div style={{
+            position:"relative", overflow:"hidden", textAlign:"center",
+            background:"linear-gradient(135deg,#FFD700,#FF6EB4)", borderRadius:18,
+            padding:"20px 20px 18px", marginBottom:16,
+            animation:"bdayBannerGlow 2.4s ease-in-out infinite",
+          }}>
+            <style>{BDAY_KEYFRAMES}</style>
+            <Cake size={30} color="#fff" style={{ marginBottom:8 }} />
+            <p style={{ fontSize:17, fontWeight:800, color:"#fff", margin:"0 0 3px" }}>
+              Su gimtadieniu, {profile?.name?.split(" ")[0]}!
+            </p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.9)", margin:0, lineHeight:1.5 }}>
+              Linkime sveikatos, jėgų ir puikios nuotaikos šiandien ir visus metus!
+            </p>
+            <ConfettiBurst count={12} />
+          </div>
+        )}
 
         {/* Kita treniruotė */}
         {isToday && nextBooking && (

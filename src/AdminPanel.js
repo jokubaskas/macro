@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { PK, GOALS } from "./constants";
+import { PK, GOALS, daysUntilBirthday } from "./constants";
 import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
 import BookingAdmin from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
@@ -10,7 +10,12 @@ import StreakBadge from "./StreakBadge";
 import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
+
+const BDAY_KEYFRAMES = `
+@keyframes bdayCardGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,215,0,0.35), 0 0 14px rgba(255,215,0,0.15); } 50% { box-shadow: 0 0 0 1px rgba(255,215,0,0.6), 0 0 22px rgba(255,215,0,0.35); } }
+@keyframes bdayBadgeBounce { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.15) rotate(4deg); } }
+`;
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
 const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
@@ -218,17 +223,32 @@ function ClientCard({ client, pkgInfo, onOpen }) {
     ? new Date(pkgInfo.lastOrder).toLocaleDateString("lt-LT", { year:"numeric", month:"short", day:"numeric" })
     : null;
 
+  const daysToBday  = daysUntilBirthday(client.dob);
+  const isBdayToday = daysToBday === 0;
+  const isBdaySoon  = daysToBday !== null && daysToBday >= 1 && daysToBday <= 7;
+
   return (
     <button onClick={onOpen} style={{
-      width: "100%", background: "rgba(255,255,255,0.08)",
-      border: "1px solid rgba(255,255,255,0.15)",
-      borderLeft: badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
+      position:"relative", width: "100%", background: "rgba(255,255,255,0.08)",
+      border: isBdayToday ? "1px solid rgba(255,215,0,0.5)" : "1px solid rgba(255,255,255,0.15)",
+      borderLeft: isBdayToday ? "3px solid #FFD700" : badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
       borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
       textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap:10,
+      animation: isBdayToday ? "bdayCardGlow 2s ease-in-out infinite" : "none",
     }}>
+      <style>{BDAY_KEYFRAMES}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth:0 }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#6D1B3B,#AD1457)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink:0 }}>
+        <div style={{ position:"relative", width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#6D1B3B,#AD1457)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink:0 }}>
           {client.name?.charAt(0) || "?"}
+          {isBdayToday && (
+            <div style={{
+              position:"absolute", top:-8, right:-8, width:22, height:22, borderRadius:"50%",
+              background:"linear-gradient(135deg,#FFD700,#FF6EB4)", display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:"0 0 8px rgba(255,215,0,0.7)", animation:"bdayBadgeBounce 1.4s ease-in-out infinite",
+            }}>
+              <Cake size={12} color="#fff" />
+            </div>
+          )}
         </div>
         <div style={{ minWidth:0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</p>
@@ -245,6 +265,19 @@ function ClientCard({ client, pkgInfo, onOpen }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink:0 }}>
+        {(isBdayToday || isBdaySoon) && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:4,
+            background: isBdayToday ? "linear-gradient(135deg,#FFD700,#FF6EB4)" : "rgba(255,215,0,0.14)",
+            border: isBdayToday ? "none" : "1px solid rgba(255,215,0,0.35)",
+            borderRadius:20, padding:"4px 9px",
+          }}>
+            <Cake size={11} color={isBdayToday ? "#fff" : "#FFD700"} />
+            <span style={{ fontSize:11, fontWeight:700, color: isBdayToday ? "#fff" : "#FFD700" }}>
+              {isBdayToday ? "Šiandien!" : `už ${daysToBday}d.`}
+            </span>
+          </div>
+        )}
         {pkgInfo?.active && (
           <div style={{
             display:"flex", alignItems:"center", gap:4, background:"rgba(127,255,176,0.14)",
