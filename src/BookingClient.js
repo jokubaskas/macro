@@ -173,12 +173,19 @@ export default function BookingClient({ user, onClose }) {
     return recurringSlots.find(r => r.day_of_week === dow && r.start_time === slotStart) || null;
   }
 
-  function hasBookingFor(dateStr, slotStart) {
-    return myBookings.some(b => b.date === dateStr && b.start_time === slotStart && b.status !== "cancelled" && b.status !== "rejected");
+  // Ar aš (bet kokiu statusu — patvirtinau ar atsisakiau) jau atsakiau į šios
+  // dienos įprastą laiką. Naudoja myBookings (visos MANO rezervacijos, visi
+  // statusai), tad veikia bet kuriai kalendoriaus dienai, ne tik pasirinktai.
+  function myRecurringResponded(dateStr, slotStart) {
+    return myBookings.some(b => b.date === dateStr && b.start_time === slotStart);
   }
 
   function hasMyPendingRecurringOn(dateStr) {
-    return recurringSlots.some(r => r.client_id === user.id && r.day_of_week === dowOf(dateStr) && isRecurringHoldActive(dateStr) && !hasBookingFor(dateStr, r.start_time));
+    return recurringSlots.some(r => r.client_id === user.id && r.day_of_week === dowOf(dateStr) && isRecurringHoldActive(dateStr) && !myRecurringResponded(dateStr, r.start_time));
+  }
+
+  function hasMyApprovedOn(dateStr) {
+    return myBookings.some(b => b.date === dateStr && b.status === "approved");
   }
 
   async function handleBook() {
@@ -256,7 +263,7 @@ export default function BookingClient({ user, onClose }) {
 
   // Mano įprastas laikas šiai pasirinktai datai (jei terminas dar nepraėjęs ir dar nepatvirtintas)
   const myReservedSlot = selectedDate
-    ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !hasBookingFor(selectedDate, r.start_time) && !declinedRecurringStarts.includes(r.start_time)) || null
+    ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !myRecurringResponded(selectedDate, r.start_time)) || null
     : null;
 
   const availableSlots = slots.filter(s => {
@@ -357,22 +364,31 @@ export default function BookingClient({ user, onClose }) {
                   const avail=isDayAvailable(ds);
                   const isSel=selectedDate===ds;
                   const isPast=ds<today;
-                  const isMyRecurring = avail && !isPast && hasMyPendingRecurringOn(ds);
+                  const isMyRecurring = !isPast && hasMyPendingRecurringOn(ds);
+                  const hasApproved = hasMyApprovedOn(ds);
+                  const clickable = avail && !isPast;
+
+                  let bg = "transparent", border = "none", dot = null;
+                  if (hasApproved)      { bg = "rgba(46,204,113,0.35)";  border = "1.5px solid #2ECC71"; dot = "#2ECC71"; }
+                  else if (isMyRecurring) { bg = "rgba(255,215,0,0.22)"; border = "1.5px solid #FFD700"; dot = "#FFD700"; }
+                  else if (avail)        { bg = "rgba(173,20,87,0.3)";   dot = "#AD1457"; }
+
                   return (
-                    <button key={d} onClick={()=>{ if(!avail)return; setSelectedDate(ds); setSelectedSlot(null); setView("book"); }}
-                      style={{aspectRatio:"1",borderRadius:8,border:isSel?"2px solid rgba(255,255,255,0.9)":isMyRecurring?"1.5px solid #FFD700":"none",
-                        background:isSel?"rgba(255,255,255,0.25)":avail?"rgba(173,20,87,0.3)":"transparent",
-                        cursor:avail?"pointer":"default",color:isPast?"rgba(255,255,255,0.15)":avail?"#fff":"rgba(255,255,255,0.3)",
-                        fontSize:12,fontWeight:avail?700:400,fontFamily:"inherit",position:"relative"}}>
+                    <button key={d} onClick={()=>{ if(!clickable)return; setSelectedDate(ds); setSelectedSlot(null); setView("book"); }}
+                      style={{aspectRatio:"1",borderRadius:8,border:isSel?"2px solid rgba(255,255,255,0.9)":border,
+                        background:isSel?"rgba(255,255,255,0.25)":bg,
+                        cursor:clickable?"pointer":"default",color:isPast&&!hasApproved?"rgba(255,255,255,0.15)":(avail||hasApproved)?"#fff":"rgba(255,255,255,0.3)",
+                        fontSize:12,fontWeight:(avail||hasApproved)?700:400,fontFamily:"inherit",position:"relative"}}>
                       {d}
-                      {isMyRecurring && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>🌟</span>}
-                      {avail&&!isPast&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:isMyRecurring?"#FFD700":"#AD1457"}}/>}
+                      {hasApproved && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>✅</span>}
+                      {isMyRecurring && !hasApproved && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>🌟</span>}
+                      {dot && <div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:dot}}/>}
                     </button>
                   );
                 })}
               </div>
             </div>
-            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center"}}>Rožiniai langeliai — laisvi laikai · 🌟 — tavo įprastas laikas laukia patvirtinimo. Pasirinkite dieną.</p>
+            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center"}}>Rožinė — laisvi laikai · 🌟 geltona — laukia patvirtinimo · ✅ žalia — treniruotė patvirtinta/įvykusi. Pasirinkite dieną.</p>
           </div>
         )}
 
