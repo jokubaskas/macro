@@ -1,0 +1,77 @@
+From 3b0a1723c792294f4b189f74d3c0ccd9edabc4cf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 9 Jul 2026 17:53:53 +0000
+Subject: [PATCH] Show onboarding/tracking status on the trainer's client card
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ClientCard previously always showed the client's goal label (or a
+plain "–" when absent), giving the trainer no way to tell apart a
+client who simply hasn't set a goal from one who never finished
+onboarding, or one who explicitly opted out of data tracking during
+the minimal signup flow.
+
+Now the subtitle line shows, in priority order:
+- "Anketa nebaigta" (amber, AlertTriangle) when onboarding_done is
+  still false.
+- "Nenori rinkti duomenų" (muted, Ban icon) when onboarding is done
+  but the client chose the minimal flow (track_progress === false).
+- the goal label otherwise, as before.
+
+A matching colored left-border on the card makes both states
+scannable at a glance in the client list.
+---
+ src/AdminPanel.js | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/src/AdminPanel.js b/src/AdminPanel.js
+index 9b1d41d..acb0bd7 100644
+--- a/src/AdminPanel.js
++++ b/src/AdminPanel.js
+@@ -10,7 +10,7 @@ import StreakBadge from "./StreakBadge";
+ import WorkoutPresets from "./WorkoutPresets";
+ import PackageAdmin from "./PackageAdmin";
+ import ClientMeasurements from "./ClientMeasurements";
+-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
++import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
+ 
+ const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
+ const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
+@@ -208,9 +208,17 @@ function DayView({ clientId, date }) {
+   );
+ }
+ function ClientCard({ client, onOpen }) {
++  const badge = !client.onboarding_done
++    ? { text: "Anketa nebaigta", color: "#FFC15E", Icon: AlertTriangle }
++    : client.track_progress === false
++      ? { text: "Nenori rinkti duomenų", color: "rgba(255,255,255,0.45)", Icon: Ban }
++      : null;
++
+   return (
+     <button onClick={onOpen} style={{
+-      width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
++      width: "100%", background: "rgba(255,255,255,0.08)",
++      border: "1px solid rgba(255,255,255,0.15)",
++      borderLeft: badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
+       borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
+       textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center",
+     }}>
+@@ -220,7 +228,13 @@ function ClientCard({ client, onOpen }) {
+         </div>
+         <div>
+           <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</p>
+-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
++          {badge ? (
++            <p style={{ fontSize: 11, color: badge.color, fontWeight: 600, margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
++              <badge.Icon size={11} />{badge.text}
++            </p>
++          ) : (
++            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
++          )}
+         </div>
+       </div>
+       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+-- 
+2.43.0
+
