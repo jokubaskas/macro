@@ -1,0 +1,94 @@
+From 9cc4c1ba21d799f68dc277b1734bf190def0de3c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 9 Jul 2026 17:21:00 +0000
+Subject: [PATCH] Redesign stat cards as horizontal rows with a progress ring
+
+Replace the vertical icon/value/label/bar stack with a compact
+horizontal layout: icon chip + value/label on the left, a circular
+progress ring (with the percentage inside) on the right. Cards are
+shorter and use the full card width instead of leaving the right
+side empty.
+---
+ src/ClientStats.js | 43 +++++++++++++++++++++++++++++--------------
+ 1 file changed, 29 insertions(+), 14 deletions(-)
+
+diff --git a/src/ClientStats.js b/src/ClientStats.js
+index 18db4e8..1fa1780 100644
+--- a/src/ClientStats.js
++++ b/src/ClientStats.js
+@@ -1,7 +1,6 @@
+ import { useState, useEffect, useCallback, useRef } from "react";
+ import { pb } from "./pb";
+ import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
+-import { ProgressBar } from "./ui/kit";
+ 
+ const PK = { dark:"#6D1B3B", mid:"#AD1457" };
+ 
+@@ -114,35 +113,51 @@ function MiniChart({ data, field }) {
+   );
+ }
+ 
++function ProgressRing({ pct, c1, c2, hit, size = 46 }) {
++  const r = (size - 6) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
++  const dash = (Math.min(100, Math.max(0, pct)) / 100) * C;
++  return (
++    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
++      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:"rotate(-90deg)" }}>
++        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="4.5" />
++        <circle cx={cx} cy={cy} r={r} fill="none" stroke={c1} strokeWidth="4.5" strokeLinecap="round"
++          strokeDasharray={C} strokeDashoffset={C - dash}
++          style={{ transition:"stroke-dashoffset 0.7s cubic-bezier(.23,1,.32,1)", filter: hit ? `drop-shadow(0 0 4px ${c1}99)` : "none" }} />
++      </svg>
++      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, color:c1 }}>
++        {Math.round(pct)}%
++      </div>
++    </div>
++  );
++}
++
+ function StatCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
+   const hit = pct != null && pct >= 100;
+   return (
+     <div style={{
+-      position:"relative", overflow:"hidden", borderRadius:16, padding:"14px 12px",
++      position:"relative", overflow:"hidden", borderRadius:16, padding:"10px 12px",
+       background:`linear-gradient(145deg, ${c1}26, ${c2}12)`,
+       border:`1px solid ${c1}3d`,
++      display:"flex", alignItems:"center", gap:10,
+     }}>
+       <div style={{
+         position:"absolute", top:-26, right:-26, width:70, height:70, borderRadius:"50%",
+         background:`radial-gradient(circle, ${c1}3d, transparent 70%)`,
+       }} />
+       <div style={{
+-        position:"relative", width:32, height:32, borderRadius:"50%", marginBottom:8,
++        position:"relative", width:30, height:30, borderRadius:"50%", flexShrink:0,
+         background:`linear-gradient(135deg, ${c1}33, ${c2}22)`,
+         display:"flex", alignItems:"center", justifyContent:"center",
+-        boxShadow: hit ? `0 0 0 3px ${c1}33, 0 0 12px ${c1}66` : "none",
++        boxShadow: hit ? `0 0 0 3px ${c1}33` : "none",
+       }}>
+-        <Icon size={16} color={c1} />
++        <Icon size={15} color={c1} />
+       </div>
+-      <div style={{ position:"relative", fontSize:20, fontWeight:800, color:"#fff" }}>{value}</div>
+-      <div style={{ position:"relative", fontSize:10, color:"rgba(255,255,255,0.55)", marginTop:2 }}>{label}</div>
+-      {sub && <div style={{ position:"relative", fontSize:9, color:"rgba(255,255,255,0.35)", marginTop:3 }}>{sub}</div>}
+-      {pct != null && (
+-        <div style={{ position:"relative", marginTop:8 }}>
+-          <ProgressBar pct={pct} height={4} shimmer={false}
+-            fill={`linear-gradient(90deg,${c2},${c1})`} track="rgba(255,255,255,0.12)" />
+-        </div>
+-      )}
++      <div style={{ position:"relative", flex:1, minWidth:0 }}>
++        <div style={{ fontSize:16, fontWeight:800, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{value}</div>
++        <div style={{ fontSize:10, color:"rgba(255,255,255,0.55)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{label}</div>
++        {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)" }}>{sub}</div>}
++      </div>
++      {pct != null && <ProgressRing pct={pct} c1={c1} c2={c2} hit={hit} />}
+     </div>
+   );
+ }
+-- 
+2.43.0
+
