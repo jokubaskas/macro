@@ -1,0 +1,146 @@
+From c641a4240a12aa7a648f538083863a7118df1f50 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 9 Jul 2026 15:07:13 +0000
+Subject: [PATCH] Add color to the client statistics averages and measurement
+ rows
+
+Give each of the 6 average stat cards its own accent color (steps
+amber, water blue, sleep violet, check-ins pink, nutrition green,
+wellbeing coral) with a tinted gradient background, a glowing icon
+chip, and a thin progress bar toward a sensible target (7000 steps,
+8h sleep, /3.0 scores, days in period). Icon chips get an extra glow
+ring when the target is fully met.
+
+Body-measurement rows now carry a matching colored left accent and
+icon tint instead of flat white, tying them visually to the same
+palette.
+---
+ src/ClientStats.js | 78 +++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 57 insertions(+), 21 deletions(-)
+
+diff --git a/src/ClientStats.js b/src/ClientStats.js
+index 6d36b57..e1beb1d 100644
+--- a/src/ClientStats.js
++++ b/src/ClientStats.js
+@@ -1,6 +1,7 @@
+ import { useState, useEffect, useCallback, useRef } from "react";
+ import { pb } from "./pb";
+ import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Walk, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
++import { ProgressBar } from "./ui/kit";
+ 
+ const PK = { dark:"#6D1B3B", mid:"#AD1457" };
+ 
+@@ -11,13 +12,13 @@ const PERIOD_OPTIONS = [
+ ];
+ 
+ const FIELDS = [
+-  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale },
+-  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart },
+-  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler },
+-  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler },
+-  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler },
+-  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle },
+-  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler },
++  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale,     c:"#6EC6FF" },
++  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart,  c:"#B39DFF" },
++  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
++  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
++  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
++  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle,    c:"#FFC15E" },
++  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
+ ];
+ 
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
+@@ -113,13 +114,35 @@ function MiniChart({ data, field }) {
+   );
+ }
+ 
+-function StatCard({ icon: Icon, value, label, sub, color }) {
++function StatCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
++  const hit = pct != null && pct >= 100;
+   return (
+-    <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 12px", border:`1px solid ${color||"rgba(255,255,255,0.12)"}` }}>
+-      <div style={{ marginBottom:5 }}><Icon size={20} color="rgba(255,255,255,0.85)" /></div>
+-      <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>{value}</div>
+-      <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{label}</div>
+-      {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", marginTop:3 }}>{sub}</div>}
++    <div style={{
++      position:"relative", overflow:"hidden", borderRadius:16, padding:"14px 12px",
++      background:`linear-gradient(145deg, ${c1}26, ${c2}12)`,
++      border:`1px solid ${c1}3d`,
++    }}>
++      <div style={{
++        position:"absolute", top:-26, right:-26, width:70, height:70, borderRadius:"50%",
++        background:`radial-gradient(circle, ${c1}3d, transparent 70%)`,
++      }} />
++      <div style={{
++        position:"relative", width:32, height:32, borderRadius:"50%", marginBottom:8,
++        background:`linear-gradient(135deg, ${c1}33, ${c2}22)`,
++        display:"flex", alignItems:"center", justifyContent:"center",
++        boxShadow: hit ? `0 0 0 3px ${c1}33, 0 0 12px ${c1}66` : "none",
++      }}>
++        <Icon size={16} color={c1} />
++      </div>
++      <div style={{ position:"relative", fontSize:20, fontWeight:800, color:"#fff" }}>{value}</div>
++      <div style={{ position:"relative", fontSize:10, color:"rgba(255,255,255,0.55)", marginTop:2 }}>{label}</div>
++      {sub && <div style={{ position:"relative", fontSize:9, color:"rgba(255,255,255,0.35)", marginTop:3 }}>{sub}</div>}
++      {pct != null && (
++        <div style={{ position:"relative", marginTop:8 }}>
++          <ProgressBar pct={pct} height={4} shimmer={false}
++            fill={`linear-gradient(90deg,${c2},${c1})`} track="rgba(255,255,255,0.12)" />
++        </div>
++      )}
+     </div>
+   );
+ }
+@@ -184,12 +207,24 @@ export default function ClientStats({ user, onClose }) {
+           <>
+             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Vidurkiai ({period} d.)</p>
+             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+-              <StatCard icon={Walk} value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai" />
+-              <StatCard icon={Droplet} value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas" />
+-              <StatCard icon={Moon} value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas" />
+-              <StatCard icon={Clipboard} value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`} />
+-              <StatCard icon={Salad} value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
+-              <StatCard icon={Heart} value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
++              <StatCard icon={Walk} c1="#FFC15E" c2="#FF9F43"
++                value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai"
++                pct={avgs.avgSteps ? Math.min(100, avgs.avgSteps/7000*100) : null} />
++              <StatCard icon={Droplet} c1="#6EC6FF" c2="#2F8FE0"
++                value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas"
++                pct={avgs.waterRate} />
++              <StatCard icon={Moon} c1="#B39DFF" c2="#8B6FE8"
++                value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas"
++                pct={avgs.avgSleep ? Math.min(100, avgs.avgSleep/8*100) : null} />
++              <StatCard icon={Clipboard} c1="#FF9FC7" c2="#E91E8C"
++                value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`}
++                pct={Math.min(100, avgs.checkinDays/period*100)} />
++              <StatCard icon={Salad} c1="#7FE3A6" c2="#2FBE84"
++                value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0"
++                pct={avgs.avgNutrition ? avgs.avgNutrition/3*100 : null} />
++              <StatCard icon={Heart} c1="#FF9E9E" c2="#FF6E6E"
++                value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0"
++                pct={avgs.avgWellbeing ? avgs.avgWellbeing/3*100 : null} />
+             </div>
+ 
+             {/* Kūno matavimų kreivės */}
+@@ -203,13 +238,14 @@ export default function ClientStats({ user, onClose }) {
+                   {FIELDS.filter(f => latest[f.key]).map(f => (
+                     <div key={f.key} style={{
+                       display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+-                      background:"rgba(255,255,255,0.05)", borderRadius:14, padding:"10px 12px",
++                      background:`linear-gradient(90deg, ${f.c}1f, rgba(255,255,255,0.05) 40%)`,
++                      borderLeft:`3px solid ${f.c}99`, borderRadius:"10px 14px 14px 10px", padding:"10px 12px 10px 10px",
+                     }}>
+                       <div style={{ minWidth:78 }}>
+                         <p style={{ fontSize:17, fontWeight:800, color:"#fff", margin:"0 0 1px" }}>
+                           {latest[f.key]}<span style={{ fontSize:11, fontWeight:500, color:"rgba(255,255,255,0.4)" }}> {f.unit}</span>
+                         </p>
+-                        <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0, display:"flex", alignItems:"center", gap:4 }}><f.Icon size={11} />{f.label}</p>
++                        <p style={{ fontSize:10, color:"rgba(255,255,255,0.6)", margin:0, display:"flex", alignItems:"center", gap:4 }}><f.Icon size={11} color={f.c} />{f.label}</p>
+                       </div>
+                       <MiniChart data={measurements} field={f.key} />
+                     </div>
+-- 
+2.43.0
+
