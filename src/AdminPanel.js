@@ -190,7 +190,7 @@ function DayView({ clientId, date }) {
               if (sleep?.hours_slept >= 7) parts.push({ text:`Miegas pakankamas (${sleep.hours_slept}h)` });
               else if (sleep?.hours_slept) parts.push({ text:`Miegas per mažas (${sleep.hours_slept}h)`, Icon:AlertTriangle });
               if (water?.ml >= (water?.goal || 2000)) parts.push({ text:"Vanduo išgertas", Icon:CheckCircle });
-              else if (water?.ml) parts.push({ text:`Vanduo: ${Math.round(water.ml / (water.goal || 2000) * 100)}% normos` });
+              else if (water?.ml) parts.push({ text:`Vanduo: ${(water.ml/1000).toFixed(1)}L iš ${((water.goal||2000)/1000).toFixed(1)}L` });
               if (!parts.length) return "Duomenys surinkti.";
               return parts.map((p, i) => (
                 <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4 }}>

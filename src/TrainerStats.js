@@ -40,7 +40,7 @@ function ClientRow({ client, stats }) {
         {stats.avgNutrition != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Salad size={11} />{stats.avgNutrition.toFixed(1)}/3</span>}
         {stats.avgWellbeing != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Heart size={11} color="#7FFFB0" />{stats.avgWellbeing.toFixed(1)}/3</span>}
         {stats.avgSleep != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Moon size={11} />{stats.avgSleep.toFixed(1)}h</span>}
-        {stats.waterRate != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Droplet size={11} />{stats.waterRate}%</span>}
+        {stats.avgWaterL != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Droplet size={11} />{stats.avgWaterL.toFixed(1)}L</span>}
         {stats.avgSteps != null && (
           <span style={{ fontSize:10, color: stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}>
             <Footprints size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
@@ -86,7 +86,7 @@ export default function TrainerStats({ onClose }) {
         avgNutrition: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.nutrition_score||0),0)/myCheckins.length : null,
         avgWellbeing: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/myCheckins.length : null,
         avgSleep: mySleeps.length ? mySleeps.reduce((a,x)=>a+(x.hours_slept||0),0)/mySleeps.length : null,
-        waterRate: myWaters.length ? Math.round(myWaters.filter(w=>w.ml >= (w.goal||2000)).length / myWaters.length * 100) : null,
+        avgWaterL: myWaters.length ? myWaters.reduce((a,w)=>a+(w.ml||0),0)/myWaters.length/1000 : null,
         avgSteps: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).reduce((a,x)=>a+(x.steps||0),0)/myCheckins.filter(x=>x.steps>0).length) : null,
         stepsGoalRate: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).filter(x=>x.steps>=7000).length/myCheckins.filter(x=>x.steps>0).length*100) : null,
       };
