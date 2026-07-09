@@ -10,7 +10,7 @@ import StreakBadge from "./StreakBadge";
 import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
 const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
@@ -208,9 +208,17 @@ function DayView({ clientId, date }) {
   );
 }
 function ClientCard({ client, onOpen }) {
+  const badge = !client.onboarding_done
+    ? { text: "Anketa nebaigta", color: "#FFC15E", Icon: AlertTriangle }
+    : client.track_progress === false
+      ? { text: "Nenori rinkti duomenų", color: "rgba(255,255,255,0.45)", Icon: Ban }
+      : null;
+
   return (
     <button onClick={onOpen} style={{
-      width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+      width: "100%", background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.15)",
+      borderLeft: badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
       borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
       textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center",
     }}>
@@ -220,7 +228,13 @@ function ClientCard({ client, onOpen }) {
         </div>
         <div>
           <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</p>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
+          {badge ? (
+            <p style={{ fontSize: 11, color: badge.color, fontWeight: 600, margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+              <badge.Icon size={11} />{badge.text}
+            </p>
+          ) : (
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
+          )}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
