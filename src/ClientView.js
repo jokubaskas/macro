@@ -14,6 +14,7 @@ import StepsTracker from "./StepsTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
+import { LoadingScreen } from "./ui/kit";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -141,14 +142,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     load();
   }, [user.id]);
 
-  if (loading) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(160deg,#3a0a20,${PK.dark})` }}>
-      <div style={{ textAlign: "center" }}>
-        <img src="/logo.png" alt="" style={{ width: 70, height: 70, objectFit: "contain", borderRadius: 12, marginBottom: 12 }} />
-        <p style={{ color: PK.blush, fontSize: 14 }}>Kraunama...</p>
-      </div>
-    </div>
-  );
+  if (loading) return <LoadingScreen background={`linear-gradient(160deg,#3a0a20,${PK.dark})`} textColor={PK.blush} />;
 
   const profileAge = profile?.dob
     ? Math.floor((new Date() - new Date(profile.dob)) / (365.25 * 24 * 60 * 60 * 1000))
@@ -194,7 +188,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
         {/* Kita treniruotė */}
         {isToday && nextBooking && (
-          <div onClick={() => openTab("booking")} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"12px 16px", marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+          <div onClick={() => openTab("booking")} className="tap" style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"12px 16px", marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
             <span style={{ fontSize:28 }}>📆</span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"0 0 2px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>Kita treniruotė</p>

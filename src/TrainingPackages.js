@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { ProgressBar } from "./ui/kit";
 
 const PACKAGES = [
   { type:"1",  total:1,  label:"1 treniruotė",  price:"45€",  duration:"1 mėn.", emoji:"🏃‍♀️", tagline:"Susipažinti su sporto sale ir išmokti saugiai pradėti." },
@@ -70,7 +71,7 @@ export default function TrainingPackages({ user, onClose }) {
   const pending = packages.filter(p => p.status === "pending");
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", paddingBottom:80, WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", paddingBottom:80, WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
 
       {/* Taisyklių popup */}
       {rulesFor && (
@@ -113,9 +114,8 @@ export default function TrainingPackages({ user, onClose }) {
           <div style={{ background:"rgba(127,255,176,0.1)", border:"1.5px solid rgba(127,255,176,0.3)", borderRadius:18, padding:"16px", marginBottom:16 }}>
             <p style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 6px" }}>✅ Aktyvus paketas</p>
             <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 6px" }}>{active.credits_total - active.credits_used} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {active.credits_total} treniruočių liko</span></p>
-            <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:99, height:5 }}>
-              <div style={{ width:`${((active.credits_total-active.credits_used)/active.credits_total)*100}%`, height:"100%", borderRadius:99, background:"#7FFFB0" }} />
-            </div>
+            <ProgressBar pct={((active.credits_total-active.credits_used)/active.credits_total)*100} height={6}
+              fill="linear-gradient(90deg,#2FBE84,#7FFFB0)" glow="#7FFFB099" />
           </div>
         )}
 

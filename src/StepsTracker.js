@@ -91,7 +91,7 @@ export default function StepsTracker({ userId, date }) {
         </div>
       ) : (
         <button onClick={handleSave} disabled={saving||!input}
-          style={{ width:"100%", padding:"10px", borderRadius:12, border:"none", background:input?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.08)", color:input?"#fff":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:input?"pointer":"default", fontFamily:"inherit" }}>
+          style={{ width:"100%", padding:"10px", borderRadius:12, border:"none", background:input?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.08)", color:input?"#fff":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:input?"pointer":"default", fontFamily:"inherit", transition:"background 0.25s, color 0.25s" }}>
           {saving ? "Saugoma..." : "💾 Išsaugoti žingsnius"}
         </button>
       )}
