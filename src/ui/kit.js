@@ -63,7 +63,9 @@ export function LoadingScreen({ background, textColor, minHeight = "100vh" }) {
 }
 
 // Trumpas dalelių „taškšt" efektas (naudojamas švenčiant užbaigimą).
-export function ConfettiBurst({ emoji = "✨", count = 8 }) {
+const CONFETTI_COLORS = ["#FFD37A", "#7FFFB0", "#6EC6FF", "#FF6EB4"];
+
+export function ConfettiBurst({ count = 8 }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => {
@@ -73,12 +75,15 @@ export function ConfettiBurst({ emoji = "✨", count = 8 }) {
         const dy = Math.sin(angle) * dist - 10;
         const rot = (i % 2 === 0 ? 1 : -1) * (120 + i * 20);
         return (
-          <span key={i} style={{
-            position:"absolute", left:"50%", top:"50%", fontSize:12, pointerEvents:"none",
+          <svg key={i} width="8" height="8" viewBox="0 0 24 24" style={{
+            position:"absolute", left:"50%", top:"50%", pointerEvents:"none",
             "--dx": `${dx}px`, "--dy": `${dy}px`, "--rot": `${rot}deg`,
             animation:`confettiBurst ${0.7 + (i % 3) * 0.15}s ease-out forwards`,
             animationDelay:`${i * 0.02}s`,
-          }}>{emoji}</span>
+          }}>
+            <path d="M12 2.5c.6 3.6 2 6.4 5.7 7.5-3.7 1.1-5.1 3.9-5.7 7.5-.6-3.6-2-6.4-5.7-7.5 3.7-1.1 5.1-3.9 5.7-7.5Z"
+              fill={CONFETTI_COLORS[i % CONFETTI_COLORS.length]} />
+          </svg>
         );
       })}
     </>

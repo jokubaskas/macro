@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { Clipboard, Salad, Heart, Moon, Droplet, Walk, ChevronLeft, BarChart, Users } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
@@ -35,14 +36,14 @@ function ClientRow({ client, stats }) {
         <div style={{ width:`${pct}%`, height:"100%", borderRadius:99, background:barColor, transition:"width 0.3s" }} />
       </div>
       <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-        <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>📋 {stats.checkinDays}/{stats.totalDays} check-in</span>
-        {stats.avgNutrition != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>🥗 {stats.avgNutrition.toFixed(1)}/3</span>}
-        {stats.avgWellbeing != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>💚 {stats.avgWellbeing.toFixed(1)}/3</span>}
-        {stats.avgSleep != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>😴 {stats.avgSleep.toFixed(1)}h</span>}
-        {stats.waterRate != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)" }}>💧 {stats.waterRate}%</span>}
+        <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Clipboard size={11} />{stats.checkinDays}/{stats.totalDays} check-in</span>
+        {stats.avgNutrition != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Salad size={11} />{stats.avgNutrition.toFixed(1)}/3</span>}
+        {stats.avgWellbeing != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Heart size={11} color="#7FFFB0" />{stats.avgWellbeing.toFixed(1)}/3</span>}
+        {stats.avgSleep != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Moon size={11} />{stats.avgSleep.toFixed(1)}h</span>}
+        {stats.waterRate != null && <span style={{ fontSize:10, color:"rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}><Droplet size={11} />{stats.waterRate}%</span>}
         {stats.avgSteps != null && (
-          <span style={{ fontSize:10, color: stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "rgba(255,255,255,0.5)" }}>
-            🚶‍♀️ {stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
+          <span style={{ fontSize:10, color: stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "rgba(255,255,255,0.5)", display:"inline-flex", alignItems:"center", gap:3 }}>
+            <Walk size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
           </span>
         )}
       </div>
@@ -122,8 +123,8 @@ export default function TrainerStats({ onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
-        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📊 Statistika</h1>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><BarChart size={15} />Statistika</h1>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
@@ -143,10 +144,10 @@ export default function TrainerStats({ onClose }) {
           <>
             {/* Bendra apžvalga */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-              <StatCard icon="👥" value={overview.activeClients} label="Aktyvūs klientai" sub={`iš ${overview.totalClients} viso`} />
-              <StatCard icon="📋" value={overview.totalCheckins} label="Check-in'ų" sub={`per ${period} d.`} />
-              <StatCard icon="🥗" value={overview.avgNutritionAll ? overview.avgNutritionAll.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
-              <StatCard icon="💚" value={overview.avgWellbeingAll ? overview.avgWellbeingAll.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
+              <StatCard icon={<Users size={22} />} value={overview.activeClients} label="Aktyvūs klientai" sub={`iš ${overview.totalClients} viso`} />
+              <StatCard icon={<Clipboard size={22} />} value={overview.totalCheckins} label="Check-in'ų" sub={`per ${period} d.`} />
+              <StatCard icon={<Salad size={22} />} value={overview.avgNutritionAll ? overview.avgNutritionAll.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
+              <StatCard icon={<Heart size={22} color="#7FFFB0" />} value={overview.avgWellbeingAll ? overview.avgWellbeingAll.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
             </div>
 
             {/* Rezervacijos */}

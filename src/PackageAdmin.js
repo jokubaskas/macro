@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { ChevronLeft, Ticket, Close, Check } from "./ui/icons";
 
 const PACKAGES = {
   "1":  { label:"1 treniruotė",  total:1  },
@@ -45,8 +46,8 @@ export default function PackageAdmin({ onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
-        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>🎟️ Paketų valdymas</h1>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ticket size={15} />Paketų valdymas</h1>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
@@ -90,8 +91,8 @@ export default function PackageAdmin({ onClose }) {
               )}
               {pkg.status==="pending" && (
                 <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={()=>handleReject(pkg)} style={{ flex:1, padding:"9px", borderRadius:10, border:"1px solid rgba(255,100,100,0.4)", background:"rgba(255,100,100,0.1)", color:"#FF8888", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>✕ Atmesti</button>
-                  <button onClick={()=>handleApprove(pkg)} style={{ flex:2, padding:"9px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>✓ Patvirtinti</button>
+                  <button onClick={()=>handleReject(pkg)} style={{ flex:1, padding:"9px", borderRadius:10, border:"1px solid rgba(255,100,100,0.4)", background:"rgba(255,100,100,0.1)", color:"#FF8888", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Close size={12} />Atmesti</button>
+                  <button onClick={()=>handleApprove(pkg)} style={{ flex:2, padding:"9px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Check size={12} />Patvirtinti</button>
                 </div>
               )}
             </div>

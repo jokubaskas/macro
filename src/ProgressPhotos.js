@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
+import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -86,9 +87,9 @@ export default function ProgressPhotos({ user, onClose }) {
   }
 
   const fields = [
-    { key:"photo_front", label:"Priekis", emoji:"⬆️", required:true },
-    { key:"photo_side",  label:"Šonas",   emoji:"➡️", required:false },
-    { key:"photo_back",  label:"Nugara",  emoji:"⬇️", required:false },
+    { key:"photo_front", label:"Priekis", Icon:ArrowUp,      required:true },
+    { key:"photo_side",  label:"Šonas",   Icon:ChevronRight, required:false },
+    { key:"photo_back",  label:"Nugara",  Icon:ArrowDown,    required:false },
   ];
 
   const [preview, setPreview] = useState(null);
@@ -99,13 +100,13 @@ export default function ProgressPhotos({ user, onClose }) {
       {/* Preview modal */}
       {preview && (
         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1 }}>✕</button>
+          <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center" }}><Close size={18} /></button>
           <img src={preview} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
         </div>
       )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
-        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📸 Progreso nuotraukos</h1>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={13} />Atgal</button>
+        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso nuotraukos</h1>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
@@ -133,7 +134,7 @@ export default function ProgressPhotos({ user, onClose }) {
                       <img src={previews[f.key]} alt={f.label} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     ) : (
                       <>
-                        <span style={{ fontSize:18 }}>{f.emoji}</span>
+                        <f.Icon size={18} color="rgba(255,255,255,0.8)" />
                         <span style={{ fontSize:9, color:"rgba(255,255,255,0.5)", fontWeight:600 }}>{f.label}</span>
                         {f.required && <span style={{ fontSize:8, color:"rgba(255,150,150,0.8)" }}>* privaloma</span>}
                       </>
@@ -144,8 +145,8 @@ export default function ProgressPhotos({ user, onClose }) {
             </div>
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={()=>setShowUpload(false)} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
-              <button onClick={handleSave} disabled={!photos.photo_front||saving} style={{ flex:2, padding:"11px", borderRadius:12, background:photos.photo_front?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)", color:photos.photo_front?"#fff":"rgba(255,255,255,0.3)", border:"none", fontSize:14, fontWeight:700, cursor:photos.photo_front?"pointer":"default", fontFamily:"inherit" }}>
-                {saving?"Saugoma...":"💾 Išsaugoti"}
+              <button onClick={handleSave} disabled={!photos.photo_front||saving} style={{ flex:2, padding:"11px", borderRadius:12, background:photos.photo_front?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)", color:photos.photo_front?"#fff":"rgba(255,255,255,0.3)", border:"none", fontSize:14, fontWeight:700, cursor:photos.photo_front?"pointer":"default", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                {saving?"Saugoma...":<><Save size={14} />Išsaugoti</>}
               </button>
             </div>
           </div>
@@ -158,8 +159,8 @@ export default function ProgressPhotos({ user, onClose }) {
 
         {history.slice(0, visibleCount).map(h => (
           <div key={h.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:12, marginBottom:10 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>
-              📅 {h.date.slice(0,10)} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
+            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px", display:"flex", alignItems:"center", gap:5 }}>
+              <Calendar size={12} />{h.date.slice(0,10)} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
             </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
               {["photo_front","photo_side","photo_back"].map(k => h[k] ? (

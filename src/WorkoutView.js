@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Skeleton, ProgressBar, ConfettiBurst } from "./ui/kit";
+import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, Timer } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -100,9 +101,9 @@ export default function WorkoutView({ user, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(10px)"}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <div>
-          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>🏋️ Treniruotė</h1>
+          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:7}}><Dumbbell size={15} />Treniruotė</h1>
           {plan&&<p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:0}}>{plan.plan_name} · iki {plan.end_date}</p>}
         </div>
       </div>
@@ -110,7 +111,7 @@ export default function WorkoutView({ user, onClose }) {
       <div style={{maxWidth:480,margin:"0 auto",padding:"16px"}}>
         {!plan ? (
           <div style={{background:"rgba(255,255,255,0.08)",borderRadius:18,padding:"32px 20px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.15)",marginTop:20}}>
-            <p style={{fontSize:32,marginBottom:10,animation:"breathe 2.6s ease-in-out infinite"}}>🏋️</p>
+            <Dumbbell size={32} color="rgba(255,255,255,0.85)" style={{marginBottom:10,animation:"breathe 2.6s ease-in-out infinite"}} />
             <p style={{color:"rgba(255,255,255,0.7)",fontSize:15,fontWeight:600,marginBottom:6}}>Sporto plano dar nėra</p>
             <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Trenerė netrukus sudarys tau individualų planą!</p>
           </div>
@@ -131,12 +132,12 @@ export default function WorkoutView({ user, onClose }) {
             {exercises.length > 0 && (
               <div style={{background:"rgba(0,0,0,0.2)",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}>
                 <div style={{flex:1}}>
-                  <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 4px"}}>{allDone?"✅ Treniruotė baigta!":`${doneCount} / ${exercises.length} atlikta`}</p>
+                  <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 4px",display:"flex",alignItems:"center",gap:6}}>{allDone?<><CheckCircle size={13} />Treniruotė baigta!</>:`${doneCount} / ${exercises.length} atlikta`}</p>
                   <ProgressBar pct={exercises.length?doneCount/exercises.length*100:0} height={5}
                     fill="linear-gradient(90deg,#2FBE84,#7FFFB0)" glow="#7FFFB099" style={{width:160}} />
                 </div>
-                {allDone && <span style={{fontSize:28,animation:"popIn 0.5s cubic-bezier(.23,1,.32,1) both"}}>🎉</span>}
-                {celebrate && <ConfettiBurst emoji="✨" count={8} />}
+                {allDone && <Party size={28} color="#FF6EB4" style={{animation:"popIn 0.5s cubic-bezier(.23,1,.32,1) both"}} />}
+                {celebrate && <ConfettiBurst count={8} />}
               </div>
             )}
 
@@ -153,9 +154,9 @@ export default function WorkoutView({ user, onClose }) {
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div style={{flex:1}}>
                           <p style={{fontSize:14,fontWeight:700,color:isDone?"#7FFFB0":"#fff",margin:"0 0 4px",textDecoration:isDone?"line-through":"none",opacity:isDone?0.8:1}}>{ex.exercise_name}</p>
-                          <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0}}>
+                          <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",gap:5}}>
                             {ex.category==="cardio"
-                              ? `⏱ ${ex.duration_min||"–"} min`
+                              ? <><Timer size={12} />{`${ex.duration_min||"–"} min`}</>
                               : ex.set_weights
                                 ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} ser. × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
                                 : `${ex.sets||"–"} serijos × ${ex.reps||"–"} kartojimai${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`
@@ -164,7 +165,7 @@ export default function WorkoutView({ user, onClose }) {
                         </div>
                         <button onClick={()=>!isSav&&!isDone&&markDone(ex)}
                           style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${isDone?"#7FFFB0":"rgba(255,255,255,0.3)"}`,background:isDone?"rgba(127,255,176,0.2)":"transparent",color:isDone?"#7FFFB0":"rgba(255,255,255,0.5)",fontSize:18,cursor:isDone?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s",animation:isDone?"popIn 0.4s cubic-bezier(.23,1,.32,1) both":"none"}}>
-                          {isSav?"⋯":isDone?"✓":"○"}
+                          {isSav?"⋯":isDone?<Check size={16} />:"○"}
                         </button>
                       </div>
                     </div>

@@ -10,6 +10,7 @@ import StreakBadge from "./StreakBadge";
 import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
+import { Clipboard, Walk, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart } from "./ui/icons";
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
 const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
@@ -135,7 +136,7 @@ function DayView({ clientId, date }) {
 
       {checkin && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600 }}>📋 Check-in</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600, display:"flex", alignItems:"center", gap:5 }}><Clipboard size={12} />Check-in</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
               <div style={{ marginBottom: 8 }}><TrafficOrb v={checkin.nutrition_score} /></div>
@@ -153,21 +154,21 @@ function DayView({ clientId, date }) {
 
       {checkin?.steps > 0 && (
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>🚶‍♀️ Žingsniai</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Walk size={13} />Žingsniai</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: checkin.steps >= 7000 ? "#7FFFB0" : "#fff" }}>{checkin.steps.toLocaleString()}</span>
         </div>
       )}
 
       {sleep && (
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>😴 Miegas</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Moon size={13} />Miegas</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{sleep.hours_slept}h</span>
         </div>
       )}
 
       {water && (
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>💧 Vanduo</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Droplet size={13} />Vanduo</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{water.ml} / {water.goal} ml</span>
         </div>
       )}
@@ -175,22 +176,30 @@ function DayView({ clientId, date }) {
       {/* Trumpa išvada */}
       {hasAny && (
         <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 10, borderLeft: "3px solid rgba(255,255,255,0.3)" }}>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: 0 }}>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: 0, display:"flex", flexWrap:"wrap", alignItems:"center", gap:4 }}>
             {(() => {
               const parts = [];
-              if (checkin?.nutrition_score === 3) parts.push("Mityba gerai ✅");
-              else if (checkin?.nutrition_score === 1) parts.push("Mityba prasta, reikia aptarti 🔴");
-              else if (checkin?.nutrition_score === 2) parts.push("Mityba vidutiniškai 🟡");
-              if (checkin?.wellbeing_score === 3) parts.push("Savijauta puiki 💚");
-              else if (checkin?.wellbeing_score === 1) parts.push("Savijauta bloga 🔴");
-              else if (checkin?.wellbeing_score === 2) parts.push("Savijauta vidutinė 🟡");
-              if (checkin?.steps >= 7000) parts.push(`Žingsnių tikslas pasiektas (${checkin.steps.toLocaleString()})`);
-              else if (checkin?.steps > 0) parts.push(`Žingsniai: ${checkin.steps.toLocaleString()}`);
-              if (sleep?.hours_slept >= 7) parts.push(`Miegas pakankamas (${sleep.hours_slept}h)`);
-              else if (sleep?.hours_slept) parts.push(`Miegas per mažas (${sleep.hours_slept}h) ⚠️`);
-              if (water?.ml >= (water?.goal || 2000)) parts.push("Vanduo išgertas ✅");
-              else if (water?.ml) parts.push(`Vanduo: ${Math.round(water.ml / (water.goal || 2000) * 100)}% normos`);
-              return parts.length ? parts.join(" · ") : "Duomenys surinkti.";
+              if (checkin?.nutrition_score === 3) parts.push({ text:"Mityba gerai", Icon:CheckCircle });
+              else if (checkin?.nutrition_score === 1) parts.push({ text:"Mityba prasta, reikia aptarti", dot:"#FF7A6E" });
+              else if (checkin?.nutrition_score === 2) parts.push({ text:"Mityba vidutiniškai", dot:"#FFC15E" });
+              if (checkin?.wellbeing_score === 3) parts.push({ text:"Savijauta puiki", Icon:Heart, color:"#7FFFB0" });
+              else if (checkin?.wellbeing_score === 1) parts.push({ text:"Savijauta bloga", dot:"#FF7A6E" });
+              else if (checkin?.wellbeing_score === 2) parts.push({ text:"Savijauta vidutinė", dot:"#FFC15E" });
+              if (checkin?.steps >= 7000) parts.push({ text:`Žingsnių tikslas pasiektas (${checkin.steps.toLocaleString()})` });
+              else if (checkin?.steps > 0) parts.push({ text:`Žingsniai: ${checkin.steps.toLocaleString()}` });
+              if (sleep?.hours_slept >= 7) parts.push({ text:`Miegas pakankamas (${sleep.hours_slept}h)` });
+              else if (sleep?.hours_slept) parts.push({ text:`Miegas per mažas (${sleep.hours_slept}h)`, Icon:AlertTriangle });
+              if (water?.ml >= (water?.goal || 2000)) parts.push({ text:"Vanduo išgertas", Icon:CheckCircle });
+              else if (water?.ml) parts.push({ text:`Vanduo: ${Math.round(water.ml / (water.goal || 2000) * 100)}% normos` });
+              if (!parts.length) return "Duomenys surinkti.";
+              return parts.map((p, i) => (
+                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                  {i > 0 && <span style={{ opacity:0.5 }}>·</span>}
+                  {p.Icon && <p.Icon size={12} color={p.color} />}
+                  {p.dot && <Dot color={p.dot} size={7} />}
+                  {p.text}
+                </span>
+              ));
             })()}
           </p>
         </div>
@@ -216,7 +225,7 @@ function ClientCard({ client, onOpen }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <StreakBadge userId={client.id} compact />
-        <span style={{ fontSize: 18, color: "rgba(255,255,255,0.4)" }}>→</span>
+        <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
       </div>
     </button>
   );
@@ -242,8 +251,8 @@ function PlanDayExercises({ dayId }) {
         <div key={ex.id} style={{ background:"rgba(0,0,0,0.2)", borderRadius:10, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{i+1}. {ex.exercise_name}</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>
-              {ex.category==="cardio" ? `⏱ ${ex.duration_min||"–"} min` : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0, display:"flex", alignItems:"center", gap:4 }}>
+              {ex.category==="cardio" ? <><Timer size={11} />{ex.duration_min||"–"} min</> : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
             </p>
           </div>
           <span style={{ fontSize:10, color:ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
@@ -360,7 +369,7 @@ function ClientDetail({ client, onClose }) {
         <ClientMeasurements client={client} onClose={()=>setShowMeasurements(false)} />
       )}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
-        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
+        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
           <h1 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</h1>
           <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>{client.email}</p>
@@ -371,11 +380,11 @@ function ClientDetail({ client, onClose }) {
 
         {/* Matavimai ir progreso nuotraukos */}
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <button onClick={() => setShowMeasurements(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            📐 Matavimai
+          <button onClick={() => setShowMeasurements(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <Ruler size={14} />Matavimai
           </button>
-          <button onClick={() => setShowProgressCompare(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            📸 Nuotraukos
+          <button onClick={() => setShowProgressCompare(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <Camera size={14} />Nuotraukos
           </button>
         </div>
 
@@ -385,15 +394,15 @@ function ClientDetail({ client, onClose }) {
             <div>
               {planForDate ? (
                 <>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px" }}>🏋️ {planForDate.plan_name}</p>
-                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-                    {planForDate.start_date} → {planForDate.end_date}
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#7FFFB0", margin: "0 0 2px", display:"flex", alignItems:"center", gap:6 }}><Dumbbell size={14} />{planForDate.plan_name}</p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, display:"flex", alignItems:"center", gap:4 }}>
+                    {planForDate.start_date} <ChevronRight size={11} /> {planForDate.end_date}
                     {doneCount > 0 && <span style={{ marginLeft: 6, color: "#7FFFB0" }}>· {doneCount}/{planExercises.length} atlikta</span>}
                   </p>
                 </>
               ) : (
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0 }}>
-                  {allPlans.length > 0 ? "🏋️ Šiai datai planas negaliojo" : "🏋️ Sporto plano nėra"}
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0, display:"flex", alignItems:"center", gap:6 }}>
+                  <Dumbbell size={14} />{allPlans.length > 0 ? "Šiai datai planas negaliojo" : "Sporto plano nėra"}
                 </p>
               )}
             </div>
@@ -422,13 +431,13 @@ function ClientDetail({ client, onClose }) {
             return (
               <div key={ex.id} style={{ background: done ? "rgba(127,255,176,0.08)" : "rgba(0,0,0,0.2)", borderRadius: 10, padding: "9px 12px", marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${done ? "rgba(127,255,176,0.25)" : "transparent"}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
+                  {done ? <CheckCircle size={16} color="#7FFFB0" /> : <span style={{ display:"inline-block", width:13, height:13, borderRadius:4, border:"1.75px solid rgba(255,255,255,0.35)" }} />}
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 2px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
                       {i+1}. {ex.exercise_name}
                     </p>
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-                      {ex.category === "cardio" ? `⏱ ${ex.duration_min||"–"} min` : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, display:"flex", alignItems:"center", gap:4 }}>
+                      {ex.category === "cardio" ? <><Timer size={11} />{ex.duration_min||"–"} min</> : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
                     </p>
                   </div>
                 </div>
@@ -539,7 +548,7 @@ export default function AdminPanel({ user, onLogout }) {
   if (view === "new") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer" }}>← Atgal</button>
+        <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Naujas klientas</h1>
       </div>
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
@@ -602,18 +611,18 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Tab bar apačioje — brolinis elementas scrollinamos zonos, ne jos viduje (iOS PWA fixed-in-scroll klaidai išvengti) */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
         {[
-          { id:"clients",  emoji:"👥", label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
-          { id:"bookings", emoji:"📅", label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
-          { id:"packages", emoji:"🎟️", label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
-          { id:"stats",    emoji:"📊", label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
-          { id:"presets",  emoji:"📋", label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
+          { id:"clients",  Icon:Users,     label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
+          { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
+          { id:"packages", Icon:Ticket,    label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
+          { id:"stats",    Icon:BarChart,  label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
+          { id:"presets",  Icon:Clipboard, label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
         ].map(tab => {
           const isActive = activeAdminTab === tab.id;
           return (
             <button key={tab.id} onClick={tab.onClick}
               style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, position:"relative" }}>
               <div style={{ position:"relative" }}>
-                <span style={{ fontSize:24 }}>{tab.emoji}</span>
+                <tab.Icon size={24} color="#fff" strokeWidth={isActive ? 2 : 1.6} />
                 {tab.badge > 0 && (
                   <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
                     {tab.badge}

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { ArrowUp, ChevronRight, ArrowDown, Close, ChevronLeft, Camera } from "./ui/icons";
 
 const VIEWS = [
-  { key:"photo_front", label:"Priekis", emoji:"⬆️" },
-  { key:"photo_side",  label:"Šonas",   emoji:"➡️" },
-  { key:"photo_back",  label:"Nugara",  emoji:"⬇️" },
+  { key:"photo_front", label:"Priekis", Icon:ArrowUp },
+  { key:"photo_side",  label:"Šonas",   Icon:ChevronRight },
+  { key:"photo_back",  label:"Nugara",  Icon:ArrowDown },
 ];
 
 export default function ProgressCompare({ client, onClose }) {
@@ -57,14 +58,14 @@ export default function ProgressCompare({ client, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {preview && (
         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1 }}>✕</button>
+          <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center" }}><Close size={18} /></button>
           <img src={preview} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
         </div>
       )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
-          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📸 Progreso palyginimas</h1>
+          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso palyginimas</h1>
           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
         </div>
       </div>
@@ -84,8 +85,8 @@ export default function ProgressCompare({ client, onClose }) {
             {/* Rakursas */}
             <div style={{ display:"flex", gap:6, marginBottom:16 }}>
               {VIEWS.map(v => (
-                <button key={v.key} onClick={()=>setView(v.key)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border:"none", background:view===v.key?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                  {v.emoji} {v.label}
+                <button key={v.key} onClick={()=>setView(v.key)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border:"none", background:view===v.key?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <v.Icon size={12} />{v.label}
                 </button>
               ))}
             </div>

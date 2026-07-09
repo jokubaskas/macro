@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
+import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Walk, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 
@@ -10,13 +11,13 @@ const PERIOD_OPTIONS = [
 ];
 
 const FIELDS = [
-  { key:"weight_measured", label:"Svoris",    unit:"kg",  emoji:"⚖️" },
-  { key:"body_fat",        label:"Riebalai",  unit:"%",   emoji:"📊" },
-  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  emoji:"📏" },
-  { key:"hips_cm",         label:"Klubai",    unit:"cm",  emoji:"📏" },
-  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  emoji:"📏" },
-  { key:"arm_cm",          label:"Ranka",     unit:"cm",  emoji:"💪" },
-  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  emoji:"📏" },
+  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale },
+  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart },
+  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler },
+  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler },
+  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler },
+  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle },
+  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler },
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -112,10 +113,10 @@ function MiniChart({ data, field }) {
   );
 }
 
-function StatCard({ icon, value, label, sub, color }) {
+function StatCard({ icon: Icon, value, label, sub, color }) {
   return (
     <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 12px", border:`1px solid ${color||"rgba(255,255,255,0.12)"}` }}>
-      <div style={{ fontSize:20, marginBottom:5 }}>{icon}</div>
+      <div style={{ marginBottom:5 }}><Icon size={20} color="rgba(255,255,255,0.85)" /></div>
       <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>{value}</div>
       <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{label}</div>
       {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", marginTop:3 }}>{sub}</div>}
@@ -162,8 +163,8 @@ export default function ClientStats({ user, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
-        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📈 Mano statistika</h1>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}><TrendingUp size={16} />Mano statistika</h1>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
@@ -183,12 +184,12 @@ export default function ClientStats({ user, onClose }) {
           <>
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Vidurkiai ({period} d.)</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-              <StatCard icon="🚶‍♀️" value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai" />
-              <StatCard icon="💧" value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas" />
-              <StatCard icon="😴" value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas" />
-              <StatCard icon="📋" value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`} />
-              <StatCard icon="🥗" value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
-              <StatCard icon="💚" value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
+              <StatCard icon={Walk} value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai" />
+              <StatCard icon={Droplet} value={avgs.waterRate!=null ? avgs.waterRate+"%" : "–"} label="Vandens tikslas" />
+              <StatCard icon={Moon} value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas" />
+              <StatCard icon={Clipboard} value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`} />
+              <StatCard icon={Salad} value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0" />
+              <StatCard icon={Heart} value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0" />
             </div>
 
             {/* Kūno matavimų kreivės */}
@@ -208,7 +209,7 @@ export default function ClientStats({ user, onClose }) {
                         <p style={{ fontSize:17, fontWeight:800, color:"#fff", margin:"0 0 1px" }}>
                           {latest[f.key]}<span style={{ fontSize:11, fontWeight:500, color:"rgba(255,255,255,0.4)" }}> {f.unit}</span>
                         </p>
-                        <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{f.emoji} {f.label}</p>
+                        <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0, display:"flex", alignItems:"center", gap:4 }}><f.Icon size={11} />{f.label}</p>
                       </div>
                       <MiniChart data={measurements} field={f.key} />
                     </div>

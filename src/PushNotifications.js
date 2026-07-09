@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { Bell } from "./ui/icons";
 
 const VAPID_PUBLIC_KEY = "BDgTfVU4FAYADwAodf4BDUspAz7THr4RmrSO6H6rbkX8yesLVuP8g27a9BaFG_TJ75MSPqYzQh3AYuNU2EdK6HE";
 
@@ -136,7 +137,7 @@ export default function PushPermissionPrompt({ userId }) {
 
   return (
     <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 24 }}>🔔</span>
+      <Bell size={24} color="#fff" />
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 2px" }}>Įjungti pranešimus?</p>
         <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: 0 }}>Gausi pranešimą apie rezervacijų statusą</p>

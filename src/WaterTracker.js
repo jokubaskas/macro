@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
 import { MOOD } from "./constants";
+import { Droplet, Glass, CheckCircle } from "./ui/icons";
 const PK = {
   dark:"#6D1B3B", mid:"#AD1457",
   blush:"#F8BBD9", light:"#FCE4EC", pale:"#FFF0F5",
@@ -125,7 +126,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
       <>
         <style>{KEYFRAMES}</style>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:14 }}>💧</span>
+          <Droplet size={16} color={PK.water} />
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
               <span style={{ fontSize:11, color:PK.dark, fontWeight:600 }}>{drunk} / {goal} ml</span>
@@ -133,7 +134,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
             </div>
             <GradientBar pct={pct} done={done} height={5} />
           </div>
-          <span style={{ fontSize:11, color:PK.mid, fontWeight:700, minWidth:30, textAlign:"right" }}>{filled}🥛</span>
+          <span style={{ fontSize:11, color:PK.mid, fontWeight:700, minWidth:30, textAlign:"right", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:3 }}>{filled}<Glass size={13} /></span>
         </div>
       </>
     );
@@ -202,7 +203,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
           ))}
 
           {isLastFilled && isToday && <text x="24" y="27" textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.9)" fontWeight="700">−</text>}
-          {!isLastFilled && isFilled && <text x="24" y="27" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.7)" fontWeight="700">✓</text>}
+          {!isLastFilled && isFilled && <path d="M19.5,27 L22.5,30 L28.5,23" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>}
           {isNext && <text x="24" y="27" textAnchor="middle" fontSize="18" fill="rgba(255,255,255,0.8)" fontWeight="400">+</text>}
         </svg>
         <span style={{ fontSize:9, color:"rgba(255,255,255,0.6)", fontWeight:isFilled?"700":"400" }}>250ml</span>
@@ -219,13 +220,13 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
       <style>{KEYFRAMES}</style>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)" }}>💧 Vanduo</span>
+          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)", display:"inline-flex", alignItems:"center", gap:5 }}><Droplet size={14} />Vanduo</span>
           <span style={{ fontSize:22, fontWeight:700, color:done?"#7FFFB0":"#fff" }}>{drunk}</span>
           <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)" }}>/ {goal}ml</span>
           {saving && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>●</span>}
         </div>
-        <span style={{ fontSize:11, color:done?"#7FFFB0":"rgba(255,255,255,0.6)", fontWeight:done?700:400 }}>
-          {done ? "✅ Tikslas pasiektas!" : "Liko "+(goal-drunk)+"ml"}
+        <span style={{ fontSize:11, color:done?"#7FFFB0":"rgba(255,255,255,0.6)", fontWeight:done?700:400, display:"inline-flex", alignItems:"center", gap:4 }}>
+          {done ? <><CheckCircle size={12} />Tikslas pasiektas!</> : "Liko "+(goal-drunk)+"ml"}
         </span>
       </div>
 

@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
+import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį","Penktadienį","Šeštadienį","Sekmadienį"];
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
 const STATUS_INFO = {
-  pending:   { emoji:"⏳", label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
-  approved:  { emoji:"✅", label:"Patvirtinta",            bg:"rgba(127,255,176,0.15)", color:"#7FFFB0" },
-  rejected:  { emoji:"❌", label:"Atmesta",                bg:"rgba(255,100,100,0.15)", color:"#FF8888" },
-  cancelled: { emoji:"🚫", label:"Atšaukta",               bg:"rgba(255,255,255,0.05)", color:"rgba(255,255,255,0.4)" },
+  pending:   { Icon:Timer,       label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
+  approved:  { Icon:CheckCircle, label:"Patvirtinta",            bg:"rgba(127,255,176,0.15)", color:"#7FFFB0" },
+  rejected:  { Icon:Close,       label:"Atmesta",                bg:"rgba(255,100,100,0.15)", color:"#FF8888" },
+  cancelled: { Icon:Ban,         label:"Atšaukta",               bg:"rgba(255,255,255,0.05)", color:"rgba(255,255,255,0.4)" },
 };
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -58,7 +59,7 @@ function CancelButton({ booking, userId, onCancelled }) {
   const [saving, setSaving] = useState(false);
 
   const isLate = booking.date <= todayStr(); // šiandien arba praeitis
-  const warning = isLate ? "⚠️ Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
+  const warning = isLate ? "Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
 
   async function handleCancel() {
     if (!reason.trim()) return;
@@ -81,7 +82,7 @@ function CancelButton({ booking, userId, onCancelled }) {
 
   return (
     <div style={{marginTop:8,background:"rgba(255,50,50,0.1)",borderRadius:12,padding:12,border:"1px solid rgba(255,100,100,0.3)"}}>
-      {warning && <p style={{fontSize:12,color:"#FF8888",fontWeight:700,margin:"0 0 8px"}}>{warning}</p>}
+      {warning && <p style={{fontSize:12,color:"#FF8888",fontWeight:700,margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><AlertTriangle size={13} />{warning}</p>}
       <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Nurodykite atšaukimo priežastį..." rows={2}
         style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(0,0,0,0.2)",color:"#fff",fontSize:12,fontFamily:"inherit",outline:"none",resize:"none",boxSizing:"border-box",marginBottom:8}}/>
       <div style={{display:"flex",gap:8}}>
@@ -278,12 +279,12 @@ export default function BookingClient({ user, onClose }) {
     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both"}}>
       {/* Header */}
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(10px)"}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={13} />Atgal</button>
         <div style={{flex:1}}>
-          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>📅 Rezervuoti laiką</h1>
+          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={14} />Rezervuoti laiką</h1>
           {activePackage && (
-            <p style={{fontSize:10,color:"#7FFFB0",margin:0}}>
-              🎟️ {activePackage.credits_total - activePackage.credits_used} treniruočių liko
+            <p style={{fontSize:10,color:"#7FFFB0",margin:0,display:"flex",alignItems:"center",gap:4}}>
+              <Ticket size={11} />{activePackage.credits_total - activePackage.credits_used} treniruočių liko
             </p>
           )}
         </div>
@@ -313,16 +314,16 @@ export default function BookingClient({ user, onClose }) {
                 <div key={b.id} style={{background:si.bg,borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid rgba(255,255,255,0.1)"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                     <div>
-                      <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>📅 {b.date}</p>
-                      <p style={{fontSize:12,color:"rgba(255,255,255,0.6)",margin:0}}>⏰ {b.start_time} – {b.end_time}</p>
+                      <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5}}><Calendar size={13} />{b.date}</p>
+                      <p style={{fontSize:12,color:"rgba(255,255,255,0.6)",margin:0,display:"flex",alignItems:"center",gap:5}}><Timer size={12} />{b.start_time} – {b.end_time}</p>
                       {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:"3px 0 0",fontStyle:"italic"}}>"{b.notes}"</p>}
-                      {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"3px 0 0"}}>🚫 {b.cancel_reason}</p>}
+                      {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"3px 0 0",display:"flex",alignItems:"center",gap:5}}><Ban size={11} />{b.cancel_reason}</p>}
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,color:si.color,background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap"}}>{si.emoji} {si.label}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:si.color,background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}><si.Icon size={11} />{si.label}</span>
                   </div>
                   {b.status==="approved" && (
-                    <button onClick={()=>downloadIcal(b,user.name||user.email)} style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:6}}>
-                      📲 Įtraukti į kalendorių (.ics)
+                    <button onClick={()=>downloadIcal(b,user.name||user.email)} style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:6,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      <Phone size={13} />Įtraukti į kalendorių (.ics)
                     </button>
                   )}
                   {(b.status==="pending" || b.status==="approved") && (
@@ -340,8 +341,8 @@ export default function BookingClient({ user, onClose }) {
             {/* Nėra paketo perspėjimas */}
             {!activePackage && (
               <div style={{background:"rgba(255,200,0,0.08)",border:"1px solid rgba(255,200,0,0.25)",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
-                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🎟️ Treniruočių paketo nėra</p>
-                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>Įsigykite paketą paspausdami 🎟️ apačioje</p>
+                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Ticket size={13} />Treniruočių paketo nėra</p>
+                <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>Įsigykite paketą paspausdami <Ticket size={11} /> apačioje</p>
               </div>
             )}
             {/* Mėnesio navigacija */}
@@ -380,15 +381,19 @@ export default function BookingClient({ user, onClose }) {
                         cursor:clickable?"pointer":"default",color:isPast&&!hasApproved?"rgba(255,255,255,0.15)":(avail||hasApproved)?"#fff":"rgba(255,255,255,0.3)",
                         fontSize:12,fontWeight:(avail||hasApproved)?700:400,fontFamily:"inherit",position:"relative"}}>
                       {d}
-                      {hasApproved && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>✅</span>}
-                      {isMyRecurring && !hasApproved && <span style={{position:"absolute",top:-2,right:0,fontSize:9}}>🌟</span>}
+                      {hasApproved && <span style={{position:"absolute",top:-2,right:0}}><CheckCircle size={9} /></span>}
+                      {isMyRecurring && !hasApproved && <span style={{position:"absolute",top:-2,right:0}}><Sparkle size={9} /></span>}
                       {dot && <div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:dot}}/>}
                     </button>
                   );
                 })}
               </div>
             </div>
-            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center"}}>Rožinė — laisvi laikai · 🌟 geltona — laukia patvirtinimo · ✅ žalia — treniruotė patvirtinta/įvykusi. Pasirinkite dieną.</p>
+            <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:4}}>
+              <span>Rožinė — laisvi laikai ·</span>
+              <Sparkle size={11} /><span>geltona — laukia patvirtinimo ·</span>
+              <CheckCircle size={11} /><span>žalia — treniruotė patvirtinta/įvykusi. Pasirinkite dieną.</span>
+            </p>
           </div>
         )}
 
@@ -396,29 +401,29 @@ export default function BookingClient({ user, onClose }) {
         {view==="book" && selectedDate && (
           <div>
             <div style={{background:"rgba(0,0,0,0.2)",borderRadius:14,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0}}>📅 {selectedDate}</p>
+              <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={13} />{selectedDate}</p>
               <button onClick={()=>{ setView("calendar"); setSelectedSlot(null); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Keisti datą</button>
             </div>
 
             {declineDone && (
               <div style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:16,padding:"14px 16px",marginBottom:16,textAlign:"center"}}>
-                <p style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)",margin:0}}>✕ Atsisakyta — laikas atlaisvintas kitiems klientams</p>
+                <p style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)",margin:0,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Close size={13} />Atsisakyta — laikas atlaisvintas kitiems klientams</p>
               </div>
             )}
 
             {myReservedSlot && (
               <div style={{background:"rgba(255,215,0,0.1)",border:"1.5px solid rgba(255,215,0,0.4)",borderRadius:16,padding:"14px 16px",marginBottom:16}}>
-                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px"}}>🌟 Tavo įprastas laikas</p>
-                <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 6px"}}>⏰ {myReservedSlot.start_time}–{myReservedSlot.end_time}</p>
+                <p style={{fontSize:13,fontWeight:700,color:"#FFD700",margin:"0 0 4px",display:"flex",alignItems:"center",gap:5}}><Sparkle size={13} />Tavo įprastas laikas</p>
+                <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 6px",display:"flex",alignItems:"center",gap:5}}><Timer size={13} />{myReservedSlot.start_time}–{myReservedSlot.end_time}</p>
                 <p style={{fontSize:11,color:"rgba(255,255,255,0.6)",margin:"0 0 10px"}}>
                   Patvirtink iki {DOW_LABEL[RECURRING_DEADLINE_DOW-1]} {RECURRING_DEADLINE_TIME}, kitaip laikas atsilaisvins kitiems klientams.
                 </p>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={handleDeclineRecurring} disabled={decliningRecurring||confirmingRecurring} style={{flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:decliningRecurring?0.7:1}}>
-                    {decliningRecurring ? "..." : "✕ Negaliu šią savaitę"}
+                  <button onClick={handleDeclineRecurring} disabled={decliningRecurring||confirmingRecurring} style={{flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:decliningRecurring?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                    {decliningRecurring ? "..." : <><Close size={12} />Negaliu šią savaitę</>}
                   </button>
-                  <button onClick={handleConfirmRecurring} disabled={confirmingRecurring||decliningRecurring} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1}}>
-                    {confirmingRecurring ? "Tvirtinama..." : "✅ Patvirtinti"}
+                  <button onClick={handleConfirmRecurring} disabled={confirmingRecurring||decliningRecurring} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                    {confirmingRecurring ? "Tvirtinama..." : <><CheckCircle size={13} />Patvirtinti</>}
                   </button>
                 </div>
               </div>
@@ -448,8 +453,8 @@ export default function BookingClient({ user, onClose }) {
                   </div>
                 )}
 
-                <button onClick={handleBook} disabled={!selectedSlot||saving} style={{width:"100%",padding:"14px",borderRadius:14,background:selectedSlot?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:selectedSlot?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:selectedSlot?"pointer":"default",fontFamily:"inherit",opacity:saving?0.7:1}}>
-                  {saving?"Siunčiama...":"📅 Siųsti užklausą"}
+                <button onClick={handleBook} disabled={!selectedSlot||saving} style={{width:"100%",padding:"14px",borderRadius:14,background:selectedSlot?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:selectedSlot?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:selectedSlot?"pointer":"default",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  {saving?"Siunčiama...":<><Calendar size={14} />Siųsti užklausą</>}
                 </button>
                 <p style={{fontSize:11,color:"rgba(255,255,255,0.35)",textAlign:"center",marginTop:8}}>Trenerė patvirtins arba atmes užklausą</p>
               </>

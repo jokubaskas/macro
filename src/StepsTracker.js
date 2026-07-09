@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { MOOD } from "./constants";
+import { Walk, Edit, Save, Sparkle } from "./ui/icons";
 
 const GOAL = 7000;
 
 function getMotivation(steps) {
   if (!steps || steps === 0) return null;
   const pct = steps / GOAL;
-  if (pct < 0.5)  return { text: `Dar ${(GOAL - steps).toLocaleString()} žingsnių iki tikslo — judėk! 🚶‍♀️`, color: "#FFD700" };
-  if (pct < 0.85) return { text: `Beveik! Liko tik ${(GOAL - steps).toLocaleString()} žingsnių 🏃‍♀️`, color: "#FFA500" };
-  if (pct < 1.0)  return { text: `Tikslą pasieksi šiandien! Vos ${(GOAL - steps).toLocaleString()} žingsnių! 🔥`, color: "#7FFFB0" };
-  if (pct < 1.3)  return { text: "Tikslas pasiektas! Puiku, tęsk šį ritmą! ✨", color: "#7FFFB0" };
-  return { text: "Nuostabi diena! Tu judėjai daugiau nei planavai 🌟", color: "#FF6EB4" };
+  if (pct < 0.5)  return { text: `Dar ${(GOAL - steps).toLocaleString()} žingsnių iki tikslo — judėk!`, color: "#FFD700", Icon: Walk };
+  if (pct < 0.85) return { text: `Beveik! Liko tik ${(GOAL - steps).toLocaleString()} žingsnių`, color: "#FFA500", Icon: Walk };
+  if (pct < 1.0)  return { text: `Tikslą pasieksi šiandien! Vos ${(GOAL - steps).toLocaleString()} žingsnių!`, color: "#7FFFB0", Icon: Sparkle };
+  if (pct < 1.3)  return { text: "Tikslas pasiektas! Puiku, tęsk šį ritmą!", color: "#7FFFB0", Icon: Sparkle };
+  return { text: "Nuostabi diena! Tu judėjai daugiau nei planavai", color: "#FF6EB4", Icon: Sparkle };
 }
 
 export default function StepsTracker({ userId, date }) {
@@ -55,7 +56,7 @@ export default function StepsTracker({ userId, date }) {
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-        <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>🚶‍♀️ Žingsniai</span>
+        <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Walk size={14} />Žingsniai</span>
         <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tikslas: {GOAL.toLocaleString()}</span>
       </div>
 
@@ -86,13 +87,13 @@ export default function StepsTracker({ userId, date }) {
 
       {saved ? (
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          {mot && <p style={{ fontSize:12, color:mot.color, margin:0, lineHeight:1.4, flex:1 }}>{mot.text}</p>}
-          <button onClick={()=>setSaved(false)} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"5px 12px", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit", flexShrink:0, marginLeft:8 }}>✏️ Keisti</button>
+          {mot && <p style={{ fontSize:12, color:mot.color, margin:0, lineHeight:1.4, flex:1, display:"flex", alignItems:"center", gap:5 }}><mot.Icon size={13} />{mot.text}</p>}
+          <button onClick={()=>setSaved(false)} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"5px 12px", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit", flexShrink:0, marginLeft:8, display:"flex", alignItems:"center", gap:4 }}><Edit size={11} />Keisti</button>
         </div>
       ) : (
         <button onClick={handleSave} disabled={saving||!input}
-          style={{ width:"100%", padding:"10px", borderRadius:12, border:"none", background:input?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.08)", color:input?"#fff":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:input?"pointer":"default", fontFamily:"inherit", transition:"background 0.25s, color 0.25s" }}>
-          {saving ? "Saugoma..." : "💾 Išsaugoti žingsnius"}
+          style={{ width:"100%", padding:"10px", borderRadius:12, border:"none", background:input?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.08)", color:input?"#fff":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:input?"pointer":"default", fontFamily:"inherit", transition:"background 0.25s, color 0.25s", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+          {saving ? "Saugoma..." : <><Save size={14} />Išsaugoti žingsnius</>}
         </button>
       )}
     </div>

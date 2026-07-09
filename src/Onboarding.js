@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
+import { Flame, Scale, Muscle, User, Target, Leaf, Salad, Check, Camera, Walk, ChevronLeft, ChevronRight, Frown, Meh, Smile, Sparkle } from "./ui/icons";
 
 // ── Veiklos lygiai (sutampa su constants.js ACTIVITY) ────────────────────────
 const ACTIVITY_OPTS = [
@@ -19,9 +20,9 @@ const STEPS_OPTS = [
 ];
 
 const GOALS = [
-  { id:"lose",     label:"🔥 Lieknėti",          desc:"Mažinti kūno riebalus" },
-  { id:"maintain", label:"⚖️ Palaikyti svorį",   desc:"Išlaikyti dabartinę formą" },
-  { id:"gain",     label:"💪 Auginti raumeninę masę", desc:"Stiprėti ir augti" },
+  { id:"lose",     label:"Lieknėti",          Icon:Flame,  desc:"Mažinti kūno riebalus" },
+  { id:"maintain", label:"Palaikyti svorį",   Icon:Scale,  desc:"Išlaikyti dabartinę formą" },
+  { id:"gain",     label:"Auginti raumeninę masę", Icon:Muscle, desc:"Stiprėti ir augti" },
 ];
 
 function calcAge(dob) {
@@ -74,13 +75,13 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
       display:"flex", justifyContent:"space-between", alignItems:"center",
       transition:"all 0.15s",
     }}>
-      <span style={{ fontSize:14, fontWeight:700, color:selected?PK.dark:PK.mid }}>{label}</span>
+      <span style={{ fontSize:14, fontWeight:700, color:selected?PK.dark:PK.mid, display:"inline-flex", alignItems:"center", gap:6 }}>{label}</span>
       {desc && <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginLeft:10, textAlign:"right", maxWidth:140 }}>{desc}</span>}
     </button>
   );
 }
 
-function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
+function PhotoUpload({ label, Icon, value, onChange, userId, field }) {
   const [loading, setLoading] = useState(false);
 
   async function handleFile(e) {
@@ -117,7 +118,7 @@ function PhotoUpload({ label, emoji, value, onChange, userId, field }) {
           <img src={value} alt={label} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
         ) : (
           <>
-            <span style={{ fontSize:32 }}>{emoji}</span>
+            <Icon size={32} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textAlign:"center", padding:"0 8px" }}>{label}</span>
           </>
         )}
@@ -170,10 +171,10 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
 
   const steps = [
-  { title:"Asmeniniai duomenys", icon:"👤" },
-  { title:"Tikslas ir motyvacija", icon:"🎯" },
-  { title:"Gyvensena",            icon:"🌿" },
-  { title:"Mityba ir iššūkiai",   icon:"🥗" },
+  { title:"Asmeniniai duomenys", Icon:User },
+  { title:"Tikslas ir motyvacija", Icon:Target },
+  { title:"Gyvensena",            Icon:Leaf },
+  { title:"Mityba ir iššūkiai",   Icon:Salad },
 ];
 
   function canNext() {
@@ -256,9 +257,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
                 background: i <= step ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.25)",
                 transition:"background 0.3s",
               }} />
-              <span style={{ fontSize:9, color: i === step ? "#fff" : "rgba(255,255,255,0.45)", fontWeight:i===step?700:400 }}>
-                {s.icon}
-              </span>
+              <s.Icon size={14} color={i === step ? "#fff" : "rgba(255,255,255,0.45)"} />
             </div>
           ))}
         </div>
@@ -274,13 +273,14 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
           <div>
             <Field label="Lytis">
               <div style={{ display:"flex", gap:8 }}>
-                {[{id:"f",l:"Moteris 👩"},{id:"m",l:"Vyras 👨"}].map(g => (
+                {[{id:"f",l:"Moteris"},{id:"m",l:"Vyras"}].map(g => (
                   <button key={g.id} onClick={() => set("gender")(g.id)} style={{
                     flex:1, padding:"11px 0", border:"2px solid "+(form.gender===g.id?PK.mid:PK.blush),
                     borderRadius:12, background:form.gender===g.id?PK.light:"#fff",
                     color:form.gender===g.id?PK.dark:PK.mid, fontSize:13, fontWeight:700,
                     cursor:"pointer", fontFamily:"inherit",
-                  }}>{g.l}</button>
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                  }}><User size={14} />{g.l}</button>
                 ))}
               </div>
             </Field>
@@ -290,8 +290,8 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
                 <TextInput type="date" value={form.dob} onChange={set("dob")}
                   placeholder="1990-01-15" />
                 {age && (
-                  <div style={{ marginTop:6, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600 }}>
-                    ✓ Amžius: {age} metai
+                  <div style={{ marginTop:6, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600, display:"flex", alignItems:"center", gap:5 }}>
+                    <Check size={12} />Amžius: {age} metai
                   </div>
                 )}
               </div>
@@ -310,8 +310,8 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
             <div style={{ marginTop:20, padding:"14px 16px", background:"rgba(255,255,255,0.05)", borderRadius:14, border:"1.5px dashed rgba(255,255,255,0.2)" }}>
               <p style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.7)", margin:"0 0 4px" }}>Norite pereiti greičiau?</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"0 0 10px" }}>Galite registruotis tik su gimimo data ir baigti — progreso sekimą galėsite įjungti vėliau.</p>
-              <button onClick={handleFinishMinimal} disabled={!form.dob || saving} style={{ width:"100%", padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:form.dob?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:600, cursor:form.dob?"pointer":"default", fontFamily:"inherit" }}>
-                {saving ? "Saugoma..." : "Progreso nesekti → Baigti registraciją"}
+              <button onClick={handleFinishMinimal} disabled={!form.dob || saving} style={{ width:"100%", padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:form.dob?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.3)", fontSize:13, fontWeight:600, cursor:form.dob?"pointer":"default", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                {saving ? "Saugoma..." : <>Progreso nesekti <ChevronRight size={13} /> Baigti registraciją</>}
               </button>
             </div>
           </div>
@@ -324,7 +324,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
               {GOALS.map(g => (
                 <ChoiceBtn key={g.id} selected={form.goal===g.id}
                   onClick={() => set("goal")(g.id)}
-                  label={g.label} desc={g.desc} />
+                  label={<><g.Icon size={14} />{g.label}</>} desc={g.desc} />
               ))}
             </Field>
 
@@ -390,11 +390,20 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
                   }}>{n}</button>
                 ))}
               </div>
-              {form.wellbeing && (
-                <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600 }}>
-                  {["","😞 Labai blogai","😕 Blogai","😐 Vidutiniškai","😊 Gerai","🌟 Puikiai"][form.wellbeing]}
-                </p>
-              )}
+              {form.wellbeing && (() => {
+                const w = [null,
+                  { Icon:Frown, label:"Labai blogai" },
+                  { Icon:Frown, label:"Blogai" },
+                  { Icon:Meh,   label:"Vidutiniškai" },
+                  { Icon:Smile, label:"Gerai" },
+                  { Icon:Sparkle, label:"Puikiai" },
+                ][form.wellbeing];
+                return (
+                  <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                    <w.Icon size={14} />{w.label}
+                  </p>
+                );
+              })()}
             </Field>
           </div>
         )}
@@ -403,7 +412,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
         {step === 4 && (
           <div>
             <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid rgba(255,255,255,0.15)" }}>
-              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4 }}>📸 Pirminės nuotraukos</p>
+              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}><Camera size={14} />Pirminės nuotraukos</p>
               <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
                 Nuotraukos reikalingos progresui stebėti. Jos matomos tik man kaip treneriai. Galima įkelti vėliau.
               </p>
@@ -412,17 +421,17 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
               <div>
                 <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Priekis</p>
-                <PhotoUpload label="Priekio nuotrauka" emoji="🧍" field="front"
+                <PhotoUpload label="Priekio nuotrauka" Icon={User} field="front"
                   value={form.photo_front} onChange={set("photo_front")} userId={user.id} />
               </div>
               <div>
                 <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Šonas</p>
-                <PhotoUpload label="Šono nuotrauka" emoji="🚶" field="side"
+                <PhotoUpload label="Šono nuotrauka" Icon={Walk} field="side"
                   value={form.photo_side} onChange={set("photo_side")} userId={user.id} />
               </div>
               <div>
                 <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Nugara</p>
-                <PhotoUpload label="Nugaros nuotrauka" emoji="🔙" field="back"
+                <PhotoUpload label="Nugaros nuotrauka" Icon={ChevronLeft} field="back"
                   value={form.photo_back} onChange={set("photo_back")} userId={user.id} />
               </div>
             </div>
@@ -443,7 +452,8 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
             flex:1, padding:"14px 0", border:"1.5px solid rgba(255,255,255,0.2)",
             borderRadius:14, background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.75)",
             fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
-          }}>← Atgal</button>
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+          }}><ChevronLeft size={14} />Atgal</button>
         )}
         {step < steps.length - 1 ? (
           <button onClick={() => setStep(s => s+1)} disabled={!canNext()} style={{
@@ -452,14 +462,16 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
             color:"#fff", fontSize:14, fontWeight:700,
             cursor: canNext() ? "pointer" : "default", fontFamily:"inherit",
             transition:"background 0.2s",
-          }}>Toliau →</button>
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+          }}>Toliau <ChevronRight size={14} /></button>
         ) : (
           <button onClick={handleFinish} disabled={saving} style={{
             flex:2, padding:"14px 0", border:"none",
             borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)",
             color:"#fff", fontSize:14, fontWeight:700,
             cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1,
-          }}>{saving ? "Saugoma..." : "✓ Baigti registraciją"}</button>
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+          }}>{saving ? "Saugoma..." : <><Check size={14} />Baigti registraciją</>}</button>
         )}
       </div>
     </div>

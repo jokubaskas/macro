@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { Flame, Sparkle } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgo(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
@@ -30,10 +31,10 @@ function calcStreak(checkinDates) {
 }
 
 function getStreakStyle(streak) {
-  if (streak >= 14) return { emoji: "🔥", color: "#FF4500", label: "Nesustabdoma!", glow: true };
-  if (streak >= 7)  return { emoji: "🔥", color: "#FF6B00", label: "Puikus tempas!", glow: true };
-  if (streak >= 3)  return { emoji: "🔥", color: "#FFA500", label: "Įsibėgėji!", glow: false };
-  if (streak >= 1)  return { emoji: "✨", color: "#FFD700", label: "Pradžia!", glow: false };
+  if (streak >= 14) return { Icon: Flame,   color: "#FF4500", label: "Nesustabdoma!", glow: true };
+  if (streak >= 7)  return { Icon: Flame,   color: "#FF6B00", label: "Puikus tempas!", glow: true };
+  if (streak >= 3)  return { Icon: Flame,   color: "#FFA500", label: "Įsibėgėji!", glow: false };
+  if (streak >= 1)  return { Icon: Sparkle, color: "#FFD700", label: "Pradžia!", glow: false };
   return null;
 }
 
@@ -80,7 +81,7 @@ export default function StreakBadge({ userId, compact }) {
   if (compact) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 4, background: `${style.color}22`, border: `1px solid ${style.color}55`, borderRadius: 20, padding: "4px 10px" }}>
-        <span style={{ fontSize: 14 }}>{style.emoji}</span>
+        <style.Icon size={14} color={style.color} />
         <span style={{ fontSize: 12, fontWeight: 700, color: style.color }}>{streak}</span>
       </div>
     );
@@ -98,8 +99,8 @@ export default function StreakBadge({ userId, compact }) {
       gap: 14,
       boxShadow: style.glow ? `0 0 20px ${style.color}33` : "none",
     }}>
-      <div style={{ fontSize: 36, filter: style.glow ? `drop-shadow(0 0 8px ${style.color})` : "none" }}>
-        {style.emoji}
+      <div style={{ filter: style.glow ? `drop-shadow(0 0 8px ${style.color})` : "none" }}>
+        <style.Icon size={36} color={style.color} />
       </div>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.1 }}>

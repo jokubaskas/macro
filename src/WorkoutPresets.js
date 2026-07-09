@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -63,7 +64,7 @@ function ExercisePicker({ onAdd, onClose }) {
       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"90vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{showNew?"Naujas pratimas":selected?"Parametrai":"Pasirinkti pratimą"}</p>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}>✕</button>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center"}}><Close size={14} /></button>
         </div>
 
         {showNew && (
@@ -75,8 +76,8 @@ function ExercisePicker({ onAdd, onClose }) {
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               {["strength","cardio"].map(c=>(
                 <button key={c} onClick={()=>setNewEx(p=>({...p,category:c,muscle:c==="cardio"?"Cardio":p.muscle==="Cardio"?"Krūtinė":p.muscle}))}
-                  style={{flex:1,padding:"10px",borderRadius:10,border:`2px solid ${newEx.category===c?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.2)"}`,background:newEx.category===c?"rgba(255,255,255,0.2)":"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-                  {c==="strength"?"💪 Svoris":"🏃 Cardio"}
+                  style={{flex:1,padding:"10px",borderRadius:10,border:`2px solid ${newEx.category===c?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.2)"}`,background:newEx.category===c?"rgba(255,255,255,0.2)":"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  {c==="strength"?<><Muscle size={14} />Svoris</>:<><Walk size={14} />Cardio</>}
                 </button>
               ))}
             </div>
@@ -90,8 +91,8 @@ function ExercisePicker({ onAdd, onClose }) {
             )}
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setShowNew(false)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
-              <button onClick={handleAddNew} disabled={saving||!newEx.name.trim()} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                {saving?"Saugoma...":"💾 Išsaugoti"}
+              <button onClick={handleAddNew} disabled={saving||!newEx.name.trim()} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                {saving?"Saugoma...":<><Save size={15} />Išsaugoti</>}
               </button>
             </div>
           </div>
@@ -141,8 +142,8 @@ function ExercisePicker({ onAdd, onClose }) {
                 <div style={{marginBottom:14}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <label style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>Svoris</label>
-                    <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                      {perSet?"✓ Skirtingi svoriai":"Skirtingi svoriai"}
+                    <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+                      {perSet?<><Check size={10} />Skirtingi svoriai</>:"Skirtingi svoriai"}
                     </button>
                   </div>
                   {!perSet ? (
@@ -161,7 +162,7 @@ function ExercisePicker({ onAdd, onClose }) {
               </>
             )}
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setSelected(null)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>← Atgal</button>
+              <button onClick={()=>setSelected(null)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
               <button onClick={handleAdd} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti</button>
             </div>
           </div>
@@ -220,7 +221,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}>✕</button>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center"}}><Close size={14} /></button>
         </div>
         <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
           <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{exercise.exercise_name}</p>
@@ -246,8 +247,8 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
             <div style={{marginBottom:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <label style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>Svoris</label>
-                <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                  {perSet ? "✓ Skirtingi svoriai" : "Skirtingi svoriai"}
+                <button onClick={()=>setPerSet(p=>!p)} style={{padding:"4px 10px",borderRadius:20,border:"none",background:perSet?"#AD1457":"rgba(255,255,255,0.15)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+                  {perSet ? <><Check size={10} />Skirtingi svoriai</> : "Skirtingi svoriai"}
                 </button>
               </div>
               {!perSet ? (
@@ -265,8 +266,8 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
             </div>
           </>
         )}
-        <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-          💾 Išsaugoti pakeitimus
+        <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <Save size={15} />Išsaugoti pakeitimus
         </button>
       </div>
     </div>
@@ -354,7 +355,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
       {showPicker && <ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
 
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{isNew?"Naujas šablonas":"Redaguoti šabloną"}</h1>
       </div>
 
@@ -401,7 +402,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
                   <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:"0 0 2px"}}>{ex.exercise_name}</p>
                   <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>
                     {ex.category==="cardio"
-                      ? `⏱ ${ex.duration_min||"–"} min`
+                      ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Timer size={11} />{ex.duration_min||"–"} min</span>
                       : ex.set_weights
                         ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
                         : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg}kg`:""}`
@@ -409,7 +410,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
                     <span style={{color:"rgba(255,255,255,0.3)"}}> · paliesk redaguoti</span>
                   </p>
                 </div>
-                <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center"}}><Close size={12} /></button>
               </div>
             ))}
           </div>
@@ -429,8 +430,8 @@ function PresetEditor({ preset, onClose, onSaved }) {
         <button onClick={()=>setShowPicker(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"2px dashed rgba(255,255,255,0.25)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ Pridėti pratimą</button>
 
         <button onClick={handleSave} disabled={saving||!name.trim()||days.every(d=>d.exercises.length===0)}
-          style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1}}>
-          {saving?"Saugoma...":"💾 Išsaugoti šabloną"}
+          style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          {saving?"Saugoma...":<><Save size={15} />Išsaugoti šabloną</>}
         </button>
       </div>
     </div>
@@ -470,8 +471,8 @@ export default function WorkoutPresets({ onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
-        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>📋 Treniruočių šablonai</h1>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Clipboard size={15} />Treniruočių šablonai</h1>
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
@@ -495,8 +496,8 @@ export default function WorkoutPresets({ onClose }) {
               </div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setEditing(p)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✏️ Redaguoti</button>
-              <button onClick={()=>handleDelete(p.id)} style={{padding:"9px 14px",borderRadius:10,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>🗑️</button>
+              <button onClick={()=>setEditing(p)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Edit size={12} />Redaguoti</button>
+              <button onClick={()=>handleDelete(p.id)} style={{padding:"9px 14px",borderRadius:10,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center"}}><Trash size={12} /></button>
             </div>
           </div>
         ))}

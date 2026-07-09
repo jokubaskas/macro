@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { pb } from "./pb";
+import { Camera, ArrowUp, ChevronRight, ArrowDown, Save } from "./ui/icons";
 
 export default function PhotoUploadPrompt({ user, onComplete }) {
   const [photos,   setPhotos]   = useState({ photo_front: null, photo_side: null, photo_back: null });
@@ -40,9 +41,9 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
   }
 
   const fields = [
-    { key: "photo_front", label: "Priekis", emoji: "⬆️", required: true },
-    { key: "photo_side",  label: "Šonas",   emoji: "➡️", required: false },
-    { key: "photo_back",  label: "Nugara",  emoji: "⬇️", required: false },
+    { key: "photo_front", label: "Priekis", Icon: ArrowUp,      required: true },
+    { key: "photo_side",  label: "Šonas",   Icon: ChevronRight, required: false },
+    { key: "photo_back",  label: "Nugara",  Icon: ArrowDown,    required: false },
   ];
 
   const canSave = !!photos.photo_front;
@@ -60,7 +61,7 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
           <button onClick={()=>{pb.authStore.clear();window.location.reload();}} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"rgba(255,255,255,0.7)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Išeiti</button>
         </div>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📸</div>
+          <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}><Camera size={48} color="#fff" /></div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>
             Pradinės nuotraukos
           </h1>
@@ -91,7 +92,7 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <>
-                    <span style={{ fontSize: 22 }}>{f.emoji}</span>
+                    <f.Icon size={22} color="rgba(255,255,255,0.8)" />
                     <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{f.label}</span>
                     {f.required && <span style={{ fontSize: 9, color: "rgba(255,150,150,0.8)" }}>* privaloma</span>}
                     <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>+ Pridėti</span>
@@ -115,8 +116,9 @@ export default function PhotoUploadPrompt({ user, onComplete }) {
           cursor: canSave ? "pointer" : "default",
           fontFamily: "inherit",
           opacity: saving ? 0.7 : 1,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
         }}>
-          {saving ? "Saugoma..." : "💾 Išsaugoti nuotraukas"}
+          {saving ? "Saugoma..." : <><Save size={14} />Išsaugoti nuotraukas</>}
         </button>
       </div>
     </div>

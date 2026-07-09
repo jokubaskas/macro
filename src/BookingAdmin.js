@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check } from "./ui/icons";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
-const STATUS_LABEL = { pending:"⏳ Laukia", approved:"✅ Patvirtinta", rejected:"❌ Atmesta", cancelled:"🚫 Atšaukta" };
+const STATUS_LABEL = { pending:{Icon:Timer,label:"Laukia"}, approved:{Icon:CheckCircle,label:"Patvirtinta"}, rejected:{Icon:Close,label:"Atmesta"}, cancelled:{Icon:Ban,label:"Atšaukta"} };
 const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)", cancelled:"rgba(255,255,255,0.05)" };
 
 function AdminCancelButton({ booking, clientName, onCancelled }) {
@@ -25,8 +26,8 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
   }
 
   if (!open) return (
-    <button onClick={()=>setOpen(true)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,150,100,0.4)",background:"rgba(255,100,50,0.1)",color:"#FF9966",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-      🚫 Atšaukti
+    <button onClick={()=>setOpen(true)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,150,100,0.4)",background:"rgba(255,100,50,0.1)",color:"#FF9966",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+      <Ban size={13} />Atšaukti
     </button>
   );
 
@@ -135,10 +136,10 @@ function ScheduleExceptions() {
       {exceptions.map(ex => (
         <div key={ex.id} style={{background:"rgba(255,100,100,0.08)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>📅 {ex.date} · {ex.start_time}–{ex.end_time}</p>
+            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5}}><Calendar size={12} />{ex.date} · {ex.start_time}–{ex.end_time}</p>
             {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.reason}</p>}
           </div>
-          <button onClick={()=>handleDelete(ex.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}>✕</button>
+          <button onClick={()=>handleDelete(ex.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}><Close size={12} /></button>
         </div>
       ))}
 
@@ -213,7 +214,7 @@ function ScheduleSettings({ onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Darbo laikas</h1>
       </div>
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
@@ -246,8 +247,8 @@ function ScheduleSettings({ onClose }) {
             )}
           </div>
         ))}
-        <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,marginTop:8}}>
-          {saving?"Saugoma...":"💾 Išsaugoti"}
+        <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          {saving?"Saugoma...":<><Save size={14} />Išsaugoti</>}
         </button>
 
         <ScheduleExceptions />
@@ -301,8 +302,8 @@ function RecurringSlotsSettings({ onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
-        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>🔁 Įprasti laikai</h1>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Repeat size={15} />Įprasti laikai</h1>
       </div>
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
         <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:16}}>
@@ -326,7 +327,7 @@ function RecurringSlotsSettings({ onClose }) {
               <button onClick={()=>toggleActive(s)} style={{padding:"5px 10px",borderRadius:8,border:"none",background:s.is_active?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                 {s.is_active?"Aktyvus":"Pristabdyta"}
               </button>
-              <button onClick={()=>handleDelete(s.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}>✕</button>
+              <button onClick={()=>handleDelete(s.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}><Close size={12} /></button>
             </div>
           </div>
         ))}
@@ -409,10 +410,10 @@ export default function BookingAdmin({ onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer"}}>← Atgal</button>
-        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1}}>📅 Rezervacijos</h1>
-        <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>🔁 Įprasti</button>
-        <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>⚙️ Darbo laikas</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1,display:"flex",alignItems:"center",gap:6}}><Calendar size={15} />Rezervacijos</h1>
+        <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Repeat size={12} />Įprasti</button>
+        <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Settings size={12} />Darbo laikas</button>
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
@@ -440,24 +441,26 @@ export default function BookingAdmin({ onClose }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div>
                   <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{client?.name||"Nežinomas"}</p>
-                  <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0}}>
-                    📅 {b.date} · ⏰ {b.start_time}–{b.end_time}
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",gap:5}}>
+                    <Calendar size={11} />{b.date} · <Timer size={11} />{b.start_time}–{b.end_time}
                   </p>
                   {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:"4px 0 0",fontStyle:"italic"}}>"{b.notes}"</p>}
-                  {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"4px 0 0"}}>🚫 {b.cancelled_by==="client"?"Klientas":"Trenerė"}: {b.cancel_reason}</p>}
+                  {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"4px 0 0",display:"flex",alignItems:"center",gap:5}}><Ban size={11} />{b.cancelled_by==="client"?"Klientas":"Trenerė"}: {b.cancel_reason}</p>}
                 </div>
-                <span style={{fontSize:11,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap"}}>{STATUS_LABEL[b.status]}</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}>
+                  {(() => { const st = STATUS_LABEL[b.status]; return st ? <><st.Icon size={11} />{st.label}</> : null; })()}
+                </span>
               </div>
               {b.status==="pending" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕ Atmesti</button>
-                  <button onClick={()=>updateStatus(b.id,"approved")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ Patvirtinti</button>
+                  <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
+                  <button onClick={()=>updateStatus(b.id,"approved")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti</button>
                 </div>
               )}
               {b.status==="approved" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                    📲 Įtraukti į kalendorių
+                  <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                    <Phone size={13} />Įtraukti į kalendorių
                   </button>
                   <AdminCancelButton booking={b} clientName={client?.name||"Klientas"} onCancelled={load} />
                 </div>

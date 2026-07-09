@@ -15,6 +15,7 @@ import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
 import { LoadingScreen } from "./ui/kit";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
@@ -162,8 +163,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src="/logo.png" alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }} />
             <div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
-                Sveika, {profile?.name?.split(" ")[0]} 👋
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                Sveika, {profile?.name?.split(" ")[0]} <WaveHand size={15} color="#FFD37A" />
               </p>
               <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>
                 {isToday ? new Date().toLocaleDateString("lt-LT", { weekday:"long", month:"long", day:"numeric" }) : selectedDate}
@@ -173,7 +174,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {profile?.track_progress && (
               <button onClick={() => setShowCalendar(true)} style={{ background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-                📅 {isToday ? new Date().toLocaleDateString("lt-LT", { month: "short", day: "numeric" }) : selectedDate}
+                <Calendar size={12} /> {isToday ? new Date().toLocaleDateString("lt-LT", { month: "short", day: "numeric" }) : selectedDate}
                 <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
               </button>
             )}
@@ -189,21 +190,22 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {/* Kita treniruotė */}
         {isToday && nextBooking && (
           <div onClick={() => openTab("booking")} className="tap" style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"12px 16px", marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:28 }}>📆</span>
+            <Calendar size={26} color="rgba(255,255,255,0.85)" />
             <div style={{ flex:1 }}>
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"0 0 2px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em" }}>Kita treniruotė</p>
               <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>
                 {new Date(nextBooking.date + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", month:"short", day:"numeric" })} · {nextBooking.start_time}
               </p>
             </div>
-            <span style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>→</span>
+            <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
           </div>
         )}
 
         {!isToday && (
-          <div style={{ marginBottom: 16, padding: "12px 16px", background: "rgba(255,255,255,0.07)", borderRadius: 14 }}>
+          <div style={{ marginBottom: 16, padding: "12px 16px", background: "rgba(255,255,255,0.07)", borderRadius: 14, display:"flex", alignItems:"center", gap:8 }}>
+            <Calendar size={13} color="rgba(255,255,255,0.6)" />
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", margin: 0 }}>
-              📅 {new Date(selectedDate + "T12:00:00").toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" })}
+              {new Date(selectedDate + "T12:00:00").toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" })}
             </p>
           </div>
         )}
@@ -212,7 +214,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {isToday && !profile?.track_progress && (
           <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:20 }}>
             <button onClick={()=>setShowPackages(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"linear-gradient(135deg,rgba(109,27,59,0.6),rgba(173,20,87,0.6))", border:"1.5px solid rgba(255,255,255,0.2)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
-              <span style={{ fontSize:26 }}>🎟️</span>
+              <Ticket size={26} />
               <div>
                 <p style={{ margin:"0 0 2px", fontSize:14 }}>Treniruočių paketai</p>
                 <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Peržiūrėti ir įsigyti paketą</p>
@@ -220,7 +222,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             </button>
             {hasActivePlan && (
               <button onClick={()=>setShowWorkout(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"linear-gradient(135deg,rgba(26,71,49,0.7),rgba(39,103,73,0.7))", border:"1.5px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
-                <span style={{ fontSize:26 }}>🏋️</span>
+                <Dumbbell size={26} />
                 <div>
                   <p style={{ margin:"0 0 2px", fontSize:14 }}>Šiandienos treniruotė</p>
                   <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Atlikti priskirtus pratimus</p>
@@ -228,7 +230,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               </button>
             )}
             <button onClick={()=>setShowBooking(true)} style={{ width:"100%", padding:"18px 20px", borderRadius:18, background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:14, textAlign:"left" }}>
-              <span style={{ fontSize:26 }}>📆</span>
+              <Calendar size={26} />
               <div>
                 <p style={{ margin:"0 0 2px", fontSize:14 }}>Rezervuoti treniruotę</p>
                 <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:400 }}>Pasirinkti laiką pas trenerę</p>
@@ -247,7 +249,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {isToday && !profile?.track_progress && (
           <div style={{ background:"rgba(255,255,255,0.07)", border:"1.5px dashed rgba(255,255,255,0.2)", borderRadius:16, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
-              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>📊 Progreso sekimas</p>
+              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px", display:"flex", alignItems:"center", gap:6 }}><BarChart size={14} />Progreso sekimas</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0 }}>Svoris, miegas, vanduo ir daugiau</p>
             </div>
             <button onClick={()=>setShowOnboarding(true)}
@@ -275,7 +277,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {/* Miegas — tik sekiantiems */}
         {profile?.track_progress && (
           <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>😴 Miegas</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px", display:"flex", alignItems:"center", gap:6 }}><Moon size={14} />Miegas</p>
             <SleepTracker userId={user.id} age={profileAge} date={selectedDate} />
           </div>
         )}
@@ -290,7 +292,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         {/* Vanduo — tik sekiantiems */}
         {profile?.track_progress && (
           <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>💧 Vanduo</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px", display:"flex", alignItems:"center", gap:6 }}><Droplet size={14} />Vanduo</p>
             <WaterTracker goal={waterGoal} userId={user.id} date={selectedDate} />
           </div>
         )}
@@ -302,18 +304,18 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {profile?.track_progress && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: "10px", paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
           {[
-            { id:"packages", emoji:"🎟️", label:"Paketai",     badge: badges.packages },
-            ...(hasActivePlan ? [{ id:"workout", emoji:"🏋️", label:"Treniruotė", badge:0 }] : []),
-            { id:"booking",  emoji:"📆", label:"Rezervacija", badge: badges.booking },
-            { id:"progress", emoji:"📸", label:"Progresas",   badge:0 },
-            { id:"stats",    emoji:"📈", label:"Statistika",  badge:0 },
+            { id:"packages", Icon:Ticket,     label:"Paketai",     badge: badges.packages },
+            ...(hasActivePlan ? [{ id:"workout", Icon:Dumbbell, label:"Treniruotė", badge:0 }] : []),
+            { id:"booking",  Icon:Calendar,   label:"Rezervacija", badge: badges.booking },
+            { id:"progress", Icon:Camera,     label:"Progresas",   badge:0 },
+            { id:"stats",    Icon:TrendingUp, label:"Statistika",  badge:0 },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <button key={tab.id} onClick={() => openTab(isActive ? null : tab.id)}
                 style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, transition:"opacity 0.15s", position:"relative" }}>
                 <div style={{ position:"relative" }}>
-                  <span style={{ fontSize:28 }}>{tab.emoji}</span>
+                  <tab.Icon size={24} color="#fff" strokeWidth={isActive ? 2 : 1.6} />
                   {tab.badge > 0 && (
                     <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
                       {tab.badge}

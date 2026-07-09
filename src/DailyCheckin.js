@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
+import { Clipboard, Salad, Heart, Check, Save } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -107,28 +108,28 @@ export default function DailyCheckin({ userId, date, onSaved }) {
     return (
       <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>📋 Check-in</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}><Clipboard size={14} />Check-in</span>
           {(() => { const t = TRAFFIC.find(x => x.v === checkin.nutrition_score); return t ? <Orb c1={t.c1} c2={t.c2} size={13} /> : null; })()}
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Mityba</span>
           {(() => { const t = TRAFFIC.find(x => x.v === checkin.wellbeing_score); return t ? <Orb c1={t.c1} c2={t.c2} size={13} /> : null; })()}
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Savijauta</span>
         </div>
-        <span style={{ fontSize: 11, background: "rgba(127,255,176,0.2)", color: "#7FFFB0", borderRadius: 8, padding: "3px 10px" }}>✓</span>
+        <span style={{ fontSize: 11, background: "rgba(127,255,176,0.2)", color: "#7FFFB0", borderRadius: 8, padding: "3px 10px", display: "inline-flex", alignItems: "center" }}><Check size={12} /></span>
       </div>
     );
   }
 
   return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: 18, marginBottom: 12 }}>
-      <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "0 0 16px" }}>📋 Dienos check-in</p>
+      <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "0 0 16px", display: "flex", alignItems: "center", gap: 6 }}><Clipboard size={14} />Dienos check-in</p>
 
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px" }}>🥗 Kaip sekėsi su mityba šiandien?</p>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}><Salad size={13} />Kaip sekėsi su mityba šiandien?</p>
         <TrafficLight value={nutrition} onChange={setNutrition} disabled={!isToday} />
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px" }}>💚 Kokia šiandien savijauta?</p>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}><Heart size={13} color="#7FFFB0" />Kokia šiandien savijauta?</p>
         <TrafficLight value={wellbeing} onChange={setWellbeing} disabled={!isToday} />
       </div>
 
@@ -139,8 +140,9 @@ export default function DailyCheckin({ userId, date, onSaved }) {
           color: canSave ? "#fff" : "rgba(255,255,255,0.3)",
           fontSize: 15, fontWeight: 700, cursor: canSave ? "pointer" : "default",
           fontFamily: "inherit", transition: "all 0.2s",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
         }}>
-          {saving ? "Saugoma..." : "💾 Išsaugoti"}
+          {saving ? "Saugoma..." : <><Save size={14} />Išsaugoti</>}
         </button>
       )}
 

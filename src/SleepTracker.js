@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
 import { MOOD } from "./constants";
+import { Moon, CheckCircle, AlertTriangle, Heart, Lock, Timer, Save } from "./ui/icons";
 
 function getRecommended(age) {
   if (!age) return [7, 9];
@@ -201,7 +202,7 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
       : savedHours >= recMin && savedHours <= recMax ? "#27ae60" : "#f39c12";
     return (
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ fontSize:14 }}>😴</span>
+        <Moon size={14} color="#333" />
         <div style={{ flex:1 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
             <span style={{ fontSize:11, color:"#333", fontWeight:600 }}>
@@ -222,11 +223,15 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
   const hasUnsaved = !isLocked && localHours !== null && isToday;
 
   const statusText = isLocked
-    ? inRange ? "✅ Puiku – miegas rekomenduojamoje zonoje!"
-      : tooLittle ? `⚠️ Per mažai – rekomenduojama ${recMin}–${recMax}h`
-      : `💙 Per daug – rekomenduojama ${recMin}–${recMax}h`
+    ? inRange ? "Puiku – miegas rekomenduojamoje zonoje!"
+      : tooLittle ? `Per mažai – rekomenduojama ${recMin}–${recMax}h`
+      : `Per daug – rekomenduojama ${recMin}–${recMax}h`
     : isToday ? "Pažymėk šios nakties miegą"
     : "Šiai dienai miegas nebuvo suvestas";
+
+  const StatusIcon = isLocked
+    ? inRange ? CheckCircle : tooLittle ? AlertTriangle : Heart
+    : null;
 
   const statusColor = !isLocked ? "rgba(255,255,255,0.45)"
     : inRange ? MOOD.good.c1 : tooLittle ? MOOD.mid.c1 : MOOD.water.c1;
@@ -246,13 +251,13 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)" }}>😴 Miegas</span>
+          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.8)", display:"flex", alignItems:"center", gap:5 }}><Moon size={14} />Miegas</span>
           {(isLocked || hasUnsaved) && (
             <span style={{ fontSize:22, fontWeight:700, color:statusColor }}>
               {fmtHours(isLocked ? savedHours : localHours)}
             </span>
           )}
-          {isLocked && <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>🔒</span>}
+          {isLocked && <Lock size={11} color="rgba(255,255,255,0.4)" />}
         </div>
         <div style={{ textAlign:"right" }}>
           {weekAvg && <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>7 d. vid.: {fmtHours(weekAvg)}</p>}
@@ -261,12 +266,14 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
       </div>
 
       {/* Statusas */}
-      <p style={{ fontSize:11, color:statusColor, margin:"0 0 10px", fontWeight:isLocked?600:400 }}>{statusText}</p>
+      <p style={{ fontSize:11, color:statusColor, margin:"0 0 10px", fontWeight:isLocked?600:400, display:"flex", alignItems:"center", gap:5 }}>
+        {StatusIcon && <StatusIcon size={12} />}{statusText}
+      </p>
 
       {/* Tabai — VISADA matomi (ne tik kai !isLocked) */}
       <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.07)", borderRadius:12, padding:3, marginBottom:12 }}>
         <button style={tabBtn(inputMode==="slider")} onClick={() => setInputMode("slider")}>≈ Slankiklis</button>
-        <button style={tabBtn(inputMode==="time")}   onClick={() => setInputMode("time")}>🕐 Tiksliai</button>
+        <button style={{...tabBtn(inputMode==="time"), display:"flex", alignItems:"center", justifyContent:"center", gap:4}} onClick={() => setInputMode("time")}><Timer size={11} />Tiksliai</button>
       </div>
 
       {/* Slankiklio režimas */}
@@ -300,8 +307,9 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
             fontSize:14, fontWeight:700,
             cursor: hasUnsaved ? "pointer" : "default",
             fontFamily:"inherit", transition:"all 0.2s",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
           }}>
-          {saving ? "Saugoma..." : hasUnsaved ? `💾 Išsaugoti (${fmtHours(localHours)})` : "Pajudink slankiklį arba įvesk laiką..."}
+          {saving ? "Saugoma..." : hasUnsaved ? <><Save size={14} />{`Išsaugoti (${fmtHours(localHours)})`}</> : "Pajudink slankiklį arba įvesk laiką..."}
         </button>
       )}
 

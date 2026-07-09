@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
 
 const FIELDS = [
-  { key:"weight_measured", label:"Svoris",    unit:"kg",  emoji:"⚖️" },
-  { key:"body_fat",        label:"Riebalai",  unit:"%",   emoji:"📊" },
-  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  emoji:"📏" },
-  { key:"hips_cm",         label:"Klubai",    unit:"cm",  emoji:"📏" },
-  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  emoji:"📏" },
-  { key:"arm_cm",          label:"Ranka",     unit:"cm",  emoji:"💪" },
-  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  emoji:"📏" },
+  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale },
+  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart },
+  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler },
+  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler },
+  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler },
+  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle },
+  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler },
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -102,9 +103,9 @@ export default function ClientMeasurements({ client, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer" }}>← Atgal</button>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
-          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>📐 Matavimai</h1>
+          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ruler size={15} />Matavimai</h1>
           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
         </div>
       </div>
@@ -120,7 +121,7 @@ export default function ClientMeasurements({ client, onClose }) {
           <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:18, padding:16, marginBottom:16 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
               <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>Naujas matavimas</p>
-              <button onClick={()=>setShowForm(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"5px 10px", color:"#fff", cursor:"pointer", fontSize:12 }}>✕</button>
+              <button onClick={()=>setShowForm(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"5px 10px", color:"#fff", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center" }}><Close size={12} /></button>
             </div>
             <div style={{ marginBottom:12 }}>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Data</label>
@@ -129,18 +130,18 @@ export default function ClientMeasurements({ client, onClose }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
               {FIELDS.map(f => (
                 <div key={f.key}>
-                  <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>{f.emoji} {f.label} ({f.unit})</label>
+                  <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:4, marginBottom:5 }}><f.Icon size={11} />{f.label} ({f.unit})</label>
                   <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–" style={inp}/>
                 </div>
               ))}
             </div>
             <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>📝 Pastabos</label>
+              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:4, marginBottom:5 }}><Edit size={11} />Pastabos</label>
               <textarea value={form.trainer_note} onChange={e=>setForm(f=>({...f,trainer_note:e.target.value}))} placeholder="Pvz. geras progresas, keičiame planą..." rows={2}
                 style={{...inp, resize:"none"}}/>
             </div>
-            <button onClick={handleSave} disabled={saving} style={{ width:"100%", padding:"12px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}>
-              {saving ? "Saugoma..." : "💾 Išsaugoti"}
+            <button onClick={handleSave} disabled={saving} style={{ width:"100%", padding:"12px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              {saving ? "Saugoma..." : <><Save size={15} />Išsaugoti</>}
             </button>
           </div>
         )}
@@ -155,7 +156,7 @@ export default function ClientMeasurements({ client, onClose }) {
               {FIELDS.filter(f => latest[f.key]).map(f => (
                 <div key={f.key} style={{ textAlign:"center" }}>
                   <p style={{ fontSize:18, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{latest[f.key]}</p>
-                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{f.emoji} {f.label}</p>
+                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0, display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}><f.Icon size={9} />{f.label}</p>
                   <MiniChart data={[...history].reverse()} field={f.key} />
                 </div>
               ))}
@@ -175,8 +176,8 @@ export default function ClientMeasurements({ client, onClose }) {
         {history.map((m, idx) => (
           <div key={m.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8, borderLeft:`3px solid ${idx===0?"#AD1457":"rgba(255,255,255,0.1)"}` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0 }}>
-                📅 {m.measured_at?.slice(0,10)}
+              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:5 }}>
+                <Calendar size={13} />{m.measured_at?.slice(0,10)}
                 {m._isReg && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400, marginLeft:6 }}>(registracija)</span>}
                 {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#FF6EB4", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
               </p>
