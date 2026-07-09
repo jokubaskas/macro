@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
+import { MOOD } from "./constants";
 
 function getRecommended(age) {
   if (!age) return [7, 9];
@@ -56,14 +57,15 @@ function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
   const handlePct   = pct(value ?? 0);
   const recMinPct   = pct(recMin);
   const recMaxPct   = pct(recMax);
-  const inRange     = value >= recMin && value <= recMax;
-  const handleColor = inRange ? "#7FFFB0" : value < recMin ? "#FFD700" : "#89CFF0";
+  const inRange = value >= recMin && value <= recMax;
+  const mood = inRange ? MOOD.good : value < recMin ? MOOD.mid : MOOD.water;
+  const handleColor = mood.c1;
 
   return (
     <div style={{ padding:"8px 4px 28px" }}>
       <div ref={trackRef} onMouseDown={onStart} onTouchStart={onStart}
         style={{ position:"relative", height:8, borderRadius:99, background:"rgba(255,255,255,0.15)", cursor:readOnly?"default":"pointer", margin:"0 10px" }}>
-        <div style={{ position:"absolute", top:0, left:0, width:handlePct+"%", height:"100%", borderRadius:99, background:handleColor, transition:"width 0.05s" }} />
+        <div style={{ position:"absolute", top:0, left:0, width:handlePct+"%", height:"100%", borderRadius:99, background:`linear-gradient(90deg,${mood.c2},${mood.c1})`, transition:"width 0.05s" }} />
         <div style={{ position:"absolute", top:-3, left:recMinPct+"%", width:(recMaxPct-recMinPct)+"%", height:14, borderRadius:7, background:"rgba(127,255,176,0.18)", border:"1.5px solid rgba(127,255,176,0.5)", pointerEvents:"none" }} />
         {value !== null && (
           <div style={{ position:"absolute", top:"50%", left:handlePct+"%", transform:"translate(-50%,-50%)", zIndex:3 }}>
@@ -71,7 +73,7 @@ function SleepSlider({ value, onChange, recMin, recMax, readOnly }) {
               {fmtHours(value)}
               <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"5px solid "+handleColor }} />
             </div>
-            <div style={{ width:26, height:26, borderRadius:"50%", background:handleColor, border:"3px solid rgba(0,0,0,0.25)", boxShadow:"0 2px 10px rgba(0,0,0,0.35)", cursor:readOnly?"default":"grab" }} />
+            <div style={{ width:26, height:26, borderRadius:"50%", background:`radial-gradient(circle at 34% 28%, ${mood.c1}, ${mood.c2})`, boxShadow:`0 0 0 3px rgba(0,0,0,0.2), 0 2px 10px ${mood.c1}88`, cursor:readOnly?"default":"grab" }} />
           </div>
         )}
         <div style={{ position:"absolute", top:14, left:recMinPct+"%", transform:"translateX(-50%)", fontSize:8, color:"rgba(127,255,176,0.7)", whiteSpace:"nowrap" }}>{recMin}h</div>
@@ -227,7 +229,7 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
     : "Šiai dienai miegas nebuvo suvestas";
 
   const statusColor = !isLocked ? "rgba(255,255,255,0.45)"
-    : inRange ? "#7FFFB0" : "#FFD700";
+    : inRange ? MOOD.good.c1 : tooLittle ? MOOD.mid.c1 : MOOD.water.c1;
 
   const canEdit = isToday && !isLocked;
 

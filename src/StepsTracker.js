@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { MOOD } from "./constants";
 
 const GOAL = 7000;
 
@@ -48,7 +49,7 @@ export default function StepsTracker({ userId, date }) {
   }
 
   const pct = Math.min((steps / GOAL) * 100, 100);
-  const barColor = pct >= 100 ? "#7FFFB0" : pct >= 85 ? "#FFA500" : pct >= 50 ? "#FFD700" : "rgba(255,255,255,0.3)";
+  const stage = pct >= 100 ? MOOD.good : pct >= 50 ? MOOD.mid : MOOD.bad;
   const mot = getMotivation(steps);
 
   return (
@@ -58,8 +59,17 @@ export default function StepsTracker({ userId, date }) {
         <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tikslas: {GOAL.toLocaleString()}</span>
       </div>
 
-      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:6, marginBottom:12 }}>
-        <div style={{ width:`${pct}%`, height:"100%", borderRadius:99, background:barColor, transition:"width 0.4s" }} />
+      <div style={{ position:"relative", borderRadius:99, height:6, marginBottom:16, background:`linear-gradient(90deg,${MOOD.bad.c1}33,${MOOD.mid.c1}33,${MOOD.good.c1}33)` }}>
+        <div style={{ position:"absolute", left:0, top:0, height:"100%", width:`${pct}%`, borderRadius:99, background:`linear-gradient(90deg,${MOOD.bad.c1},${stage.c1})`, transition:"width 0.5s cubic-bezier(.23,1,.32,1)" }} />
+        {pct > 0 && (
+          <div style={{
+            position:"absolute", top:"50%", left:`${pct}%`, transform:"translate(-50%,-50%)",
+            width:14, height:14, borderRadius:"50%",
+            background:`radial-gradient(circle at 34% 28%, ${stage.c1}, ${stage.c2})`,
+            boxShadow:`0 0 8px 2px ${stage.c1}99`,
+            transition:"left 0.5s cubic-bezier(.23,1,.32,1)",
+          }} />
+        )}
       </div>
 
       <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>

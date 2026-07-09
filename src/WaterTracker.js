@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
+import { MOOD } from "./constants";
 const PK = {
   dark:"#6D1B3B", mid:"#AD1457",
   blush:"#F8BBD9", light:"#FCE4EC", pale:"#FFF0F5",
@@ -78,7 +79,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
             <span style={{ fontSize:11, color: done ? "#27ae60" : PK.mid, fontWeight:700 }}>{pct}%</span>
           </div>
           <div style={{ background:PK.blush, borderRadius:99, height:5 }}>
-            <div style={{ width:pct+"%", height:"100%", borderRadius:99, background: done ? "#27ae60" : PK.water, transition:"width 0.3s" }}/>
+            <div style={{ width:pct+"%", height:"100%", borderRadius:99, background: done ? `linear-gradient(90deg,${MOOD.good.c2},${MOOD.good.c1})` : `linear-gradient(90deg,${MOOD.water.c2},${MOOD.water.c1})`, transition:"width 0.3s" }}/>
           </div>
         </div>
         <span style={{ fontSize:11, color:PK.mid, fontWeight:700, minWidth:30, textAlign:"right" }}>{filled}🥛</span>
@@ -139,12 +140,21 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
         </span>
       </div>
 
-      <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:99, height:5, marginBottom:14 }}>
+      <div style={{ position:"relative", borderRadius:99, height:6, marginBottom:16, background:"rgba(255,255,255,0.15)" }}>
         <div style={{
-          width:pct+"%", height:"100%", borderRadius:99,
-          background:done?"#7FFFB0":"rgba(255,255,255,0.85)",
+          position:"absolute", left:0, top:0, height:"100%", width:pct+"%", borderRadius:99,
+          background: done ? `linear-gradient(90deg,${MOOD.good.c2},${MOOD.good.c1})` : `linear-gradient(90deg,${MOOD.water.c2},${MOOD.water.c1})`,
           transition:"width 0.4s cubic-bezier(.23,1,.32,1)",
         }}/>
+        {pct > 0 && (
+          <div style={{
+            position:"absolute", top:"50%", left:`${pct}%`, transform:"translate(-50%,-50%)",
+            width:14, height:14, borderRadius:"50%",
+            background: done ? `radial-gradient(circle at 34% 28%, ${MOOD.good.c1}, ${MOOD.good.c2})` : `radial-gradient(circle at 34% 28%, ${MOOD.water.c1}, ${MOOD.water.c2})`,
+            boxShadow: done ? `0 0 8px 2px ${MOOD.good.c1}99` : `0 0 8px 2px ${MOOD.water.c1}99`,
+            transition:"left 0.4s cubic-bezier(.23,1,.32,1)",
+          }} />
+        )}
       </div>
 
       <div ref={scrollRef} style={{

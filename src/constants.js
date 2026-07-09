@@ -22,6 +22,15 @@ export function isRecurringHoldActive(sessionDateStr) {
   return new Date() < recurringDeadline(sessionDateStr);
 }
 
+// Bendra gradientinė paletė progreso indikatoriams (žingsniai, vanduo, miegas,
+// šviesoforo įvertinimai) — vieninga vizualinė kalba visame appe.
+export const MOOD = {
+  bad:   { c1: "#FF7A6E", c2: "#E14A45" },
+  mid:   { c1: "#FFC15E", c2: "#F2A63D" },
+  good:  { c1: "#5CE3A6", c2: "#2FBE84" },
+  water: { c1: "#6EC6FF", c2: "#2F8FE0" },
+};
+
 export const PK = {
   dark:   "#6D1B3B",
   mid:    "#AD1457",
