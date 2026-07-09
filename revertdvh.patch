@@ -1,0 +1,18 @@
+git status
+git apply --check <tikras_failo_vardas>.patch
+git apply <tikras_failo_vardas>.patch
+git add -A
+git commit -m "Remove -webkit-overflow-scrolling:touch from root scroll container"
+git pushdiff --git a/public/index.html b/public/index.html
+index b6c6fab..e67aedb 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -21,7 +21,7 @@
+     <style>
+   * { box-sizing: border-box; margin: 0; padding: 0; }
+   html { height: -webkit-fill-available; }
+-  body { height: 100vh; height: -webkit-fill-available; height: 100dvh; background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
++  body { height: 100vh; height: -webkit-fill-available; background: #3a0a20; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+   #root { height: 100%; overflow-y: auto; }
+   input[type=number]::-webkit-inner-spin-button,
+   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
