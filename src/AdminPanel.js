@@ -207,12 +207,16 @@ function DayView({ clientId, date }) {
     </div>
   );
 }
-function ClientCard({ client, onOpen }) {
+function ClientCard({ client, pkgInfo, onOpen }) {
   const badge = !client.onboarding_done
     ? { text: "Anketa nebaigta", color: "#FFC15E", Icon: AlertTriangle }
     : client.track_progress === false
       ? { text: "Nenori rinkti duomenų", color: "rgba(255,255,255,0.45)", Icon: Ban }
       : null;
+
+  const lastOrderLabel = pkgInfo?.lastOrder
+    ? new Date(pkgInfo.lastOrder).toLocaleDateString("lt-LT", { year:"numeric", month:"short", day:"numeric" })
+    : null;
 
   return (
     <button onClick={onOpen} style={{
@@ -220,13 +224,13 @@ function ClientCard({ client, onOpen }) {
       border: "1px solid rgba(255,255,255,0.15)",
       borderLeft: badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
       borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
-      textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center",
+      textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap:10,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#6D1B3B,#AD1457)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth:0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#6D1B3B,#AD1457)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink:0 }}>
           {client.name?.charAt(0) || "?"}
         </div>
-        <div>
+        <div style={{ minWidth:0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</p>
           {badge ? (
             <p style={{ fontSize: 11, color: badge.color, fontWeight: 600, margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
@@ -235,9 +239,21 @@ function ClientCard({ client, onOpen }) {
           ) : (
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
           )}
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+            <Ticket size={10} />{lastOrderLabel ? `Paskutinė užklausa: ${lastOrderLabel}` : "Paketų neužsakinėjo"}
+          </p>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink:0 }}>
+        {pkgInfo?.active && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:4, background:"rgba(127,255,176,0.14)",
+            border:"1px solid rgba(127,255,176,0.35)", borderRadius:20, padding:"4px 9px",
+          }}>
+            <Ticket size={11} color="#7FFFB0" />
+            <span style={{ fontSize:11, fontWeight:700, color:"#7FFFB0" }}>{pkgInfo.active.total - pkgInfo.active.used}/{pkgInfo.active.total}</span>
+          </div>
+        )}
         <StreakBadge userId={client.id} compact />
         <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
       </div>
@@ -528,6 +544,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [showPresets, setShowPresets]   = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
+  const [pkgSummary,  setPkgSummary]    = useState({});
 
   function openAdminTab(tab) {
     setShowBookings(tab === "bookings");
@@ -552,6 +569,17 @@ export default function AdminPanel({ user, onLogout }) {
       pb.collection("training_packages").getFullList({ filter:'status="pending"', requestKey:null }).catch(()=>[]),
     ]).then(([bks, pkgs]) => {
       setAdminBadges({ bookings: bks.length, packages: pkgs.length });
+    });
+    // Kiekvieno kliento paskutinė paketo užklausa + aktyvus paketas
+    pb.collection("training_packages").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]).then(pkgs => {
+      const summary = {};
+      pkgs.forEach(p => {
+        if (!summary[p.client_id]) summary[p.client_id] = { lastOrder: p.created, active: null };
+        if (!summary[p.client_id].active && p.status === "approved" && p.credits_used < p.credits_total) {
+          summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
+        }
+      });
+      setPkgSummary(summary);
     });
   }, []);
 
@@ -617,7 +645,7 @@ export default function AdminPanel({ user, onLogout }) {
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
             </div>
           ) : clients.map(client => (
-            <ClientCard key={client.id} client={client} onOpen={() => setOpenClient(client)} />
+            <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
           ))}
         </div>
       </div>
