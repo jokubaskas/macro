@@ -64,22 +64,19 @@ export default function ClientMeasurements({ client, onClose }) {
       filter: `user_id="${client.id}"`, sort: "-measured_at", requestKey: null,
     }).catch(() => []);
 
-    // Jei nėra įrašų, patikrinti ar yra pradinis svoris registracijoje
-    if (meas.length === 0 && client.weight) {
+    // Pridėti registracijos svorį kaip papildomą tašką, jei tos dienos matavimo dar nėra
+    let combined = meas;
+    if (client.weight) {
       const regDate = client.created ? client.created.slice(0,10) : todayStr();
-      setHistory([{ id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }]);
-    } else if (client.weight) {
-      // Pridėti registracijos svorį kaip pirmą įrašą jei jo dar nėra
-      const regDate = client.created ? client.created.slice(0,10) : "0000-00-00";
       const hasReg = meas.some(m => m.measured_at?.slice(0,10) === regDate);
       if (!hasReg) {
-        setHistory([...meas, { id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }]);
-      } else {
-        setHistory(meas);
+        combined = [...meas, { id:"reg", measured_at: regDate, weight_measured: client.weight, _isReg: true }];
       }
-    } else {
-      setHistory(meas);
     }
+    // Rikiuoti pagal realią datą (naujausias pirmas) — registracijos taškas gali
+    // atsidurti bet kur, jei trenerė vėliau įveda atgalinės datos matavimą
+    combined = [...combined].sort((a, b) => (b.measured_at || "").localeCompare(a.measured_at || ""));
+    setHistory(combined);
     setLoading(false);
   }
 
