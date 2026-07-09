@@ -11,8 +11,19 @@ import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
 
-const TRAFFIC_EMOJI = { 1: "🔴", 2: "🟡", 3: "🟢" };
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
+const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
+
+function TrafficOrb({ v, size = 28 }) {
+  const c = TRAFFIC_COLOR[v];
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", margin: "0 auto",
+      background: c ? `radial-gradient(circle at 34% 28%, ${c[0]}, ${c[1]})` : "rgba(255,255,255,0.1)",
+      boxShadow: c ? `0 2px 8px ${c[0]}55` : "none",
+    }} />
+  );
+}
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -127,12 +138,12 @@ function DayView({ clientId, date }) {
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600 }}>📋 Check-in</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
-              <div style={{ fontSize: 24, marginBottom: 4 }}>{TRAFFIC_EMOJI[checkin.nutrition_score] || "–"}</div>
+              <div style={{ marginBottom: 8 }}><TrafficOrb v={checkin.nutrition_score} /></div>
               <div style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{TRAFFIC_LABEL[checkin.nutrition_score] || "–"}</div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Mityba</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
-              <div style={{ fontSize: 24, marginBottom: 4 }}>{TRAFFIC_EMOJI[checkin.wellbeing_score] || "–"}</div>
+              <div style={{ marginBottom: 8 }}><TrafficOrb v={checkin.wellbeing_score} /></div>
               <div style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{TRAFFIC_LABEL[checkin.wellbeing_score] || "–"}</div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Savijauta</div>
             </div>
