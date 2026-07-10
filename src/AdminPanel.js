@@ -36,6 +36,7 @@ function TrafficOrb({ v, size = 28 }) {
 }
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
 
 async function adminCreateUser(email, password) {
   const data = await pb.collection("users").create({
@@ -608,6 +609,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [showPackages, setShowPackages] = useState(false);
   const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
   const [pkgSummary,  setPkgSummary]    = useState({});
+  const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
 
@@ -645,6 +647,15 @@ export default function AdminPanel({ user, onLogout }) {
         }
       });
       setPkgSummary(summary);
+      const weekAgo = daysAgoStr(7);
+      const weekPackages = pkgs.filter(p => p.status === "approved" && (p.created || "") >= weekAgo).length;
+      setDashExtra(d => ({ ...d, weekPackages }));
+    });
+    // Šiandienos rezervacijos
+    const today = todayStr();
+    pb.collection("bookings").getFullList({ filter:`date="${today}"`, requestKey:null }).catch(()=>[]).then(bks => {
+      const todayBookings = bks.filter(b => b.status === "approved").length;
+      setDashExtra(d => ({ ...d, todayBookings }));
     });
   }, []);
 
@@ -689,6 +700,8 @@ export default function AdminPanel({ user, onLogout }) {
             {[
               { v: clients.length, l: "Klientai iš viso", bg: "linear-gradient(135deg,#6D1B3B,#AD1457)", c: "#fff" },
               { v: clients.filter(c => c.onboarding_done).length, l: "Anketa baigta", bg: "rgba(255,255,255,0.08)", c: "#fff" },
+              { v: dashExtra.todayBookings, l: "Šiandien rezervacijų", bg: "rgba(255,255,255,0.08)", c: "#fff" },
+              { v: dashExtra.weekPackages, l: "Šią savaitę parduota paketų", bg: "rgba(255,255,255,0.08)", c: "#fff" },
             ].map((s, i) => (
               <div key={i} style={{ background: s.bg, borderRadius: 14, padding: "14px 10px", textAlign: "center", border: "1px solid rgba(255,255,255,0.15)" }}>
                 <div style={{ fontSize: 26, fontWeight: 700, color: s.c }}>{s.v}</div>

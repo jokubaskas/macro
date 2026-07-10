@@ -15,12 +15,87 @@ import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
+
+// ── Savaitės apžvalgos juosta ─────────────────────────────────────────────────
+function WeeklyRecap({ userId }) {
+  const [data, setData] = useState(null); // null = kraunama/nėra ką rodyti, false = nėra duomenų
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const today = todayStr();
+      const from = daysAgoStr(13);
+      const weekStart = daysAgoStr(6), prevStart = from, prevEnd = daysAgoStr(7);
+      const inRange = (d, a, b) => d >= a && d <= b;
+
+      const [checkins, waters, sleeps] = await Promise.all([
+        pb.collection("daily_checkins").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}" && is_done=true`, requestKey:null }).catch(()=>[]),
+        pb.collection("water_log").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
+        pb.collection("sleep_log").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
+      ]);
+      if (cancelled) return;
+
+      const thisWeekCheckins = checkins.filter(c => inRange(c.date, weekStart, today)).length;
+      const thisWeekWater = waters.filter(w => inRange(w.date, weekStart, today));
+      const prevWeekWater = waters.filter(w => inRange(w.date, prevStart, prevEnd));
+      const thisWeekSleep = sleeps.filter(s => inRange(s.date, weekStart, today) && s.hours_slept).map(s => s.hours_slept);
+      const prevWeekSleep = sleeps.filter(s => inRange(s.date, prevStart, prevEnd) && s.hours_slept).map(s => s.hours_slept);
+
+      const avgWaterThis = thisWeekWater.length ? thisWeekWater.reduce((a,w)=>a+(w.ml||0),0)/thisWeekWater.length : null;
+      const avgWaterPrev = prevWeekWater.length ? prevWeekWater.reduce((a,w)=>a+(w.ml||0),0)/prevWeekWater.length : null;
+      const waterChangePct = (avgWaterThis != null && avgWaterPrev) ? Math.round((avgWaterThis - avgWaterPrev) / avgWaterPrev * 100) : null;
+
+      const avgSleepThis = thisWeekSleep.length ? thisWeekSleep.reduce((a,v)=>a+v,0)/thisWeekSleep.length : null;
+      const avgSleepPrev = prevWeekSleep.length ? prevWeekSleep.reduce((a,v)=>a+v,0)/prevWeekSleep.length : null;
+      let sleepTrend = null;
+      if (avgSleepThis != null) {
+        if (avgSleepPrev == null) sleepTrend = "new";
+        else { const diff = avgSleepThis - avgSleepPrev; sleepTrend = Math.abs(diff) < 0.4 ? "stable" : diff > 0 ? "up" : "down"; }
+      }
+
+      const hasData = thisWeekCheckins > 0 || thisWeekWater.length > 0 || thisWeekSleep.length > 0;
+      setData(hasData ? { checkins: thisWeekCheckins, waterChangePct, avgWaterThis, sleepTrend } : false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  if (!data) return null;
+
+  const parts = [];
+  if (data.waterChangePct != null) {
+    parts.push({ Icon:Droplet, text:`vanduo ${data.waterChangePct>0?"+":""}${data.waterChangePct}%`, color: data.waterChangePct>=0?"#7FFFB0":"#FF8888" });
+  } else if (data.avgWaterThis != null) {
+    parts.push({ Icon:Droplet, text:`vanduo ${(data.avgWaterThis/1000).toFixed(1)}L/d.`, color:"#6EC6FF" });
+  }
+  if (data.sleepTrend) {
+    const label = data.sleepTrend==="stable" ? "miegas stabilus" : data.sleepTrend==="up" ? "miegas gerėja" : data.sleepTrend==="down" ? "miegas prastėja" : "miegas sekamas";
+    parts.push({ Icon:Moon, text:label, color: data.sleepTrend==="up"?"#7FFFB0":data.sleepTrend==="down"?"#FF8888":"#B39DFF" });
+  }
+  parts.push({ Icon:Check, text:`${data.checkins}/7 check-in`, color: data.checkins>=5?"#7FFFB0":"rgba(255,255,255,0.75)" });
+
+  return (
+    <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
+      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 10px", display:"flex", alignItems:"center", gap:6 }}>
+        <Sparkle size={12} />Savaitės apžvalga
+      </p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+        {parts.map((p, i) => (
+          <span key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:700, color:p.color, background:"rgba(255,255,255,0.06)", borderRadius:99, padding:"6px 12px" }}>
+            <p.Icon size={12} />{p.text}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Kalendoriaus modalas ──────────────────────────────────────────────────────
 function DatePickerModal({ value, minDate, onSelect, onClose }) {
@@ -264,6 +339,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
         {/* Streak */}
         {isToday && profile?.track_progress && <StreakBadge userId={user.id} />}
+
+        {/* Savaitės apžvalga */}
+        {isToday && profile?.track_progress && <WeeklyRecap userId={user.id} />}
 
         {/* Push pranešimai */}
         <PushPermissionPrompt userId={user.id} />

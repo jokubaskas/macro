@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
 import { MOOD } from "./constants";
 import { Moon, CheckCircle, AlertTriangle, Heart, Lock, Timer, Save } from "./ui/icons";
+import { ProgressBar } from "./ui/kit";
 
 function getRecommended(age) {
   if (!age) return [7, 9];
@@ -210,9 +211,7 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
             </span>
             <span style={{ fontSize:10, color:statusColor, fontWeight:700 }}>Rek. {recMin}–{recMax}h</span>
           </div>
-          <div style={{ background:"#f0f0f0", borderRadius:99, height:5 }}>
-            <div style={{ width:savedHours?Math.min(100,(savedHours/12)*100)+"%":"0%", height:"100%", borderRadius:99, background:statusColor, transition:"width 0.3s" }}/>
-          </div>
+          <ProgressBar pct={savedHours ? Math.min(100, (savedHours / 12) * 100) : 0} fill={statusColor} height={5} />
         </div>
       </div>
     );
