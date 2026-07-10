@@ -230,11 +230,19 @@ function ClientCard({ client, pkgInfo, onOpen }) {
   const isBdayToday = daysToBday === 0;
   const isBdaySoon  = daysToBday !== null && daysToBday >= 1 && daysToBday <= 7;
 
+  // Neapmokestintas (nepirkęs paketo) klientas — bent 30d. registruotas, o
+  // paskutinis užsakymas (jei buvo) irgi senesnis nei 30d. Naujiems klientams
+  // nerodome, kad nebūtų klaidingo įspėjimo iškart po registracijos.
+  const DAY_MS = 86400000;
+  const clientAgeDays = client.created ? Math.floor((Date.now() - new Date(client.created)) / DAY_MS) : 0;
+  const daysSinceOrder = pkgInfo?.lastOrder ? Math.floor((Date.now() - new Date(pkgInfo.lastOrder)) / DAY_MS) : null;
+  const noRecentPurchase = clientAgeDays >= 30 && (daysSinceOrder === null || daysSinceOrder >= 30);
+
   return (
     <button onClick={onOpen} style={{
       position:"relative", width: "100%", background: "rgba(255,255,255,0.08)",
-      border: isBdayToday ? "1px solid rgba(255,215,0,0.5)" : "1px solid rgba(255,255,255,0.15)",
-      borderLeft: isBdayToday ? "3px solid #FFD700" : badge ? `3px solid ${badge.color}` : "1px solid rgba(255,255,255,0.15)",
+      border: isBdayToday ? "1px solid rgba(255,215,0,0.5)" : noRecentPurchase ? "1px solid rgba(255,90,90,0.4)" : "1px solid rgba(255,255,255,0.15)",
+      borderLeft: isBdayToday ? "3px solid #FFD700" : badge ? `3px solid ${badge.color}` : noRecentPurchase ? "3px solid rgba(255,90,90,0.6)" : "1px solid rgba(255,255,255,0.15)",
       borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
       textAlign: "left", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap:10,
       animation: isBdayToday ? "bdayCardGlow 2s ease-in-out infinite" : "none",
@@ -262,7 +270,7 @@ function ClientCard({ client, pkgInfo, onOpen }) {
           ) : (
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>{GOALS.find(g => g.id === client.goal)?.label || "–"}</p>
           )}
-          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+          <p style={{ fontSize: 10, color: noRecentPurchase ? "#FF8888" : "rgba(255,255,255,0.35)", fontWeight: noRecentPurchase ? 700 : 400, margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
             <Ticket size={10} />{lastOrderLabel ? `Paskutinė užklausa: ${lastOrderLabel}` : "Paketų neužsakinėjo"}
           </p>
         </div>
