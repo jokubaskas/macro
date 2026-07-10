@@ -451,6 +451,29 @@ export default function BookingAdmin({ onClose }) {
     setBookings(prev => prev.map(b => b.id===id ? {...b,status} : b));
   }
 
+  // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
+  // kalendorių — nebereikia atskiro veiksmo ir vėliau nebeaišku, ar jau pridėta.
+  async function handleApprove(booking, clientName) {
+    await pb.collection("bookings").update(booking.id, { status:"approved", added_to_calendar:true }).catch(()=>{});
+    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"approved",added_to_calendar:true} : b));
+    downloadIcal(booking, clientName);
+  }
+
+  async function handleAddToCalendar(booking, clientName) {
+    downloadIcal(booking, clientName);
+    await pb.collection("bookings").update(booking.id, { added_to_calendar:true }).catch(()=>{});
+    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,added_to_calendar:true} : b));
+  }
+
+  // Vienkartinis sutvarkymas senoms rezervacijoms, kurios jau realiai buvo
+  // rankiniu būdu įtrauktos į kalendorių prieš atsirandant šiam žymėjimui —
+  // pažymi visas kaip pridėtas, be pakartotinio atsisiuntimo.
+  async function handleMarkAllAdded() {
+    const toMark = bookings.filter(b => b.status==="approved" && !b.added_to_calendar);
+    await Promise.all(toMark.map(b => pb.collection("bookings").update(b.id, { added_to_calendar:true }).catch(()=>{})));
+    setBookings(prev => prev.map(b => (b.status==="approved" && !b.added_to_calendar) ? {...b,added_to_calendar:true} : b));
+  }
+
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
   if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
 
@@ -476,6 +499,12 @@ export default function BookingAdmin({ onClose }) {
             </button>
           ))}
         </div>
+
+        {filter==="approved" && bookings.some(b => b.status==="approved" && !b.added_to_calendar) && (
+          <button onClick={handleMarkAllAdded} style={{width:"100%",padding:"10px",marginBottom:12,borderRadius:12,border:"1.5px dashed rgba(127,255,176,0.35)",background:"rgba(127,255,176,0.06)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <CheckCircle size={13} />Jau anksčiau pridėjau visas rankiniu būdu — pažymėti visas kaip pridėtas
+          </button>
+        )}
 
         {statusFiltered.length > 8 && (
           <SearchInput value={search} onChange={v=>{setSearch(v);setVisibleCount(8);}} placeholder="Ieškoti kliento pagal vardą..." />
@@ -518,14 +547,20 @@ export default function BookingAdmin({ onClose }) {
               {b.status==="pending" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
                   <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
-                  <button onClick={()=>updateStatus(b.id,"approved")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti</button>
+                  <button onClick={()=>handleApprove(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti ir įtraukti į kalendorių</button>
                 </div>
               )}
               {b.status==="approved" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>downloadIcal(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                    <Phone size={13} />Įtraukti į kalendorių
-                  </button>
+                  {b.added_to_calendar ? (
+                    <div style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.25)",background:"rgba(127,255,176,0.05)",color:"rgba(127,255,176,0.7)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      <CheckCircle size={13} />Kalendoriuje
+                    </div>
+                  ) : (
+                    <button onClick={()=>handleAddToCalendar(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"1px solid rgba(127,255,176,0.4)",background:"rgba(127,255,176,0.1)",color:"#7FFFB0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      <Phone size={13} />Įtraukti į kalendorių
+                    </button>
+                  )}
                   <AdminCancelButton booking={b} clientName={client?.name||"Klientas"} onCancelled={load} />
                 </div>
               )}
