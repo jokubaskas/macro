@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
-import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check } from "./ui/icons";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -91,30 +91,41 @@ function TimeSelect({ value, onChange }) {
   );
 }
 
-// ── Konkrečių laikų blokavimas ──────────────────────────────────────────────
+// ── Konkrečių laikų / laikotarpių (atostogų) blokavimas ─────────────────────
+const ONLINE_COACHING_TEMPLATE = "Šiuo metu atostogauju ir gyvai treniruočių nevedu, bet galite kreiptis dėl online coaching — parašykite man.";
+
 function ScheduleExceptions() {
   const [exceptions, setExceptions] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [showAdd, setShowAdd]       = useState(false);
-  const [form, setForm]             = useState({ date: todayStr(), start_time:"10:00", end_time:"11:00", reason:"" });
+  const [form, setForm]             = useState({ date: todayStr(), end_date:"", all_day:false, start_time:"10:00", end_time:"11:00", reason:"", client_message:"" });
   const [saving, setSaving]         = useState(false);
 
   function load() {
     setLoading(true);
     pb.collection("schedule_exceptions").getFullList({ sort:"date,start_time", requestKey:null })
-      .then(data => { setExceptions(data.filter(e => e.date >= todayStr())); setLoading(false); })
+      .then(data => { setExceptions(data.filter(e => (e.end_date || e.date) >= todayStr())); setLoading(false); })
       .catch(()=>setLoading(false));
   }
 
   useEffect(() => { load(); }, []);
 
   async function handleAdd() {
-    if (!form.date || !form.start_time || !form.end_time) return;
+    if (!form.date) return;
     setSaving(true);
-    await pb.collection("schedule_exceptions").create(form).catch(()=>{});
+    const data = {
+      date: form.date,
+      end_date: form.end_date || form.date,
+      all_day: form.all_day,
+      start_time: form.all_day ? "00:00" : form.start_time,
+      end_time: form.all_day ? "23:59" : form.end_time,
+      reason: form.reason,
+      client_message: form.client_message.trim(),
+    };
+    await pb.collection("schedule_exceptions").create(data).catch(()=>{});
     setSaving(false);
     setShowAdd(false);
-    setForm({ date: todayStr(), start_time:"10:00", end_time:"11:00", reason:"" });
+    setForm({ date: todayStr(), end_date:"", all_day:false, start_time:"10:00", end_time:"11:00", reason:"", client_message:"" });
     load();
   }
 
@@ -125,8 +136,8 @@ function ScheduleExceptions() {
 
   return (
     <div style={{marginTop:24}}>
-      <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Konkrečių laikų blokavimas</p>
-      <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:12}}>Pvz. atostogos, asmeniniai reikalai, konkreti valanda kažkurią dieną kai esate užimta.</p>
+      <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Laikų / atostogų blokavimas</p>
+      <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:12}}>Pažymėkite konkrečią valandą arba visą laikotarpį (pvz. atostogas) — klientai tada tų dienų negalės rezervuoti ir pamatys jūsų žinutę.</p>
 
       {loading && <p style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Kraunama...</p>}
 
@@ -134,40 +145,75 @@ function ScheduleExceptions() {
         <p style={{color:"rgba(255,255,255,0.35)",fontSize:12,marginBottom:12}}>Blokuotų laikų nėra</p>
       )}
 
-      {exceptions.map(ex => (
-        <div key={ex.id} style={{background:"rgba(255,100,100,0.08)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5}}><Calendar size={12} />{ex.date} · {ex.start_time}–{ex.end_time}</p>
-            {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{ex.reason}</p>}
+      {exceptions.map(ex => {
+        const isRange = ex.end_date && ex.end_date !== ex.date;
+        return (
+          <div key={ex.id} style={{background:"rgba(255,100,100,0.08)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+            <div style={{minWidth:0}}>
+              <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                <Calendar size={12} />{ex.date}{isRange && <>–{ex.end_date}</>}
+                {ex.all_day
+                  ? <span style={{fontSize:9,fontWeight:700,color:"#FFD37A",background:"rgba(255,211,122,0.15)",borderRadius:6,padding:"2px 6px",display:"inline-flex",alignItems:"center",gap:3}}><Sun size={9} />Visa diena</span>
+                  : <span style={{fontWeight:400,color:"rgba(255,255,255,0.6)"}}>· {ex.start_time}–{ex.end_time}</span>}
+              </p>
+              {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:"0 0 2px"}}>{ex.reason}</p>}
+              {ex.client_message && <p style={{fontSize:11,color:"#7FC9FF",margin:0,display:"flex",alignItems:"flex-start",gap:4}}><MessageCircle size={11} style={{marginTop:1,flexShrink:0}} />{ex.client_message}</p>}
+            </div>
+            <button onClick={()=>handleDelete(ex.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0}}><Close size={12} /></button>
           </div>
-          <button onClick={()=>handleDelete(ex.id)} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12}}><Close size={12} /></button>
-        </div>
-      ))}
+        );
+      })}
 
       {!showAdd ? (
         <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"11px",borderRadius:12,border:"2px dashed rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>
-          + Blokuoti laiką
+          + Blokuoti laiką arba laikotarpį
         </button>
       ) : (
         <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:14,marginTop:4}}>
-          <div style={{marginBottom:10}}>
-            <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Data</label>
-            <input type="date" value={form.date} min={todayStr()} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={{...inp,width:"100%"}}/>
-          </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
             <div style={{flex:1,minWidth:0}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo</label>
-              <TimeSelect value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))} />
+              <input type="date" value={form.date} min={todayStr()} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={{...inp,width:"100%"}}/>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki</label>
-              <TimeSelect value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))} />
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki (nebūtina)</label>
+              <input type="date" value={form.end_date} min={form.date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))} style={{...inp,width:"100%"}}/>
             </div>
           </div>
-          <div style={{marginBottom:12}}>
-            <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Priežastis (nebūtina)</label>
-            <input type="text" value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="pvz. Asmeninis reikalas" style={{...inp,width:"100%"}}/>
+
+          <button onClick={()=>setForm(f=>({...f,all_day:!f.all_day}))} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:form.all_day?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:10}}>
+            <Sun size={13} />{form.all_day ? "Visa diena (pvz. atostogos)" : "Tik konkreti valanda"}
+          </button>
+
+          {!form.all_day && (
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <div style={{flex:1,minWidth:0}}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Nuo valandos</label>
+                <TimeSelect value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))} />
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Iki valandos</label>
+                <TimeSelect value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))} />
+              </div>
+            </div>
+          )}
+
+          <div style={{marginBottom:10}}>
+            <label style={{fontSize:11,color:"rgba(255,255,255,0.6)",display:"block",marginBottom:5}}>Priežastis (matote tik jūs)</label>
+            <input type="text" value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="pvz. Atostogos" style={{...inp,width:"100%"}}/>
           </div>
+
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>Žinutė klientams (nebūtina, matys jie)</label>
+              <button onClick={()=>setForm(f=>({...f,client_message:ONLINE_COACHING_TEMPLATE}))} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"3px 8px",color:"rgba(255,255,255,0.7)",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                <Laptop size={10} />+ online coaching
+              </button>
+            </div>
+            <textarea value={form.client_message} onChange={e=>setForm(f=>({...f,client_message:e.target.value}))} placeholder="pvz. Atostogauju, bet galite kreiptis dėl online coaching..." rows={3}
+              style={{...inp,width:"100%",resize:"none"}}/>
+          </div>
+
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Atšaukti</button>
             <button onClick={handleAdd} disabled={saving} style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
-import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle } from "./ui/icons";
+import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle, Sun, MessageCircle, Laptop } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
@@ -160,10 +160,17 @@ export default function BookingClient({ user, onClose }) {
   function isSlotBlocked(dateStr, slotStart, slotEnd) {
     const slotS = timeToMin(slotStart), slotE = timeToMin(slotEnd);
     return exceptions.some(ex => {
-      if (ex.date !== dateStr) return false;
+      const exEnd = ex.end_date || ex.date;
+      if (dateStr < ex.date || dateStr > exEnd) return false;
+      if (ex.all_day) return true;
       const exS = timeToMin(ex.start_time), exE = timeToMin(ex.end_time);
       return slotS < exE && slotE > exS; // persidengia
     });
+  }
+
+  // Ar visą šią dieną trenerė nepasiekiama (pvz. atostogos) — ir jos žinutė klientui.
+  function vacationForDate(dateStr) {
+    return exceptions.find(ex => ex.all_day && dateStr >= ex.date && dateStr <= (ex.end_date || ex.date)) || null;
   }
 
   // Ar šiai datai/laikui yra priskirtas kažkieno įprastas (recurring) laikas,
@@ -257,6 +264,7 @@ export default function BookingClient({ user, onClose }) {
   }
 
   const today = todayStr();
+  const activeVacation = vacationForDate(today);
   const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
   const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
   const offset = firstDay===0 ? 6 : firstDay-1;
@@ -344,6 +352,18 @@ export default function BookingClient({ user, onClose }) {
         {/* ── Kalendorius ── */}
         {view==="calendar" && (
           <div>
+            {/* Trenerė šiuo metu nepasiekiama (atostogos ir pan.) */}
+            {activeVacation && (
+              <div style={{background:"rgba(255,180,60,0.1)",border:"1px solid rgba(255,180,60,0.3)",borderRadius:16,padding:"14px 16px",marginBottom:16}}>
+                <p style={{fontSize:13,fontWeight:700,color:"#FFB43C",margin:"0 0 4px",display:"flex",alignItems:"center",gap:6}}>
+                  <Sun size={14} />Trenerė šiuo metu nepasiekiama
+                </p>
+                <p style={{fontSize:12,color:"rgba(255,255,255,0.7)",margin:0,display:"flex",alignItems:"flex-start",gap:5}}>
+                  <MessageCircle size={12} style={{marginTop:2,flexShrink:0}} />
+                  {activeVacation.client_message || "Šiuo metu gyvų treniruočių nevedu — susisiekite dėl daugiau informacijos."}
+                </p>
+              </div>
+            )}
             {/* Nėra paketo perspėjimas */}
             {!activePackage && (
               <div style={{background:"rgba(255,200,0,0.08)",border:"1px solid rgba(255,200,0,0.25)",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
@@ -373,22 +393,25 @@ export default function BookingClient({ user, onClose }) {
                   const isPast=ds<today;
                   const isMyRecurring = !isPast && hasMyPendingRecurringOn(ds);
                   const hasApproved = hasMyApprovedOn(ds);
-                  const clickable = avail && !isPast;
+                  const isVacation = !isPast && !hasApproved && !!vacationForDate(ds);
+                  const clickable = (avail || isVacation) && !isPast;
 
                   let bg = "transparent", border = "none", dot = null;
-                  if (hasApproved)      { bg = "rgba(46,204,113,0.35)";  border = "1.5px solid #2ECC71"; dot = "#2ECC71"; }
-                  else if (isMyRecurring) { bg = "rgba(255,215,0,0.22)"; border = "1.5px solid #FFD700"; dot = "#FFD700"; }
-                  else if (avail)        { bg = "rgba(173,20,87,0.3)";   dot = "#AD1457"; }
+                  if (hasApproved)        { bg = "rgba(46,204,113,0.35)";  border = "1.5px solid #2ECC71"; dot = "#2ECC71"; }
+                  else if (isMyRecurring) { bg = "rgba(255,215,0,0.22)";   border = "1.5px solid #FFD700"; dot = "#FFD700"; }
+                  else if (isVacation)    { bg = "rgba(255,180,60,0.16)";  border = "1.5px solid rgba(255,180,60,0.4)"; dot = "#FFB43C"; }
+                  else if (avail)         { bg = "rgba(173,20,87,0.3)";   dot = "#AD1457"; }
 
                   return (
                     <button key={d} onClick={()=>{ if(!clickable)return; setSelectedDate(ds); setSelectedSlot(null); setView("book"); }}
                       style={{aspectRatio:"1",borderRadius:8,border:isSel?"2px solid rgba(255,255,255,0.9)":border,
                         background:isSel?"rgba(255,255,255,0.25)":bg,
-                        cursor:clickable?"pointer":"default",color:isPast&&!hasApproved?"rgba(255,255,255,0.15)":(avail||hasApproved)?"#fff":"rgba(255,255,255,0.3)",
-                        fontSize:12,fontWeight:(avail||hasApproved)?700:400,fontFamily:"inherit",position:"relative"}}>
+                        cursor:clickable?"pointer":"default",color:isPast&&!hasApproved?"rgba(255,255,255,0.15)":(avail||hasApproved||isVacation)?"#fff":"rgba(255,255,255,0.3)",
+                        fontSize:12,fontWeight:(avail||hasApproved||isVacation)?700:400,fontFamily:"inherit",position:"relative"}}>
                       {d}
                       {hasApproved && <span style={{position:"absolute",top:-2,right:0}}><CheckCircle size={9} /></span>}
                       {isMyRecurring && !hasApproved && <span style={{position:"absolute",top:-2,right:0}}><Sparkle size={9} /></span>}
+                      {isVacation && !isMyRecurring && <span style={{position:"absolute",top:-2,right:0}}><Sun size={9} /></span>}
                       {dot && <div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:dot}}/>}
                     </button>
                   );
@@ -398,7 +421,8 @@ export default function BookingClient({ user, onClose }) {
             <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",textAlign:"center",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:4}}>
               <span>Rožinė — laisvi laikai ·</span>
               <Sparkle size={11} /><span>geltona — laukia patvirtinimo ·</span>
-              <CheckCircle size={11} /><span>žalia — treniruotė patvirtinta/įvykusi. Pasirinkite dieną.</span>
+              <CheckCircle size={11} /><span>žalia — treniruotė patvirtinta/įvykusi ·</span>
+              <Sun size={11} /><span>oranžinė — trenerė nepasiekiama. Pasirinkite dieną.</span>
             </p>
           </div>
         )}
@@ -436,9 +460,19 @@ export default function BookingClient({ user, onClose }) {
             )}
 
             {availableSlots.length===0 ? (
-              <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"24px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>
-                <p style={{color:"rgba(255,255,255,0.5)",fontSize:14}}>Šią dieną laisvų laikų nėra</p>
-              </div>
+              vacationForDate(selectedDate) ? (
+                <div style={{background:"rgba(255,180,60,0.1)",border:"1.5px solid rgba(255,180,60,0.3)",borderRadius:16,padding:"20px 18px",textAlign:"center"}}>
+                  <Sun size={26} color="#FFB43C" style={{marginBottom:8}} />
+                  <p style={{fontSize:14,fontWeight:700,color:"#FFB43C",margin:"0 0 6px"}}>Šią dieną trenerė nepasiekiama</p>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.7)",margin:0,lineHeight:1.5}}>
+                    {vacationForDate(selectedDate).client_message || "Gyvų treniruočių šią dieną nevedu — susisiekite dėl daugiau informacijos."}
+                  </p>
+                </div>
+              ) : (
+                <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"24px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>
+                  <p style={{color:"rgba(255,255,255,0.5)",fontSize:14}}>Šią dieną laisvų laikų nėra</p>
+                </div>
+              )
             ) : (
               <>
                 <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 10px"}}>Pasirinkite laiką</p>

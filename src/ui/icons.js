@@ -269,6 +269,19 @@ export function Laptop(props) {
   </IconBase>;
 }
 
+export function Sun(props) {
+  return <IconBase {...props}>
+    <circle cx="12" cy="12" r="4.5"/>
+    <path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+  </IconBase>;
+}
+
+export function MessageCircle(props) {
+  return <IconBase {...props}>
+    <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-2.9-.35-4.15-1L3 20l1.1-4.1A8.44 8.44 0 0 1 3.5 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/>
+  </IconBase>;
+}
+
 export function AlertTriangle(props) {
   return <IconBase {...props}>
     <path d="M12 4.2 21.5 20h-19L12 4.2Z"/>
