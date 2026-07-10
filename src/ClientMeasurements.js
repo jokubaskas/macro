@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar } from "./ui/icons";
+import { ShowMoreButton } from "./ui/kit";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
 
@@ -54,6 +55,7 @@ export default function ClientMeasurements({ client, onClose }) {
   const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(8);
   const [form, setForm]         = useState({ measured_at: todayStr(), weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arm_cm:"", thigh_cm:"", trainer_note:"" });
   const [saving, setSaving]     = useState(false);
 
@@ -170,7 +172,7 @@ export default function ClientMeasurements({ client, onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"16px 0" }}>Matavimų dar nėra</p>
         )}
 
-        {history.map((m, idx) => (
+        {history.slice(0, visibleCount).map((m, idx) => (
           <div key={m.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8, borderLeft:`3px solid ${idx===0?"#AD1457":"rgba(255,255,255,0.1)"}` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
               <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:5 }}>
@@ -192,6 +194,7 @@ export default function ClientMeasurements({ client, onClose }) {
             )}
           </div>
         ))}
+        <ShowMoreButton remaining={history.length - visibleCount} onClick={() => setVisibleCount(v => v + 8)} />
       </div>
     </div>
   );

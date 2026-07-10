@@ -1,6 +1,8 @@
 // Bendri, pakartotinai naudojami UI mikro-animacijų elementai — vieninga
 // vizualinė kalba visame appe (be jokios išorinės animacijos bibliotekos).
 
+import { Search } from "./icons";
+
 export const GLOBAL_KEYFRAMES = `
 @keyframes shimmerMove { from { transform: translateX(-120%); } to { transform: translateX(220%); } }
 @keyframes fadeInUp { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: translateY(0); } }
@@ -58,6 +60,35 @@ export function LoadingScreen({ background, textColor, minHeight = "100vh" }) {
         }} />
         <p style={{ color:textColor, fontSize:14, fontWeight:600, letterSpacing:"0.02em" }}>Kraunama...</p>
       </div>
+    </div>
+  );
+}
+
+// Mygtukas ilgiems sąrašams — rodo tik dalį įrašų, kol paspaudžiamas.
+export function ShowMoreButton({ remaining, onClick, label = "Rodyti daugiau" }) {
+  if (remaining <= 0) return null;
+  return (
+    <button onClick={onClick} style={{
+      width:"100%", padding:"11px", marginTop:2, marginBottom:8, borderRadius:12,
+      border:"1.5px dashed rgba(255,255,255,0.25)", background:"rgba(255,255,255,0.05)",
+      color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+    }}>
+      {label} ({remaining})
+    </button>
+  );
+}
+
+// Vieningas paieškos laukelis su lupa — filtruoja ilgus sąrašus.
+export function SearchInput({ value, onChange, placeholder = "Ieškoti..." }) {
+  return (
+    <div style={{ position:"relative", marginBottom:12 }}>
+      <Search size={14} color="rgba(255,255,255,0.4)" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} />
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{
+          width:"100%", padding:"10px 12px 10px 34px", borderRadius:12,
+          border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)",
+          color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box",
+        }} />
     </div>
   );
 }

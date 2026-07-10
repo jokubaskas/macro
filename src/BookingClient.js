@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
 import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle } from "./ui/icons";
+import { ShowMoreButton } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį","Penktadienį","Šeštadienį","Sekmadienį"];
@@ -105,6 +106,7 @@ export default function BookingClient({ user, onClose }) {
   const [notes, setNotes]           = useState("");
   const [saving, setSaving]         = useState(false);
   const [view, setView]             = useState("calendar"); // calendar | book | mybookings
+  const [visibleBookings, setVisibleBookings] = useState(8);
   const [calMonth, setCalMonth]     = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
   const [activePackage, setActivePackage] = useState(null);
   const [recurringSlots, setRecurringSlots] = useState([]);
@@ -311,7 +313,7 @@ export default function BookingClient({ user, onClose }) {
             </button>
             <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 12px"}}>Mano rezervacijos</p>
             {myBookings.length===0 && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Dar nėra rezervacijų</p>}
-            {myBookings.map(b => {
+            {myBookings.slice(0, visibleBookings).map(b => {
               const si = STATUS_INFO[b.status];
               return (
                 <div key={b.id} style={{background:si.bg,borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid rgba(255,255,255,0.1)"}}>
@@ -335,6 +337,7 @@ export default function BookingClient({ user, onClose }) {
                 </div>
               );
             })}
+            <ShowMoreButton remaining={myBookings.length - visibleBookings} onClick={() => setVisibleBookings(v => v + 8)} />
           </div>
         )}
 

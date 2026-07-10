@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal } from "./WorkoutPlanBuilder";
 import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot } from "./ui/icons";
+import { ShowMoreButton } from "./ui/kit";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
 
@@ -84,6 +85,7 @@ export default function LiveTraining({ client, onClose }) {
   const [showPicker, setShowPicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
   const [note, setNote] = useState("");
+  const [visiblePast, setVisiblePast] = useState(8);
   const [savingNote, setSavingNote] = useState(false);
 
   const load = useCallback(async () => {
@@ -220,10 +222,13 @@ export default function LiveTraining({ client, onClose }) {
             {pastSessions.length === 0 ? (
               <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"12px 0" }}>Istorijos dar nėra</p>
             ) : (
-              pastSessions.map(s => (
-                <PastSession key={s.id} session={s} expanded={expandedId === s.id}
-                  exercises={pastExercises[s.id]} onToggle={() => togglePast(s)} />
-              ))
+              <>
+                {pastSessions.slice(0, visiblePast).map(s => (
+                  <PastSession key={s.id} session={s} expanded={expandedId === s.id}
+                    exercises={pastExercises[s.id]} onToggle={() => togglePast(s)} />
+                ))}
+                <ShowMoreButton remaining={pastSessions.length - visiblePast} onClick={() => setVisiblePast(v => v + 8)} />
+              </>
             )}
           </>
         )}

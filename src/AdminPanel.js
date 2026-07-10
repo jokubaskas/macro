@@ -12,6 +12,7 @@ import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
+import { SearchInput, ShowMoreButton } from "./ui/kit";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `
@@ -607,6 +608,8 @@ export default function AdminPanel({ user, onLogout }) {
   const [showPackages, setShowPackages] = useState(false);
   const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
   const [pkgSummary,  setPkgSummary]    = useState({});
+  const [clientSearch, setClientSearch] = useState("");
+  const [visibleClients, setVisibleClients] = useState(8);
 
   function openAdminTab(tab) {
     setShowBookings(tab === "bookings");
@@ -706,9 +709,29 @@ export default function AdminPanel({ user, onLogout }) {
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
             </div>
-          ) : clients.map(client => (
-            <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
-          ))}
+          ) : (() => {
+            const q = clientSearch.trim().toLowerCase();
+            const filteredClients = q
+              ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
+              : clients;
+            return (
+              <>
+                {clients.length > 8 && (
+                  <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
+                )}
+                {filteredClients.length === 0 ? (
+                  <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "16px 0", fontSize: 13 }}>Klientų pagal paiešką nerasta</p>
+                ) : (
+                  <>
+                    {filteredClients.slice(0, visibleClients).map(client => (
+                      <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
+                    ))}
+                    <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 

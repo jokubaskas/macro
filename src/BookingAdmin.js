@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
 import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check } from "./ui/icons";
+import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
 const STATUS_LABEL = { pending:{Icon:Timer,label:"Laukia"}, approved:{Icon:CheckCircle,label:"Patvirtinta"}, rejected:{Icon:Close,label:"Atmesta"}, cancelled:{Icon:Ban,label:"Atšaukta"} };
@@ -381,6 +382,8 @@ export default function BookingAdmin({ onClose }) {
   const [clients, setClients]     = useState({});
   const [loading, setLoading]     = useState(true);
   const [filter, setFilter]       = useState("pending");
+  const [search, setSearch]       = useState("");
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -405,7 +408,9 @@ export default function BookingAdmin({ onClose }) {
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
   if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
 
-  const filtered = bookings.filter(b => filter==="all" || b.status===filter);
+  const statusFiltered = bookings.filter(b => filter==="all" || b.status===filter);
+  const q = search.trim().toLowerCase();
+  const filtered = q ? statusFiltered.filter(b => clients[b.client_id]?.name?.toLowerCase().includes(q)) : statusFiltered;
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
@@ -420,21 +425,25 @@ export default function BookingAdmin({ onClose }) {
         {/* Filtrai */}
         <div style={{display:"flex",gap:6,marginBottom:16}}>
           {[{k:"pending",l:"Laukia"},{k:"approved",l:"Patvirtintos"},{k:"rejected",l:"Atmestos"},{k:"cancelled",l:"Atšauktos"},{k:"all",l:"Visos"}].map(f=>(
-            <button key={f.k} onClick={()=>setFilter(f.k)} style={{flex:1,padding:"8px 4px",borderRadius:12,border:"none",background:filter===f.k?"#AD1457":"rgba(255,255,255,0.1)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            <button key={f.k} onClick={()=>{setFilter(f.k);setVisibleCount(8);}} style={{flex:1,padding:"8px 4px",borderRadius:12,border:"none",background:filter===f.k?"#AD1457":"rgba(255,255,255,0.1)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
               {f.l}{f.k!=="all"&&<span style={{marginLeft:4,opacity:0.7}}>({bookings.filter(b=>b.status===f.k).length})</span>}
             </button>
           ))}
         </div>
 
+        {statusFiltered.length > 8 && (
+          <SearchInput value={search} onChange={v=>{setSearch(v);setVisibleCount(8);}} placeholder="Ieškoti kliento pagal vardą..." />
+        )}
+
         {loading && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Kraunama...</p>}
 
         {!loading && filtered.length===0 && (
           <div style={{background:"rgba(255,255,255,0.06)",borderRadius:16,padding:"28px 16px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>
-            <p style={{color:"rgba(255,255,255,0.4)",fontSize:14}}>Rezervacijų nėra</p>
+            <p style={{color:"rgba(255,255,255,0.4)",fontSize:14}}>Rezervacijų nerasta</p>
           </div>
         )}
 
-        {filtered.map(b => {
+        {filtered.slice(0, visibleCount).map(b => {
           const client = clients[b.client_id];
           return (
             <div key={b.id} style={{background:STATUS_COLOR[b.status]||"rgba(255,255,255,0.08)",borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid rgba(255,255,255,0.12)"}}>
@@ -468,6 +477,7 @@ export default function BookingAdmin({ onClose }) {
             </div>
           );
         })}
+        <ShowMoreButton remaining={filtered.length - visibleCount} onClick={() => setVisibleCount(v => v + 8)} />
       </div>
     </div>
   );

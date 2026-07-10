@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users } from "./ui/icons";
+import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
@@ -57,6 +58,8 @@ export default function TrainerStats({ onClose }) {
   const [clients, setClients]   = useState([]);
   const [clientStats, setClientStats] = useState({});
   const [overview, setOverview] = useState(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [visibleClients, setVisibleClients] = useState(8);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,6 +122,8 @@ export default function TrainerStats({ onClose }) {
   useEffect(() => { load(); }, [load]);
 
   const sortedClients = [...clients].sort((a,b) => (clientStats[b.id]?.checkinDays||0) - (clientStats[a.id]?.checkinDays||0));
+  const q = clientSearch.trim().toLowerCase();
+  const filteredClients = q ? sortedClients.filter(c => c.name?.toLowerCase().includes(q)) : sortedClients;
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -169,12 +174,25 @@ export default function TrainerStats({ onClose }) {
 
             {/* Klientų sąrašas */}
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Klientų aktyvumas</p>
-            {sortedClients.length === 0 && (
+            {sortedClients.length === 0 ? (
               <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Klientų nėra</p>
+            ) : (
+              <>
+                {sortedClients.length > 8 && (
+                  <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
+                )}
+                {filteredClients.length === 0 ? (
+                  <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"16px 0" }}>Klientų pagal paiešką nerasta</p>
+                ) : (
+                  <>
+                    {filteredClients.slice(0, visibleClients).map(c => (
+                      <ClientRow key={c.id} client={c} stats={clientStats[c.id] || { totalDays:period, checkinDays:0 }} />
+                    ))}
+                    <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
+                  </>
+                )}
+              </>
             )}
-            {sortedClients.map(c => (
-              <ClientRow key={c.id} client={c} stats={clientStats[c.id] || { totalDays:period, checkinDays:0 }} />
-            ))}
           </>
         )}
       </div>

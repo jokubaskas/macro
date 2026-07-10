@@ -24,6 +24,10 @@ export function Cake(props) {
   );
 }
 
+export function Search(props) {
+  return <IconBase {...props}><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></IconBase>;
+}
+
 export function Droplet(props) {
   return <IconBase {...props}><path d="M12 2.5c3.5 4.5 7 8.9 7 12.7A7 7 0 1 1 5 15.2c0-3.8 3.5-8.2 7-12.7Z"/></IconBase>;
 }

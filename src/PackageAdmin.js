@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ChevronLeft, Ticket, Close, Check } from "./ui/icons";
+import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const PACKAGES = {
   "1":  { label:"1 treniruotė",  total:1  },
@@ -14,6 +15,8 @@ export default function PackageAdmin({ onClose }) {
   const [clients,  setClients]  = useState({});
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState("pending");
+  const [search,   setSearch]   = useState("");
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,7 +45,9 @@ export default function PackageAdmin({ onClose }) {
     load();
   }
 
-  const list = tab === "pending" ? pending : approved;
+  const tabList = tab === "pending" ? pending : approved;
+  const q = search.trim().toLowerCase();
+  const list = q ? tabList.filter(p => clients[p.client_id]?.name?.toLowerCase().includes(q)) : tabList;
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -55,11 +60,15 @@ export default function PackageAdmin({ onClose }) {
         {/* Tabs */}
         <div style={{ display:"flex", gap:6, marginBottom:16 }}>
           {[{k:"pending",l:"Laukia",count:pending.length},{k:"approved",l:"Aktyvūs",count:approved.length}].map(t=>(
-            <button key={t.k} onClick={()=>setTab(t.k)} style={{ flex:1, padding:"10px", borderRadius:12, border:"none", background:tab===t.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            <button key={t.k} onClick={()=>{setTab(t.k);setVisibleCount(8);}} style={{ flex:1, padding:"10px", borderRadius:12, border:"none", background:tab===t.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
               {t.l} {t.count>0&&<span style={{ fontSize:10, opacity:0.7 }}>({t.count})</span>}
             </button>
           ))}
         </div>
+
+        {tabList.length > 8 && (
+          <SearchInput value={search} onChange={v=>{setSearch(v);setVisibleCount(8);}} placeholder="Ieškoti kliento pagal vardą..." />
+        )}
 
         {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
 
@@ -67,7 +76,7 @@ export default function PackageAdmin({ onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Nėra įrašų</p>
         )}
 
-        {list.map(pkg => {
+        {list.slice(0, visibleCount).map(pkg => {
           const client = clients[pkg.client_id];
           const pkgInfo = PACKAGES[pkg.package_type];
           const left = (pkg.credits_total||0) - (pkg.credits_used||0);
@@ -99,6 +108,7 @@ export default function PackageAdmin({ onClose }) {
             </div>
           );
         })}
+        <ShowMoreButton remaining={list.length - visibleCount} onClick={() => setVisibleCount(v => v + 8)} />
       </div>
     </div>
   );
