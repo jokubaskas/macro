@@ -1,0 +1,231 @@
+From f5a474c460beca40833f5d19e547240aa3f22d59 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 05:53:04 +0000
+Subject: [PATCH] Add trainer-only "Anketa" view showing the client's
+ onboarding answers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+New ClientInfo.js renders every field the client filled in during
+Onboarding — birth date, gender, height/weight, goal, motivation,
+sleep/stress note, activity level, step-count target, diet
+description, hardest part, expectations, and their self-rated
+wellbeing — grouped into the same sections as the onboarding flow,
+with human-readable labels instead of raw stored codes.
+
+Exported STEPS_OPTS and a new WELLBEING_OPTS from Onboarding.js so
+ClientInfo can look up labels from the same source instead of
+duplicating them.
+
+Wired in via a new "Anketa" button alongside Matavimai/Nuotraukos on
+the trainer's client detail screen. It's only imported from
+AdminPanel.js — nothing in the client-facing screens references it,
+so the client cannot reach this view.
+---
+ src/AdminPanel.js |  10 ++++-
+ src/ClientInfo.js | 104 ++++++++++++++++++++++++++++++++++++++++++++++
+ src/Onboarding.js |  19 +++++----
+ 3 files changed, 124 insertions(+), 9 deletions(-)
+ create mode 100644 src/ClientInfo.js
+
+diff --git a/src/AdminPanel.js b/src/AdminPanel.js
+index 5361d46..8536040 100644
+--- a/src/AdminPanel.js
++++ b/src/AdminPanel.js
+@@ -11,6 +11,7 @@ import WorkoutPresets from "./WorkoutPresets";
+ import PackageAdmin from "./PackageAdmin";
+ import ClientMeasurements from "./ClientMeasurements";
+ import LiveTraining from "./LiveTraining";
++import ClientInfo from "./ClientInfo";
+ import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
+ 
+ const BDAY_KEYFRAMES = `
+@@ -335,6 +336,7 @@ function ClientDetail({ client, onClose }) {
+   const [showProgressCompare, setShowProgressCompare] = useState(false);
+   const [showMeasurements, setShowMeasurements] = useState(false);
+   const [showLiveTraining, setShowLiveTraining] = useState(false);
++  const [showClientInfo, setShowClientInfo] = useState(false);
+   const [allPlans, setAllPlans]           = useState([]);
+   const [planForDate, setPlanForDate]     = useState(null);
+   const [planDays, setPlanDays]           = useState([]);
+@@ -437,6 +439,9 @@ function ClientDetail({ client, onClose }) {
+       {showLiveTraining && (
+         <LiveTraining client={client} onClose={()=>setShowLiveTraining(false)} />
+       )}
++      {showClientInfo && (
++        <ClientInfo client={client} onClose={()=>setShowClientInfo(false)} />
++      )}
+       <style>{BDAY_KEYFRAMES}</style>
+       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
+         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+@@ -454,8 +459,11 @@ function ClientDetail({ client, onClose }) {
+           <Dumbbell size={16} />Gyva treniruotė
+         </button>
+ 
+-        {/* Matavimai ir progreso nuotraukos */}
++        {/* Matavimai, progreso nuotraukos ir kliento anketa */}
+         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
++          <button onClick={() => setShowClientInfo(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
++            <Clipboard size={14} />Anketa
++          </button>
+           <button onClick={() => setShowMeasurements(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+             <Ruler size={14} />Matavimai
+           </button>
+diff --git a/src/ClientInfo.js b/src/ClientInfo.js
+new file mode 100644
+index 0000000..551ad96
+--- /dev/null
++++ b/src/ClientInfo.js
+@@ -0,0 +1,104 @@
++import { GOALS, ACTIVITY } from "./constants";
++import { STEPS_OPTS, WELLBEING_OPTS } from "./Onboarding";
++import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle } from "./ui/icons";
++
++function InfoRow({ label, value, Icon }) {
++  if (value == null || value === "") return null;
++  return (
++    <div style={{ marginBottom:14 }}>
++      <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 3px", display:"flex", alignItems:"center", gap:5 }}>
++        {Icon && <Icon size={11} />}{label}
++      </p>
++      <p style={{ fontSize:14, color:"#fff", margin:0, lineHeight:1.5 }}>{value}</p>
++    </div>
++  );
++}
++
++function Section({ title, children }) {
++  return (
++    <div style={{ marginBottom:16 }}>
++      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>{title}</p>
++      <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px" }}>{children}</div>
++    </div>
++  );
++}
++
++export default function ClientInfo({ client, onClose }) {
++  const genderLabel = client.gender === "f" ? "Moteris" : client.gender === "m" ? "Vyras" : null;
++  const dobLabel = client.dob ? new Date(client.dob).toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" }) : null;
++  const goalLabel = GOALS.find(g => g.id === client.goal)?.label || null;
++  const actOpt = ACTIVITY.find(a => a.id === client.act);
++  const stepsOpt = STEPS_OPTS.find(s => s.id === client.steps_per_day);
++  const wellbeingOpt = WELLBEING_OPTS[client.wellbeing] || null;
++
++  const hasLifestyle = client.sleep_stress || actOpt || stepsOpt;
++  const hasNutrition = client.diet_desc || client.hardest_part || client.expectations || wellbeingOpt;
++
++  return (
++    <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
++      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <div>
++          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Clipboard size={15} />Kliento anketa</h1>
++          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
++        </div>
++      </div>
++
++      <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
++        {!client.onboarding_done && (
++          <div style={{ background:"rgba(255,193,94,0.1)", border:"1px solid rgba(255,193,94,0.3)", borderRadius:14, padding:"12px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}>
++            <AlertTriangle size={14} color="#FFC15E" />
++            <p style={{ fontSize:12, color:"#FFC15E", margin:0 }}>Klientas dar nebaigė registracijos anketos.</p>
++          </div>
++        )}
++        {client.onboarding_done && client.track_progress === false && (
++          <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
++            <p style={{ fontSize:12, color:"rgba(255,255,255,0.6)", margin:0 }}>Klientas pasirinko trumpąją registraciją — pildė tik gimimo datą, be tikslo/mitybos/gyvensenos klausimų.</p>
++          </div>
++        )}
++
++        <Section title="Asmeniniai duomenys">
++          <InfoRow label="Gimimo data" value={dobLabel} Icon={Calendar} />
++          <InfoRow label="Lytis" value={genderLabel} Icon={User} />
++          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr" }}>
++            <InfoRow label="Ūgis" value={client.height ? `${client.height} cm` : null} Icon={Ruler} />
++            <InfoRow label="Svoris" value={client.weight ? `${client.weight} kg` : null} Icon={Scale} />
++          </div>
++        </Section>
++
++        {(goalLabel || client.motivation) && (
++          <Section title="Tikslas ir motyvacija">
++            <InfoRow label="Tikslas" value={goalLabel} Icon={Target} />
++            <InfoRow label="Kodėl tai svarbu" value={client.motivation} Icon={Edit} />
++          </Section>
++        )}
++
++        {hasLifestyle && (
++          <Section title="Gyvensena">
++            <InfoRow label="Miegas / stresas" value={client.sleep_stress} Icon={Moon} />
++            <InfoRow label="Aktyvumo lygis" value={actOpt ? `${actOpt.label}${actOpt.desc ? ` — ${actOpt.desc}` : ""}` : null} Icon={Footprints} />
++            <InfoRow label="Žingsnių tikslas" value={stepsOpt?.label} Icon={Footprints} />
++          </Section>
++        )}
++
++        {hasNutrition && (
++          <Section title="Mityba ir iššūkiai">
++            <InfoRow label="Mitybos aprašymas" value={client.diet_desc} Icon={Salad} />
++            <InfoRow label="Sunkiausia dalis" value={client.hardest_part} Icon={Edit} />
++            <InfoRow label="Lūkesčiai treneriui" value={client.expectations} Icon={Edit} />
++            {wellbeingOpt && (
++              <div style={{ marginBottom:0 }}>
++                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 3px", display:"flex", alignItems:"center", gap:5 }}>
++                  <Heart size={11} />Savijauta registruojantis
++                </p>
++                <p style={{ fontSize:14, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}>
++                  <wellbeingOpt.Icon size={14} />{wellbeingOpt.label}
++                </p>
++              </div>
++            )}
++          </Section>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/Onboarding.js b/src/Onboarding.js
+index 7df9c97..7e88fd0 100644
+--- a/src/Onboarding.js
++++ b/src/Onboarding.js
+@@ -12,7 +12,7 @@ const ACTIVITY_OPTS = [
+   { id:5, label:"Sportuoju kasdien",       desc:"Intensyviai arba fizinis darbas" },
+ ];
+ 
+-const STEPS_OPTS = [
++export const STEPS_OPTS = [
+   { id:"under5k", label:"Iki 5 000",         desc:"Daugiausia sėdžiu" },
+   { id:"5k-8k",   label:"5 000 – 8 000",     desc:"Vidutinis aktyvumas" },
+   { id:"8k-12k",  label:"8 000 – 12 000",    desc:"Gana aktyvus" },
+@@ -25,6 +25,15 @@ const GOALS = [
+   { id:"gain",     label:"Auginti raumeninę masę", Icon:Muscle, desc:"Stiprėti ir augti" },
+ ];
+ 
++export const WELLBEING_OPTS = [
++  null,
++  { Icon:Frown,   label:"Labai blogai" },
++  { Icon:Frown,   label:"Blogai" },
++  { Icon:Meh,     label:"Vidutiniškai" },
++  { Icon:Smile,   label:"Gerai" },
++  { Icon:Sparkle, label:"Puikiai" },
++];
++
+ function calcAge(dob) {
+   if (!dob) return null;
+   return Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+@@ -391,13 +400,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
+                 ))}
+               </div>
+               {form.wellbeing && (() => {
+-                const w = [null,
+-                  { Icon:Frown, label:"Labai blogai" },
+-                  { Icon:Frown, label:"Blogai" },
+-                  { Icon:Meh,   label:"Vidutiniškai" },
+-                  { Icon:Smile, label:"Gerai" },
+-                  { Icon:Sparkle, label:"Puikiai" },
+-                ][form.wellbeing];
++                const w = WELLBEING_OPTS[form.wellbeing];
+                 return (
+                   <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                     <w.Icon size={14} />{w.label}
+-- 
+2.43.0
+
