@@ -153,7 +153,7 @@ function ScheduleExceptions() {
               <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
                 <Calendar size={12} />{ex.date}{isRange && <>–{ex.end_date}</>}
                 {ex.all_day
-                  ? <span style={{fontSize:9,fontWeight:700,color:"#FFD37A",background:"rgba(255,211,122,0.15)",borderRadius:6,padding:"2px 6px",display:"inline-flex",alignItems:"center",gap:3}}><Sun size={9} />Visa diena</span>
+                  ? <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.7)",background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"2px 6px",display:"inline-flex",alignItems:"center",gap:3}}><Ban size={9} />Visa diena</span>
                   : <span style={{fontWeight:400,color:"rgba(255,255,255,0.6)"}}>· {ex.start_time}–{ex.end_time}</span>}
               </p>
               {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:"0 0 2px"}}>{ex.reason}</p>}
