@@ -13,7 +13,7 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `
 @keyframes bdayCardGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,215,0,0.35), 0 0 14px rgba(255,215,0,0.15); } 50% { box-shadow: 0 0 0 1px rgba(255,215,0,0.6), 0 0 22px rgba(255,215,0,0.35); } }
@@ -660,6 +660,13 @@ export default function AdminPanel({ user, onLogout }) {
   const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadClients();
+    setRefreshing(false);
+  }
 
   function openAdminTab(tab) {
     setShowBookings(tab === "bookings");
@@ -737,7 +744,12 @@ export default function AdminPanel({ user, onLogout }) {
                 <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>Trenerės panelė</p>
               </div>
             </div>
-            <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
+                <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
+              </button>
+              <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
+            </div>
           </div>
         </div>
 

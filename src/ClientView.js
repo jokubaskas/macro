@@ -15,7 +15,7 @@ import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check, Refresh } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
@@ -181,44 +181,52 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [nextBooking,   setNextBooking]   = useState(null);
   const [badges,        setBadges]        = useState({ packages:0, booking:0 });
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [refreshKey,    setRefreshKey]    = useState(0);
 
   const selectedDate    = propDate || todayStr();
   const setSelectedDate = (d) => onDateChange ? onDateChange(d) : null;
   const isToday         = selectedDate === todayStr();
 
-  useEffect(() => {
-    async function load() {
-      const data = await pb.collection("users").getOne(user.id);
-      setProfile(data);
-      setLoading(false);
-      if (data) {
-        const min = new Date(); min.setDate(min.getDate() - 90);
-        setMinDate(min.toISOString().split("T")[0]);
-      }
-      // Tikrinti ar yra aktyvus planas
-      const today = new Date().toISOString().split("T")[0];
-      pb.collection("workout_plans").getFullList({
-        filter: `user_id="${user.id}" && is_active=true`, requestKey: null,
-      }).then(plans => {
-        setHasActivePlan(plans.some(p => p.start_date <= today && p.end_date >= today));
-      }).catch(() => {});
-
-      // Kita artimiausia patvirtinta rezervacija
-      pb.collection("bookings").getFullList({
-        filter: `client_id="${user.id}" && status="approved" && date>="${today}"`,
-        sort: "date,start_time", requestKey: null,
-      }).then(bks => { setNextBooking(bks[0] || null); }).catch(() => {});
-
-      // Badge'ai
-      Promise.all([
-        pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
-        pb.collection("bookings").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
-      ]).then(([pkgs, bks]) => {
-        setBadges({ packages: pkgs.length, booking: bks.length });
-      });
+  const loadProfile = useCallback(async () => {
+    const data = await pb.collection("users").getOne(user.id);
+    setProfile(data);
+    setLoading(false);
+    if (data) {
+      const min = new Date(); min.setDate(min.getDate() - 90);
+      setMinDate(min.toISOString().split("T")[0]);
     }
-    load();
+    // Tikrinti ar yra aktyvus planas
+    const today = new Date().toISOString().split("T")[0];
+    pb.collection("workout_plans").getFullList({
+      filter: `user_id="${user.id}" && is_active=true`, requestKey: null,
+    }).then(plans => {
+      setHasActivePlan(plans.some(p => p.start_date <= today && p.end_date >= today));
+    }).catch(() => {});
+
+    // Kita artimiausia patvirtinta rezervacija
+    pb.collection("bookings").getFullList({
+      filter: `client_id="${user.id}" && status="approved" && date>="${today}"`,
+      sort: "date,start_time", requestKey: null,
+    }).then(bks => { setNextBooking(bks[0] || null); }).catch(() => {});
+
+    // Badge'ai
+    Promise.all([
+      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
+      pb.collection("bookings").getFullList({ filter:`client_id="${user.id}" && status="pending"`, requestKey:null }).catch(()=>[]),
+    ]).then(([pkgs, bks]) => {
+      setBadges({ packages: pkgs.length, booking: bks.length });
+    });
   }, [user.id]);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshKey(k => k + 1);
+    setRefreshing(false);
+  }
 
   if (loading) return <LoadingScreen background={`linear-gradient(160deg,#3a0a20,${PK.dark})`} textColor={PK.blush} />;
 
@@ -256,6 +264,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
                 <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
               </button>
             )}
+            <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
+              <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
+            </button>
             <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Išeiti</button>
           </div>
         </div>
@@ -263,7 +274,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       </div>
 
       {/* Content */}
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
+      <div key={refreshKey} style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
 
         {/* Gimtadienio pasveikinimas */}
         {isToday && isBirthday && (
@@ -437,7 +448,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
       {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
       {showOnboarding && (
-        <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(user); setShowOnboarding(false); }} />
+        <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(); setShowOnboarding(false); }} />
       )}
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate}

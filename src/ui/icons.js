@@ -290,6 +290,15 @@ export function Repeat(props) {
   </IconBase>;
 }
 
+export function Refresh(props) {
+  return <IconBase {...props}>
+    <path d="M4 12a8 8 0 0 1 14.5-4.5"/>
+    <path d="M20 12a8 8 0 0 1-14.5 4.5"/>
+    <path d="M18.5 3v4.5H14"/>
+    <path d="M5.5 21v-4.5H10"/>
+  </IconBase>;
+}
+
 export function Settings(props) {
   return <IconBase {...props}>
     <circle cx="12" cy="12" r="3"/>

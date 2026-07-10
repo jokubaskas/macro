@@ -10,6 +10,7 @@ export const GLOBAL_KEYFRAMES = `
 @keyframes popIn { 0% { transform: scale(0.6); opacity:0; } 60% { transform: scale(1.18); opacity:1; } 100% { transform: scale(1); } }
 @keyframes confettiBurst { 0% { transform: translate(0,0) rotate(0deg); opacity:1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0; } }
 @keyframes skeletonShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 button, .tap { transition: transform .12s ease-out, filter .12s ease-out; }
 button:active, .tap:active { transform: scale(0.96); filter: brightness(0.95); }
 `;
