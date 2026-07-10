@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
-import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop } from "./ui/icons";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -502,9 +502,18 @@ export default function BookingAdmin({ onClose }) {
                   {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:"4px 0 0",fontStyle:"italic"}}>"{b.notes}"</p>}
                   {b.cancel_reason && <p style={{fontSize:11,color:"rgba(255,130,130,0.7)",margin:"4px 0 0",display:"flex",alignItems:"center",gap:5}}><Ban size={11} />{b.cancelled_by==="client"?"Klientas":"Trenerė"}: {b.cancel_reason}</p>}
                 </div>
-                <span style={{fontSize:11,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}>
-                  {(() => { const st = STATUS_LABEL[b.status]; return st ? <><st.Icon size={11} />{st.label}</> : null; })()}
-                </span>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.2)",borderRadius:8,padding:"3px 10px",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}>
+                    {(() => { const st = STATUS_LABEL[b.status]; return st ? <><st.Icon size={11} />{st.label}</> : null; })()}
+                  </span>
+                  {b.status==="approved" && (
+                    b.added_to_calendar ? (
+                      <span style={{fontSize:9,fontWeight:700,color:"#7FFFB0",display:"inline-flex",alignItems:"center",gap:3,whiteSpace:"nowrap"}}><CheckCircle size={9} />Kalendoriuje</span>
+                    ) : (
+                      <span style={{fontSize:9,fontWeight:700,color:"#FFD700",display:"inline-flex",alignItems:"center",gap:3,whiteSpace:"nowrap"}}><AlertTriangle size={9} />Nepridėta</span>
+                    )
+                  )}
+                </div>
               </div>
               {b.status==="pending" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
