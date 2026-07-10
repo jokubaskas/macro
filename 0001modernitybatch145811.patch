@@ -1,0 +1,445 @@
+From b02a6d36a54c84f587021b17e1ffcfb4990d94fe Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 06:48:45 +0000
+Subject: [PATCH 1/5] Animate the login/register screen
+
+Logo pop-in and card fade-in on load, a fade transition when
+switching between login and register fields, a spinner instead of
+the plain "..." text while submitting, and input focus glow.
+---
+ src/Login.js | 41 +++++++++++++++++++++++++----------------
+ 1 file changed, 25 insertions(+), 16 deletions(-)
+
+diff --git a/src/Login.js b/src/Login.js
+index 8edfeae..cafd241 100644
+--- a/src/Login.js
++++ b/src/Login.js
+@@ -54,6 +54,7 @@ export default function Login() {
+     border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:14,
+     fontSize:16, color:"#fff", background:"rgba(255,255,255,0.07)",
+     outline:"none", fontFamily:"inherit", WebkitAppearance:"none",
++    transition:"border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease",
+   };
+   const lbl = { display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:6 };
+ 
+@@ -64,46 +65,54 @@ export default function Login() {
+       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding:"0 20px",
+     }}>
+-      <div style={{ textAlign:"center", marginBottom:28 }}>
++      <style>{`
++        @keyframes loginSpin { to { transform: rotate(360deg); } }
++        .login-field { animation: fadeInUp 0.4s ease-out both; }
++        .login-inp:focus { border-color: rgba(255,255,255,0.55) !important; background: rgba(255,255,255,0.12) !important; box-shadow: 0 0 0 3px rgba(255,255,255,0.08); }
++      `}</style>
++
++      <div style={{ textAlign:"center", marginBottom:28, animation:"popIn 0.6s cubic-bezier(.23,1,.32,1) both" }}>
+         <img src="/logo.png" alt="Coach Vilma" style={{ width:90, height:90, objectFit:"contain", borderRadius:18, marginBottom:14 }} />
+         <h1 style={{ fontSize:22, fontWeight:700, color:"#fff", marginBottom:4 }}>Coach Vilma</h1>
+-        <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>
++        <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)", transition:"opacity 0.2s ease" }} key={mode + "-sub"}>
+           {mode === "login" ? "Prisijunkite prie savo paskyros" : "Sukurkite naują paskyrą"}
+         </p>
+       </div>
+ 
+-      <div style={{ width:"100%", maxWidth:400, background:"rgba(255,255,255,0.06)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.12)" }}>
+-        <form onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
++      <div style={{ width:"100%", maxWidth:400, background:"rgba(255,255,255,0.06)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.12)", animation:"fadeInUp 0.5s ease-out 0.1s both" }}>
++        <form key={mode} onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+           {mode === "register" && (
+-            <div>
++            <div className="login-field" style={{ animationDelay:"0.03s" }}>
+               <label style={lbl}>Vardas Pavardė</label>
+-              <input style={inp} type="text" value={name} placeholder="Vardas Pavardė" onChange={e => setName(e.target.value)} />
++              <input className="login-inp" style={inp} type="text" value={name} placeholder="Vardas Pavardė" onChange={e => setName(e.target.value)} />
+             </div>
+           )}
+-          <div>
++          <div className="login-field" style={{ animationDelay:"0.06s" }}>
+             <label style={lbl}>El. paštas</label>
+-            <input style={inp} type="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
++            <input className="login-inp" style={inp} type="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
+           </div>
+-          <div>
++          <div className="login-field" style={{ animationDelay:"0.1s" }}>
+             <label style={lbl}>Slaptažodis</label>
+-            <input style={inp} type="password" value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
++            <input className="login-inp" style={inp} type="password" value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
+           </div>
+           {mode === "register" && (
+-            <div>
++            <div className="login-field" style={{ animationDelay:"0.13s" }}>
+               <label style={lbl}>Pakartokite slaptažodį</label>
+-              <input style={inp} type="password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
++              <input className="login-inp" style={inp} type="password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
+             </div>
+           )}
+ 
+-          {error   && <p style={{ color:"#FFB3B3", fontSize:13, margin:0 }}>{error}</p>}
+-          {success && <p style={{ color:"#7FFFB0", fontSize:13, margin:0 }}>{success}</p>}
++          {error   && <p style={{ color:"#FFB3B3", fontSize:13, margin:0, animation:"fadeInUp 0.3s ease-out both" }}>{error}</p>}
++          {success && <p style={{ color:"#7FFFB0", fontSize:13, margin:0, animation:"fadeInUp 0.3s ease-out both" }}>{success}</p>}
+ 
+           <button type="submit" disabled={loading} style={{
+             padding:"14px", background:PK.mid, border:"none", borderRadius:14,
+             color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+-            opacity: loading ? 0.7 : 1,
++            opacity: loading ? 0.7 : 1, display:"flex", alignItems:"center", justifyContent:"center", gap:10,
++            transition:"opacity 0.2s ease",
+           }}>
+-            {loading ? "..." : mode === "login" ? "Prisijungti" : "Registruotis"}
++            {loading && <span style={{ width:16, height:16, borderRadius:"50%", border:"2.5px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", animation:"loginSpin 0.7s linear infinite" }} />}
++            {loading ? "" : mode === "login" ? "Prisijungti" : "Registruotis"}
+           </button>
+         </form>
+ 
+-- 
+2.43.0
+
+
+From 5c54d66fff557c5235baf9cd31b86cc99ab511f6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 06:48:48 +0000
+Subject: [PATCH 2/5] Upgrade measurement mini-charts to smooth gradient curves
+
+Ports the Catmull-Rom smoothed curve, gradient stroke and draw-in
+animation from ClientStats.js into ClientMeasurements.js's MiniChart,
+replacing the old bare polyline.
+---
+ src/ClientMeasurements.js | 80 +++++++++++++++++++++++++++++++--------
+ 1 file changed, 65 insertions(+), 15 deletions(-)
+
+diff --git a/src/ClientMeasurements.js b/src/ClientMeasurements.js
+index a5c1565..b380e2d 100644
+--- a/src/ClientMeasurements.js
++++ b/src/ClientMeasurements.js
+@@ -1,4 +1,4 @@
+-import { useState, useEffect } from "react";
++import { useState, useEffect, useRef } from "react";
+ import { pb } from "./pb";
+ import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar } from "./ui/icons";
+ import { ShowMoreButton } from "./ui/kit";
+@@ -17,32 +17,82 @@ const FIELDS = [
+ 
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
+ 
++// Catmull-Rom → kubinės Bezier kreivės konversija: glotnesnė linija nei laužtė.
++function smoothPath(pts) {
++  if (pts.length < 2) return "";
++  if (pts.length === 2) return `M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`;
++  let d = `M${pts[0][0]},${pts[0][1]}`;
++  for (let i = 0; i < pts.length - 1; i++) {
++    const p0 = pts[i - 1] || pts[i];
++    const p1 = pts[i];
++    const p2 = pts[i + 1];
++    const p3 = pts[i + 2] || p2;
++    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
++    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
++    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
++    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
++    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
++  }
++  return d;
++}
++
+ function MiniChart({ data, field }) {
+-  if (data.length < 2) return null;
++  const pathRef = useRef(null);
+   const vals = data.map(d => parseFloat(d[field])).filter(v => !isNaN(v));
++
++  useEffect(() => {
++    const el = pathRef.current;
++    if (!el) return;
++    const len = el.getTotalLength();
++    el.style.transition = "none";
++    el.style.strokeDasharray = len;
++    el.style.strokeDashoffset = len;
++    requestAnimationFrame(() => {
++      el.style.transition = "stroke-dashoffset 0.9s cubic-bezier(.23,1,.32,1)";
++      el.style.strokeDashoffset = 0;
++    });
++  }, [vals.length, field]);
++
+   if (vals.length < 2) return null;
+ 
+   const min = Math.min(...vals), max = Math.max(...vals);
+   const range = max - min || 1;
+-  const W = 80, H = 28;
++  const W = 84, H = 30;
++  const PAD = 4;
+ 
+-  const points = vals.map((v, i) => {
+-    const x = (i / (vals.length - 1)) * W;
+-    const y = H - ((v - min) / range) * H;
+-    return `${x},${y}`;
+-  }).join(" ");
++  const pts = vals.map((v, i) => [
++    (i / (vals.length - 1)) * W,
++    PAD + (H - PAD * 2) - ((v - min) / range) * (H - PAD * 2),
++  ]);
++  const linePath = smoothPath(pts);
++  const areaPath = `${linePath} L${W},${H} L0,${H} Z`;
++  const [lastX, lastY] = pts[pts.length - 1];
+ 
+   const first = vals[0], last = vals[vals.length - 1];
+   const diff = last - first;
+-  const color = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm"
+-    ? (diff < 0 ? "#7FFFB0" : diff > 0 ? "#FF8888" : "rgba(255,255,255,0.4)")
+-    : (diff > 0 ? "#7FFFB0" : diff < 0 ? "#FF8888" : "rgba(255,255,255,0.4)");
++  const isLowerBetter = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm";
++  const trend = diff === 0 ? "flat" : (isLowerBetter ? diff < 0 : diff > 0) ? "up" : "down";
++  const color = trend === "up" ? "#7FFFB0" : trend === "down" ? "#FF8888" : "rgba(255,255,255,0.4)";
++  const gid = "mcm-" + field;
+ 
+   return (
+-    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+-      <svg width={W} height={H} style={{ overflow:"visible" }}>
+-        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+-        <circle cx={points.split(" ").pop().split(",")[0]} cy={points.split(" ").pop().split(",")[1]} r="2.5" fill={color} />
++    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
++      <svg width={W} height={H} style={{ overflow:"visible", flexShrink:0 }}>
++        <defs>
++          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
++            <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
++            <stop offset="100%" stopColor={color} stopOpacity="1"/>
++          </linearGradient>
++          <linearGradient id={gid+"-area"} x1="0" y1="0" x2="0" y2="1">
++            <stop offset="0%" stopColor={color} stopOpacity="0.4"/>
++            <stop offset="100%" stopColor={color} stopOpacity="0"/>
++          </linearGradient>
++        </defs>
++        <path d={areaPath} fill={`url(#${gid}-area)`} stroke="none" />
++        <path ref={pathRef} d={linePath} fill="none" stroke={`url(#${gid})`}
++          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
++        <circle cx={lastX} cy={lastY} r="5" fill={color} opacity="0.16" />
++        <circle cx={lastX} cy={lastY} r="2.5" fill={color} stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
+       </svg>
+       <span style={{ fontSize:11, fontWeight:700, color }}>
+         {diff > 0 ? "+" : ""}{diff.toFixed(1)}
+-- 
+2.43.0
+
+
+From 27bbdf41889ed65479a16063c42799cfe05c4d2c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 06:48:53 +0000
+Subject: [PATCH 3/5] Use the shared ProgressBar in SleepTracker's compact mode
+
+Swaps the flat, one-off progress div for the shared ui/kit ProgressBar
+component, matching the shimmer/track styling used by WaterTracker's
+compact mode.
+---
+ src/SleepTracker.js | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/SleepTracker.js b/src/SleepTracker.js
+index dfd22bc..dec1e2f 100644
+--- a/src/SleepTracker.js
++++ b/src/SleepTracker.js
+@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
+ import { pb, pbFirst, pbUpsert } from "./pb";
+ import { MOOD } from "./constants";
+ import { Moon, CheckCircle, AlertTriangle, Heart, Lock, Timer, Save } from "./ui/icons";
++import { ProgressBar } from "./ui/kit";
+ 
+ function getRecommended(age) {
+   if (!age) return [7, 9];
+@@ -210,9 +211,7 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
+             </span>
+             <span style={{ fontSize:10, color:statusColor, fontWeight:700 }}>Rek. {recMin}–{recMax}h</span>
+           </div>
+-          <div style={{ background:"#f0f0f0", borderRadius:99, height:5 }}>
+-            <div style={{ width:savedHours?Math.min(100,(savedHours/12)*100)+"%":"0%", height:"100%", borderRadius:99, background:statusColor, transition:"width 0.3s" }}/>
+-          </div>
++          <ProgressBar pct={savedHours ? Math.min(100, (savedHours / 12) * 100) : 0} fill={statusColor} height={5} />
+         </div>
+       </div>
+     );
+-- 
+2.43.0
+
+
+From 9eb9c8414d89358f402b2d5c52057c1e6e533747 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 06:48:57 +0000
+Subject: [PATCH 4/5] Add today's bookings and weekly package sales to admin
+ dashboard
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The overview grid only had two tiles (client count, onboarding-done
+count). Adds "Šiandien rezervacijų" (today's confirmed bookings) and
+"Šią savaitę parduota paketų" (packages approved in the last 7 days).
+---
+ src/AdminPanel.js | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/AdminPanel.js b/src/AdminPanel.js
+index 103b603..e409600 100644
+--- a/src/AdminPanel.js
++++ b/src/AdminPanel.js
+@@ -36,6 +36,7 @@ function TrafficOrb({ v, size = 28 }) {
+ }
+ 
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
++function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
+ 
+ async function adminCreateUser(email, password) {
+   const data = await pb.collection("users").create({
+@@ -608,6 +609,7 @@ export default function AdminPanel({ user, onLogout }) {
+   const [showPackages, setShowPackages] = useState(false);
+   const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
+   const [pkgSummary,  setPkgSummary]    = useState({});
++  const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
+   const [clientSearch, setClientSearch] = useState("");
+   const [visibleClients, setVisibleClients] = useState(8);
+ 
+@@ -645,6 +647,15 @@ export default function AdminPanel({ user, onLogout }) {
+         }
+       });
+       setPkgSummary(summary);
++      const weekAgo = daysAgoStr(7);
++      const weekPackages = pkgs.filter(p => p.status === "approved" && (p.created || "") >= weekAgo).length;
++      setDashExtra(d => ({ ...d, weekPackages }));
++    });
++    // Šiandienos rezervacijos
++    const today = todayStr();
++    pb.collection("bookings").getFullList({ filter:`date="${today}"`, requestKey:null }).catch(()=>[]).then(bks => {
++      const todayBookings = bks.filter(b => b.status === "approved").length;
++      setDashExtra(d => ({ ...d, todayBookings }));
+     });
+   }, []);
+ 
+@@ -689,6 +700,8 @@ export default function AdminPanel({ user, onLogout }) {
+             {[
+               { v: clients.length, l: "Klientai iš viso", bg: "linear-gradient(135deg,#6D1B3B,#AD1457)", c: "#fff" },
+               { v: clients.filter(c => c.onboarding_done).length, l: "Anketa baigta", bg: "rgba(255,255,255,0.08)", c: "#fff" },
++              { v: dashExtra.todayBookings, l: "Šiandien rezervacijų", bg: "rgba(255,255,255,0.08)", c: "#fff" },
++              { v: dashExtra.weekPackages, l: "Šią savaitę parduota paketų", bg: "rgba(255,255,255,0.08)", c: "#fff" },
+             ].map((s, i) => (
+               <div key={i} style={{ background: s.bg, borderRadius: 14, padding: "14px 10px", textAlign: "center", border: "1px solid rgba(255,255,255,0.15)" }}>
+                 <div style={{ fontSize: 26, fontWeight: 700, color: s.c }}>{s.v}</div>
+-- 
+2.43.0
+
+
+From c0ca3c93e379d6706597d3d8a8e0dadd4b5a2be1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 10 Jul 2026 06:49:01 +0000
+Subject: [PATCH 5/5] Add a weekly recap banner to the client home screen
+
+Summarizes this week vs last week using existing water_log, sleep_log
+and daily_checkins data: water trend %, sleep stability, and
+check-in count out of 7 days. No new backend fields needed.
+---
+ src/ClientView.js | 80 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 79 insertions(+), 1 deletion(-)
+
+diff --git a/src/ClientView.js b/src/ClientView.js
+index 59f17a4..a65fef3 100644
+--- a/src/ClientView.js
++++ b/src/ClientView.js
+@@ -15,13 +15,88 @@ import TrainingPackages from "./TrainingPackages";
+ import Onboarding from "./Onboarding";
+ import ClientStats from "./ClientStats";
+ import { LoadingScreen, ConfettiBurst } from "./ui/kit";
+-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake } from "./ui/icons";
++import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check } from "./ui/icons";
+ 
+ const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
+ 
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
++function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
+ function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
+ 
++// ── Savaitės apžvalgos juosta ─────────────────────────────────────────────────
++function WeeklyRecap({ userId }) {
++  const [data, setData] = useState(null); // null = kraunama/nėra ką rodyti, false = nėra duomenų
++
++  useEffect(() => {
++    let cancelled = false;
++    async function load() {
++      const today = todayStr();
++      const from = daysAgoStr(13);
++      const weekStart = daysAgoStr(6), prevStart = from, prevEnd = daysAgoStr(7);
++      const inRange = (d, a, b) => d >= a && d <= b;
++
++      const [checkins, waters, sleeps] = await Promise.all([
++        pb.collection("daily_checkins").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}" && is_done=true`, requestKey:null }).catch(()=>[]),
++        pb.collection("water_log").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
++        pb.collection("sleep_log").getFullList({ filter:`user_id="${userId}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
++      ]);
++      if (cancelled) return;
++
++      const thisWeekCheckins = checkins.filter(c => inRange(c.date, weekStart, today)).length;
++      const thisWeekWater = waters.filter(w => inRange(w.date, weekStart, today));
++      const prevWeekWater = waters.filter(w => inRange(w.date, prevStart, prevEnd));
++      const thisWeekSleep = sleeps.filter(s => inRange(s.date, weekStart, today) && s.hours_slept).map(s => s.hours_slept);
++      const prevWeekSleep = sleeps.filter(s => inRange(s.date, prevStart, prevEnd) && s.hours_slept).map(s => s.hours_slept);
++
++      const avgWaterThis = thisWeekWater.length ? thisWeekWater.reduce((a,w)=>a+(w.ml||0),0)/thisWeekWater.length : null;
++      const avgWaterPrev = prevWeekWater.length ? prevWeekWater.reduce((a,w)=>a+(w.ml||0),0)/prevWeekWater.length : null;
++      const waterChangePct = (avgWaterThis != null && avgWaterPrev) ? Math.round((avgWaterThis - avgWaterPrev) / avgWaterPrev * 100) : null;
++
++      const avgSleepThis = thisWeekSleep.length ? thisWeekSleep.reduce((a,v)=>a+v,0)/thisWeekSleep.length : null;
++      const avgSleepPrev = prevWeekSleep.length ? prevWeekSleep.reduce((a,v)=>a+v,0)/prevWeekSleep.length : null;
++      let sleepTrend = null;
++      if (avgSleepThis != null) {
++        if (avgSleepPrev == null) sleepTrend = "new";
++        else { const diff = avgSleepThis - avgSleepPrev; sleepTrend = Math.abs(diff) < 0.4 ? "stable" : diff > 0 ? "up" : "down"; }
++      }
++
++      const hasData = thisWeekCheckins > 0 || thisWeekWater.length > 0 || thisWeekSleep.length > 0;
++      setData(hasData ? { checkins: thisWeekCheckins, waterChangePct, avgWaterThis, sleepTrend } : false);
++    }
++    load();
++    return () => { cancelled = true; };
++  }, [userId]);
++
++  if (!data) return null;
++
++  const parts = [];
++  if (data.waterChangePct != null) {
++    parts.push({ Icon:Droplet, text:`vanduo ${data.waterChangePct>0?"+":""}${data.waterChangePct}%`, color: data.waterChangePct>=0?"#7FFFB0":"#FF8888" });
++  } else if (data.avgWaterThis != null) {
++    parts.push({ Icon:Droplet, text:`vanduo ${(data.avgWaterThis/1000).toFixed(1)}L/d.`, color:"#6EC6FF" });
++  }
++  if (data.sleepTrend) {
++    const label = data.sleepTrend==="stable" ? "miegas stabilus" : data.sleepTrend==="up" ? "miegas gerėja" : data.sleepTrend==="down" ? "miegas prastėja" : "miegas sekamas";
++    parts.push({ Icon:Moon, text:label, color: data.sleepTrend==="up"?"#7FFFB0":data.sleepTrend==="down"?"#FF8888":"#B39DFF" });
++  }
++  parts.push({ Icon:Check, text:`${data.checkins}/7 check-in`, color: data.checkins>=5?"#7FFFB0":"rgba(255,255,255,0.75)" });
++
++  return (
++    <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
++      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 10px", display:"flex", alignItems:"center", gap:6 }}>
++        <Sparkle size={12} />Savaitės apžvalga
++      </p>
++      <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
++        {parts.map((p, i) => (
++          <span key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:700, color:p.color, background:"rgba(255,255,255,0.06)", borderRadius:99, padding:"6px 12px" }}>
++            <p.Icon size={12} />{p.text}
++          </span>
++        ))}
++      </div>
++    </div>
++  );
++}
++
+ // ── Kalendoriaus modalas ──────────────────────────────────────────────────────
+ function DatePickerModal({ value, minDate, onSelect, onClose }) {
+   const today = todayStr();
+@@ -265,6 +340,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+         {/* Streak */}
+         {isToday && profile?.track_progress && <StreakBadge userId={user.id} />}
+ 
++        {/* Savaitės apžvalga */}
++        {isToday && profile?.track_progress && <WeeklyRecap userId={user.id} />}
++
+         {/* Push pranešimai */}
+         <PushPermissionPrompt userId={user.id} />
+ 
+-- 
+2.43.0
+
