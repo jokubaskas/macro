@@ -25,7 +25,8 @@ export default function PackageAdmin({ onClose }) {
     cls.forEach(c => { clientMap[c.id] = c; });
     setClients(clientMap);
     setPending(pkgs.filter(p=>p.status==="pending"));
-    setApproved(pkgs.filter(p=>p.status==="approved"));
+    // Išnaudoti paketai (0 liko) nebelaikomi "aktyviais" — jų čia nerodome
+    setApproved(pkgs.filter(p=>p.status==="approved" && (p.credits_total||0) > (p.credits_used||0)));
     setLoading(false);
   }, []);
 
