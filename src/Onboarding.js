@@ -12,7 +12,7 @@ const ACTIVITY_OPTS = [
   { id:5, label:"Sportuoju kasdien",       desc:"Intensyviai arba fizinis darbas" },
 ];
 
-const STEPS_OPTS = [
+export const STEPS_OPTS = [
   { id:"under5k", label:"Iki 5 000",         desc:"Daugiausia sėdžiu" },
   { id:"5k-8k",   label:"5 000 – 8 000",     desc:"Vidutinis aktyvumas" },
   { id:"8k-12k",  label:"8 000 – 12 000",    desc:"Gana aktyvus" },
@@ -23,6 +23,15 @@ const GOALS = [
   { id:"lose",     label:"Lieknėti",          Icon:Flame,  desc:"Mažinti kūno riebalus" },
   { id:"maintain", label:"Palaikyti svorį",   Icon:Scale,  desc:"Išlaikyti dabartinę formą" },
   { id:"gain",     label:"Auginti raumeninę masę", Icon:Muscle, desc:"Stiprėti ir augti" },
+];
+
+export const WELLBEING_OPTS = [
+  null,
+  { Icon:Frown,   label:"Labai blogai" },
+  { Icon:Frown,   label:"Blogai" },
+  { Icon:Meh,     label:"Vidutiniškai" },
+  { Icon:Smile,   label:"Gerai" },
+  { Icon:Sparkle, label:"Puikiai" },
 ];
 
 function calcAge(dob) {
@@ -391,13 +400,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
                 ))}
               </div>
               {form.wellbeing && (() => {
-                const w = [null,
-                  { Icon:Frown, label:"Labai blogai" },
-                  { Icon:Frown, label:"Blogai" },
-                  { Icon:Meh,   label:"Vidutiniškai" },
-                  { Icon:Smile, label:"Gerai" },
-                  { Icon:Sparkle, label:"Puikiai" },
-                ][form.wellbeing];
+                const w = WELLBEING_OPTS[form.wellbeing];
                 return (
                   <p style={{ textAlign:"center", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.75)", fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                     <w.Icon size={14} />{w.label}

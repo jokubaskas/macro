@@ -11,6 +11,7 @@ import WorkoutPresets from "./WorkoutPresets";
 import PackageAdmin from "./PackageAdmin";
 import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
+import ClientInfo from "./ClientInfo";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `
@@ -335,6 +336,7 @@ function ClientDetail({ client, onClose }) {
   const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
   const [showLiveTraining, setShowLiveTraining] = useState(false);
+  const [showClientInfo, setShowClientInfo] = useState(false);
   const [allPlans, setAllPlans]           = useState([]);
   const [planForDate, setPlanForDate]     = useState(null);
   const [planDays, setPlanDays]           = useState([]);
@@ -437,6 +439,9 @@ function ClientDetail({ client, onClose }) {
       {showLiveTraining && (
         <LiveTraining client={client} onClose={()=>setShowLiveTraining(false)} />
       )}
+      {showClientInfo && (
+        <ClientInfo client={client} onClose={()=>setShowClientInfo(false)} />
+      )}
       <style>{BDAY_KEYFRAMES}</style>
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
@@ -454,8 +459,11 @@ function ClientDetail({ client, onClose }) {
           <Dumbbell size={16} />Gyva treniruotė
         </button>
 
-        {/* Matavimai ir progreso nuotraukos */}
+        {/* Matavimai, progreso nuotraukos ir kliento anketa */}
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+          <button onClick={() => setShowClientInfo(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <Clipboard size={14} />Anketa
+          </button>
           <button onClick={() => setShowMeasurements(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
             <Ruler size={14} />Matavimai
           </button>
