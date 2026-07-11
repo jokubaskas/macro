@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal } from "./WorkoutPlanBuilder";
-import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot, CheckCircle } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
@@ -144,6 +144,11 @@ function PastSession({ session, expanded, exercises, onToggle }) {
       }}>
         <span style={{ fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
           <Clipboard size={13} />{formatDate(session.date.slice(0,10))}
+          {session.completed ? (
+            <CheckCircle size={12} color="#7FFFB0" />
+          ) : (
+            <span style={{ fontSize:9, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"2px 7px" }}>Nebaigta</span>
+          )}
         </span>
         <ChevronRight size={13} color="rgba(255,255,255,0.4)" style={{ transform: expanded ? "rotate(90deg)" : "none", transition:"transform 0.2s" }} />
       </button>
@@ -260,6 +265,14 @@ export default function LiveTraining({ client, onClose }) {
     setSavingNote(false);
   }
 
+  async function toggleCompleted() {
+    const session = await ensureSession();
+    if (!session) return;
+    const completed = !session.completed;
+    const rec = await pb.collection("live_sessions").update(session.id, { completed }).catch(() => null);
+    if (rec) setTodaySession(rec);
+  }
+
   async function togglePast(session) {
     if (expandedId === session.id) { setExpandedId(null); return; }
     setExpandedId(session.id);
@@ -296,9 +309,22 @@ export default function LiveTraining({ client, onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>
         ) : (
           <>
-            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 10px" }}>
-              Šiandien · {formatDate(today)}
-            </p>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, flexWrap:"wrap", gap:6 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
+                Šiandien · {formatDate(today)}
+              </p>
+              {todaySession && (
+                todaySession.completed ? (
+                  <span style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", background:"rgba(127,255,176,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                    <CheckCircle size={11} />Baigta
+                  </span>
+                ) : (
+                  <span style={{ fontSize:10, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                    <Dot color="#FFD700" size={7} />Vykdoma
+                  </span>
+                )
+              )}
+            </div>
 
             {todayExercises.length === 0 ? (
               <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:20, textAlign:"center", border:"2px dashed rgba(255,255,255,0.15)", marginBottom:12 }}>
@@ -330,6 +356,18 @@ export default function LiveTraining({ client, onClose }) {
                 style={{ width:"100%", padding:"10px 12px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box" }} />
               {savingNote && <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"4px 0 0", display:"flex", alignItems:"center", gap:4 }}><Save size={10} />Saugoma...</p>}
             </div>
+
+            {todaySession && (
+              todaySession.completed ? (
+                <button onClick={toggleCompleted} style={{ width:"100%", padding:12, borderRadius:14, background:"rgba(127,255,176,0.08)", border:"1.5px solid rgba(127,255,176,0.3)", color:"#7FFFB0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <CheckCircle size={14} />Treniruotė baigta · atidaryti iš naujo
+                </button>
+              ) : (
+                <button onClick={toggleCompleted} disabled={todayExercises.length===0} style={{ width:"100%", padding:13, borderRadius:14, background: todayExercises.length===0 ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg,#1a4731,#276749)", border:"none", color: todayExercises.length===0 ? "rgba(255,255,255,0.35)" : "#fff", fontSize:14, fontWeight:700, cursor: todayExercises.length===0 ? "default" : "pointer", fontFamily:"inherit", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <CheckCircle size={15} />Baigti treniruotę
+                </button>
+              )
+            )}
 
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 10px" }}>
               Ankstesnės gyvos treniruotės
