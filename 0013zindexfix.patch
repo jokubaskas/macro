@@ -1,0 +1,65 @@
+From 434c374ba5b7109239eae1998caca8237ef155b4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 16:50:05 +0000
+Subject: [PATCH] Fix exercise modal fields hiding behind the admin bottom bar
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The admin tab bar sits at zIndex:1000, but the exercise-picker and
+exercise-edit modals (used both in workout presets/templates and in
+per-client plan building) were only at 700/800 — so the bar rendered
+on top of them, hiding the Cancel/Save buttons and any fields near
+the bottom of the sheet. Bumped both modals to 1100/1150.
+---
+ src/WorkoutPlanBuilder.js | 4 ++--
+ src/WorkoutPresets.js     | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/WorkoutPlanBuilder.js b/src/WorkoutPlanBuilder.js
+index 98750e6..e847c84 100644
+--- a/src/WorkoutPlanBuilder.js
++++ b/src/WorkoutPlanBuilder.js
+@@ -99,7 +99,7 @@ export function ExercisePicker({ onAdd, onClose }) {
+   }
+ 
+   return (
+-    <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
++    <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"90vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{showNew?"Naujas pratimas":selected?"Parametrai":"Pasirinkti pratimą"}</p>
+@@ -269,7 +269,7 @@ export function ExerciseEditModal({ exercise, onSave, onClose }) {
+   }
+ 
+   return (
+-    <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
++    <div style={{position:"fixed",inset:0,zIndex:1150,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
+diff --git a/src/WorkoutPresets.js b/src/WorkoutPresets.js
+index d2f5e5c..3f01634 100644
+--- a/src/WorkoutPresets.js
++++ b/src/WorkoutPresets.js
+@@ -60,7 +60,7 @@ function ExercisePicker({ onAdd, onClose }) {
+   }
+ 
+   return (
+-    <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
++    <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"90vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{showNew?"Naujas pratimas":selected?"Parametrai":"Pasirinkti pratimą"}</p>
+@@ -217,7 +217,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
+   }
+ 
+   return (
+-    <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
++    <div style={{position:"fixed",inset:0,zIndex:1150,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+       <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
+-- 
+2.43.0
+
