@@ -21,6 +21,7 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
       cancel_reason: reason.trim(),
       cancelled_by:  "trainer",
     }).catch(()=>{});
+    await refundCredit(booking.package_id);
     setSaving(false);
     setOpen(false);
     onCancelled();
@@ -44,6 +45,16 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
       </div>
     </div>
   );
+}
+
+// Grąžina 1 kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant —
+// naudojama atmetant arba atšaukiant rezervaciją, kad klientas neprarastų
+// kredito už treniruotę, kuri realiai neįvyko.
+async function refundCredit(packageId) {
+  if (!packageId) return;
+  const pkg = await pb.collection("training_packages").getOne(packageId).catch(()=>null);
+  if (!pkg) return;
+  await pb.collection("training_packages").update(packageId, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
 }
 
 function downloadIcal(booking, clientName) {
@@ -446,9 +457,12 @@ export default function BookingAdmin({ onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function updateStatus(id, status) {
-    await pb.collection("bookings").update(id, { status }).catch(()=>{});
-    setBookings(prev => prev.map(b => b.id===id ? {...b,status} : b));
+  // Atmetant laukiančią užklausą, klientas dar nespėjo sunaudoti laiko —
+  // grąžiname kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant.
+  async function handleReject(booking) {
+    await pb.collection("bookings").update(booking.id, { status:"rejected" }).catch(()=>{});
+    await refundCredit(booking.package_id);
+    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"rejected"} : b));
   }
 
   // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
@@ -546,7 +560,7 @@ export default function BookingAdmin({ onClose }) {
               </div>
               {b.status==="pending" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
+                  <button onClick={()=>handleReject(b)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
                   <button onClick={()=>handleApprove(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti ir įtraukti į kalendorių</button>
                 </div>
               )}

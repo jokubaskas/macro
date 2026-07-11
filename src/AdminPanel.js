@@ -697,8 +697,15 @@ export default function AdminPanel({ user, onLogout }) {
       const summary = {};
       pkgs.forEach(p => {
         if (!summary[p.client_id]) summary[p.client_id] = { lastOrder: p.created, active: null };
-        if (!summary[p.client_id].active && p.status === "approved" && p.credits_used < p.credits_total) {
-          summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
+        // Sudedame VISUS dar neišnaudotus patvirtintus paketus, ne tik naujausią —
+        // klientas gali vienu metu turėti kelis galiojančius paketus.
+        if (p.status === "approved" && p.credits_used < p.credits_total) {
+          if (!summary[p.client_id].active) {
+            summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
+          } else {
+            summary[p.client_id].active.total += p.credits_total;
+            summary[p.client_id].active.used += p.credits_used;
+          }
         }
       });
       setPkgSummary(summary);

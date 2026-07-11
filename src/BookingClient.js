@@ -19,6 +19,15 @@ function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 function dowOf(dateStr) { const d = new Date(dateStr + "T12:00:00"); return d.getDay() === 0 ? 7 : d.getDay(); }
 
+// Persiskaito šviežią credits_used tiesiai iš serverio prieš didinant, kad
+// greitai iš eilės einančios rezervacijos vienos kitų neperrašytų (užuot
+// rėmusis galimai pasenusia reikšme iš naršyklės atminties).
+async function incrementPackageCredit(packageId) {
+  const fresh = await pb.collection("training_packages").getOne(packageId).catch(()=>null);
+  if (!fresh) return;
+  await pb.collection("training_packages").update(packageId, { credits_used: (fresh.credits_used || 0) + 1 }).catch(()=>{});
+}
+
 // Generuoti laikų tarpus — visada prasideda lygia valanda, žingsnis 60 min
 function generateSlots(start, end, duration) {
   const slots = [];
@@ -70,6 +79,11 @@ function CancelButton({ booking, userId, onCancelled }) {
       cancel_reason: reason.trim(),
       cancelled_by: "client",
     }).catch(()=>{});
+    // Grąžinam kreditą, jei atšaukiama pakankamai iš anksto (žr. įspėjimą aukščiau).
+    if (!isLate && booking.package_id) {
+      const pkg = await pb.collection("training_packages").getOne(booking.package_id).catch(()=>null);
+      if (pkg) await pb.collection("training_packages").update(booking.package_id, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
+    }
     setSaving(false);
     setOpen(false);
     onCancelled();
@@ -120,7 +134,7 @@ export default function BookingClient({ user, onClose }) {
       pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null }).catch(()=>[]),
       pb.collection("bookings").getFullList({ filter:`client_id="${user.id}"`, sort:"-date", requestKey:null }).catch(()=>[]),
       pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
-      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, requestKey:null }).catch(()=>[]),
+      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, sort:"created", requestKey:null }).catch(()=>[]),
       pb.collection("recurring_slots").getFullList({ filter:`is_active=true`, requestKey:null }).catch(()=>[]),
     ]);
     setSchedule(sched);
@@ -211,10 +225,7 @@ export default function BookingClient({ user, onClose }) {
       notes:      notes.trim(),
       package_id: activePackage.id,
     }).catch(()=>{});
-    // Nuskaičiuoti kreditą
-    await pb.collection("training_packages").update(activePackage.id, {
-      credits_used: (activePackage.credits_used || 0) + 1,
-    }).catch(()=>{});
+    await incrementPackageCredit(activePackage.id);
     await load();
     setSaving(false);
     setView("mybookings");
@@ -235,9 +246,7 @@ export default function BookingClient({ user, onClose }) {
       package_id: activePackage.id,
       recurring_slot_id: myReservedSlot.id,
     }).catch(()=>{});
-    await pb.collection("training_packages").update(activePackage.id, {
-      credits_used: (activePackage.credits_used || 0) + 1,
-    }).catch(()=>{});
+    await incrementPackageCredit(activePackage.id);
     await load();
     setConfirmingRecurring(false);
     setView("mybookings");
