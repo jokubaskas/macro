@@ -45,6 +45,95 @@ function ExerciseRow({ ex, onClick, onRemove }) {
   );
 }
 
+// ── Šablono pasirinkimas (gyvai treniruotei pradėti) ─────────────────────────
+function TemplatePickerModal({ onConfirm, onClose }) {
+  const [presets, setPresets]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [selectedPreset, setSelectedPreset] = useState(null);
+  const [days, setDays]                 = useState([]);
+  const [loadingDays, setLoadingDays]   = useState(false);
+  const [selectedDay, setSelectedDay]   = useState(null);
+  const [starting, setStarting]         = useState(false);
+
+  useEffect(() => {
+    pb.collection("workout_presets").getFullList({ sort:"name", requestKey:null })
+      .then(setPresets).catch(()=>[]).finally(()=>setLoading(false));
+  }, []);
+
+  async function openPreset(preset) {
+    setSelectedPreset(preset);
+    setLoadingDays(true);
+    const d = await pb.collection("workout_preset_days").getFullList({
+      filter: `preset_id="${preset.id}"`, sort: "day_number", requestKey: null,
+    }).catch(() => []);
+    setDays(d);
+    setSelectedDay(d.length === 1 ? d[0] : null);
+    setLoadingDays(false);
+  }
+
+  async function handleStart() {
+    if (!selectedDay) return;
+    setStarting(true);
+    const exs = await pb.collection("workout_preset_exercises").getFullList({
+      filter: `day_id="${selectedDay.id}"`, sort: "order_num", requestKey: null,
+    }).catch(() => []);
+    setStarting(false);
+    onConfirm(exs);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"flex-end" }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"20px 16px 40px", maxHeight:"90vh", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>{selectedPreset ? selectedPreset.name : "Pasirinkti šabloną"}</p>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", cursor:"pointer", display:"flex", alignItems:"center" }}><Close size={14} /></button>
+        </div>
+
+        {!selectedPreset ? (
+          loading ? (
+            <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>
+          ) : presets.length === 0 ? (
+            <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Šablonų dar nėra — sukurk juos "Šablonai" skiltyje.</p>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {presets.map(p => (
+                <button key={p.id} onClick={()=>openPreset(p)} style={{ padding:"13px 14px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{p.days_count} d.</span>
+                </button>
+              ))}
+            </div>
+          )
+        ) : (
+          <div>
+            {loadingDays ? (
+              <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>
+            ) : (
+              <>
+                {days.length > 1 && (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
+                    {days.map(d => (
+                      <button key={d.id} onClick={()=>setSelectedDay(d)} style={{ padding:"8px 14px", borderRadius:20, border:"none", background:selectedDay?.id===d.id?"#AD1457":"rgba(255,255,255,0.12)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        {d.day_label || `${d.day_number} diena`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={()=>{ setSelectedPreset(null); setSelectedDay(null); setDays([]); }} style={{ flex:1, padding:"12px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+                  <button onClick={handleStart} disabled={!selectedDay || starting} style={{ flex:2, padding:"12px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:selectedDay?"pointer":"default", fontFamily:"inherit", opacity:selectedDay?1:0.5 }}>
+                    {starting ? "Įkeliama..." : "Pradėti su šiuo šablonu"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PastSession({ session, expanded, exercises, onToggle }) {
   return (
     <div style={{ marginBottom:8 }}>
@@ -83,6 +172,7 @@ export default function LiveTraining({ client, onClose }) {
   const [pastExercises, setPastExercises] = useState({});
   const [expandedId, setExpandedId] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
   const [note, setNote] = useState("");
   const [visiblePast, setVisiblePast] = useState(8);
@@ -129,6 +219,25 @@ export default function LiveTraining({ client, onClose }) {
     setShowPicker(false);
   }
 
+  // Perkelia visą pasirinkto šablono dienos pratimų sąrašą į šiandienos gyvą
+  // treniruotę — vėliau kiekvieną galima koreguoti pagal realiai atliktą.
+  async function handleUseTemplate(presetExercises) {
+    const session = await ensureSession();
+    if (!session) { setShowTemplatePicker(false); return; }
+    let order = todayExercises.length;
+    const created = [];
+    for (const ex of presetExercises) {
+      const rec = await pb.collection("live_session_exercises").create({
+        session_id: session.id, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
+        sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min,
+        order_num: order++,
+      }).catch(() => null);
+      if (rec) created.push(rec);
+    }
+    setTodayExercises(prev => [...prev, ...created]);
+    setShowTemplatePicker(false);
+  }
+
   async function handleUpdateExercise(updated) {
     const { id, exercise_name, category, muscle, sets, reps, weight_kg, set_weights, duration_min } = updated;
     const rec = await pb.collection("live_session_exercises").update(id, {
@@ -167,6 +276,7 @@ export default function LiveTraining({ client, onClose }) {
       <style>{KEYFRAMES}</style>
 
       {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} />}
+      {showTemplatePicker && <TemplatePickerModal onConfirm={handleUseTemplate} onClose={() => setShowTemplatePicker(false)} />}
       {editingExercise && (
         <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} />
       )}
@@ -205,9 +315,14 @@ export default function LiveTraining({ client, onClose }) {
               </div>
             )}
 
-            <button onClick={() => setShowPicker(true)} style={{ width:"100%", padding:12, borderRadius:14, background:"rgba(255,255,255,0.1)", border:"2px dashed rgba(255,255,255,0.25)", color:"#fff", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:16 }}>
-              + Pridėti pratimą
-            </button>
+            <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+              <button onClick={() => setShowTemplatePicker(true)} style={{ flex:1, padding:12, borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <Clipboard size={14} />Naudoti šabloną
+              </button>
+              <button onClick={() => setShowPicker(true)} style={{ flex:1, padding:12, borderRadius:14, background:"rgba(255,255,255,0.1)", border:"2px dashed rgba(255,255,255,0.25)", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                + Pridėti pratimą
+              </button>
+            </div>
 
             <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:5, marginBottom:6 }}><Edit size={11} />Pastabos apie treniruotę</label>
