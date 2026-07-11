@@ -813,33 +813,36 @@ export default function AdminPanel({ user, onLogout }) {
         </div>
       </div>
 
-      {/* Tab bar apačioje — brolinis elementas scrollinamos zonos, ne jos viduje (iOS PWA fixed-in-scroll klaidai išvengti) */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
-        {[
-          { id:"clients",  Icon:Users,     label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
-          { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
-          { id:"packages", Icon:Ticket,    label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
-          { id:"stats",    Icon:BarChart,  label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
-          { id:"presets",  Icon:Clipboard, label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
-        ].map(tab => {
-          const isActive = activeAdminTab === tab.id;
-          return (
-            <button key={tab.id} onClick={tab.onClick}
-              style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, position:"relative" }}>
-              <div style={{ position:"relative" }}>
-                <tab.Icon size={24} color="#fff" strokeWidth={isActive ? 2 : 1.6} />
-                {tab.badge > 0 && (
-                  <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
-                    {tab.badge}
-                  </div>
-                )}
-              </div>
-              <span style={{ fontSize:9, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
-              {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
-            </button>
-          );
-        })}
-      </div>
+      {/* Tab bar apačioje — brolinis elementas scrollinamos zonos, ne jos viduje (iOS PWA fixed-in-scroll klaidai išvengti).
+          Paslėpta, kai atidarytas pilno ekrano langas virš jos — kitaip ji uždengia to lango apatinius mygtukus/laukelius. */}
+      {!(showBookings || showStats || showPresets || showPackages) && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000, background: "rgba(15,4,12,0.97)", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", paddingTop: 10, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
+          {[
+            { id:"clients",  Icon:Users,     label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
+            { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
+            { id:"packages", Icon:Ticket,    label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
+            { id:"stats",    Icon:BarChart,  label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
+            { id:"presets",  Icon:Clipboard, label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
+          ].map(tab => {
+            const isActive = activeAdminTab === tab.id;
+            return (
+              <button key={tab.id} onClick={tab.onClick}
+                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", opacity:isActive?1:0.5, position:"relative" }}>
+                <div style={{ position:"relative" }}>
+                  <tab.Icon size={24} color="#fff" strokeWidth={isActive ? 2 : 1.6} />
+                  {tab.badge > 0 && (
+                    <div style={{ position:"absolute", top:-4, right:-6, background:"#AD1457", borderRadius:99, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, color:"#fff", padding:"0 4px" }}>
+                      {tab.badge}
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize:9, color:isActive?"#AD1457":"rgba(255,255,255,0.5)", fontWeight:isActive?700:500 }}>{tab.label}</span>
+                {isActive && <div style={{ width:4, height:4, borderRadius:"50%", background:"#AD1457" }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Overlay langai */}
       {showBookings && <BookingAdmin onClose={() => setShowBookings(false)} />}
