@@ -1,0 +1,233 @@
+From 0905c978a11db2a249722ea26fff464de5af0765 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 16:11:54 +0000
+Subject: [PATCH 1/4] Sum remaining credits across all active packages on
+ client card
+
+The client card's ticket badge only ever showed the newest
+non-exhausted package, hiding remaining credits from any older
+package still in use if the client had bought a second one on top of
+it (e.g. a 1-credit top-up while an 8-credit package still had
+credits left). Now sums total/used across every approved,
+not-yet-exhausted package for that client.
+---
+ src/AdminPanel.js | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/AdminPanel.js b/src/AdminPanel.js
+index f480b28..d35de9d 100644
+--- a/src/AdminPanel.js
++++ b/src/AdminPanel.js
+@@ -697,8 +697,15 @@ export default function AdminPanel({ user, onLogout }) {
+       const summary = {};
+       pkgs.forEach(p => {
+         if (!summary[p.client_id]) summary[p.client_id] = { lastOrder: p.created, active: null };
+-        if (!summary[p.client_id].active && p.status === "approved" && p.credits_used < p.credits_total) {
+-          summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
++        // Sudedame VISUS dar neišnaudotus patvirtintus paketus, ne tik naujausią —
++        // klientas gali vienu metu turėti kelis galiojančius paketus.
++        if (p.status === "approved" && p.credits_used < p.credits_total) {
++          if (!summary[p.client_id].active) {
++            summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
++          } else {
++            summary[p.client_id].active.total += p.credits_total;
++            summary[p.client_id].active.used += p.credits_used;
++          }
+         }
+       });
+       setPkgSummary(summary);
+-- 
+2.43.0
+
+
+From 778b8ef8b4d5fb8e8b7ec5ae8dc42ba13e987822 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 16:23:51 +0000
+Subject: [PATCH 2/4] Consume training package credits in creation order (FIFO)
+
+The active-package lookup had no explicit sort, so PocketBase's
+return order (not guaranteed to match creation order) decided which
+package got decremented on each booking. This could skip over an
+older package's remaining credits and burn through a newer one
+instead, out of order with what a trainer manually tracking package
+history would expect. Adds sort:"created" so the oldest
+non-exhausted package is always consumed first.
+---
+ src/BookingClient.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index f6cf940..0c90bd7 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -120,7 +120,7 @@ export default function BookingClient({ user, onClose }) {
+       pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null }).catch(()=>[]),
+       pb.collection("bookings").getFullList({ filter:`client_id="${user.id}"`, sort:"-date", requestKey:null }).catch(()=>[]),
+       pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
+-      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, requestKey:null }).catch(()=>[]),
++      pb.collection("training_packages").getFullList({ filter:`client_id="${user.id}" && status="approved"`, sort:"created", requestKey:null }).catch(()=>[]),
+       pb.collection("recurring_slots").getFullList({ filter:`is_active=true`, requestKey:null }).catch(()=>[]),
+     ]);
+     setSchedule(sched);
+-- 
+2.43.0
+
+
+From 1709a1e75a52fb9773c3eb44712f10169538cdca Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 16:33:24 +0000
+Subject: [PATCH 3/4] Refund the credit when a booking is rejected or cancelled
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Credits are deducted the moment a client requests a slot, before the
+trainer reviews it. Rejecting or cancelling never gave that credit
+back, so a declined or cancelled request permanently cost the client
+a session even though it never happened. Now refunds automatically:
+- trainer rejecting a pending request (always — not the client's fault)
+- trainer cancelling an approved booking (always)
+- client cancelling their own booking with enough notice (matches the
+  existing 'no refund if cancelled late' warning text, which promised
+  this but never actually did it)
+---
+ src/BookingAdmin.js  | 22 ++++++++++++++++++----
+ src/BookingClient.js |  5 +++++
+ 2 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/src/BookingAdmin.js b/src/BookingAdmin.js
+index 72022bd..c15853c 100644
+--- a/src/BookingAdmin.js
++++ b/src/BookingAdmin.js
+@@ -21,6 +21,7 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
+       cancel_reason: reason.trim(),
+       cancelled_by:  "trainer",
+     }).catch(()=>{});
++    await refundCredit(booking.package_id);
+     setSaving(false);
+     setOpen(false);
+     onCancelled();
+@@ -46,6 +47,16 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
+   );
+ }
+ 
++// Grąžina 1 kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant —
++// naudojama atmetant arba atšaukiant rezervaciją, kad klientas neprarastų
++// kredito už treniruotę, kuri realiai neįvyko.
++async function refundCredit(packageId) {
++  if (!packageId) return;
++  const pkg = await pb.collection("training_packages").getOne(packageId).catch(()=>null);
++  if (!pkg) return;
++  await pb.collection("training_packages").update(packageId, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
++}
++
+ function downloadIcal(booking, clientName) {
+   const dt = booking.date.replace(/-/g,"");
+   const startDt = dt + "T" + booking.start_time.replace(":","") + "00";
+@@ -446,9 +457,12 @@ export default function BookingAdmin({ onClose }) {
+ 
+   useEffect(() => { load(); }, [load]);
+ 
+-  async function updateStatus(id, status) {
+-    await pb.collection("bookings").update(id, { status }).catch(()=>{});
+-    setBookings(prev => prev.map(b => b.id===id ? {...b,status} : b));
++  // Atmetant laukiančią užklausą, klientas dar nespėjo sunaudoti laiko —
++  // grąžiname kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant.
++  async function handleReject(booking) {
++    await pb.collection("bookings").update(booking.id, { status:"rejected" }).catch(()=>{});
++    await refundCredit(booking.package_id);
++    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"rejected"} : b));
+   }
+ 
+   // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
+@@ -546,7 +560,7 @@ export default function BookingAdmin({ onClose }) {
+               </div>
+               {b.status==="pending" && (
+                 <div style={{display:"flex",gap:8,marginTop:8}}>
+-                  <button onClick={()=>updateStatus(b.id,"rejected")} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
++                  <button onClick={()=>handleReject(b)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
+                   <button onClick={()=>handleApprove(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti ir įtraukti į kalendorių</button>
+                 </div>
+               )}
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index 0c90bd7..b92e5ac 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -70,6 +70,11 @@ function CancelButton({ booking, userId, onCancelled }) {
+       cancel_reason: reason.trim(),
+       cancelled_by: "client",
+     }).catch(()=>{});
++    // Grąžinam kreditą, jei atšaukiama pakankamai iš anksto (žr. įspėjimą aukščiau).
++    if (!isLate && booking.package_id) {
++      const pkg = await pb.collection("training_packages").getOne(booking.package_id).catch(()=>null);
++      if (pkg) await pb.collection("training_packages").update(booking.package_id, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
++    }
+     setSaving(false);
+     setOpen(false);
+     onCancelled();
+-- 
+2.43.0
+
+
+From 27d2e450656c8da2ad1f86209b920fb3f8a3c55b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 16:38:57 +0000
+Subject: [PATCH 4/4] Reduce credit-decrement race condition on rapid bookings
+
+credits_used was incremented off a value already held in component
+state, computed as (activePackage.credits_used || 0) + 1. When
+several bookings were created in quick succession (e.g. confirming
+many weeks of a recurring slot back to back), multiple increments
+could read the same stale value and overwrite each other, silently
+losing credit deductions. Now re-fetches the package fresh from the
+server immediately before each increment, narrowing the race window.
+---
+ src/BookingClient.js | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index b92e5ac..83d4f85 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -19,6 +19,15 @@ function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
+ function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
+ function dowOf(dateStr) { const d = new Date(dateStr + "T12:00:00"); return d.getDay() === 0 ? 7 : d.getDay(); }
+ 
++// Persiskaito šviežią credits_used tiesiai iš serverio prieš didinant, kad
++// greitai iš eilės einančios rezervacijos vienos kitų neperrašytų (užuot
++// rėmusis galimai pasenusia reikšme iš naršyklės atminties).
++async function incrementPackageCredit(packageId) {
++  const fresh = await pb.collection("training_packages").getOne(packageId).catch(()=>null);
++  if (!fresh) return;
++  await pb.collection("training_packages").update(packageId, { credits_used: (fresh.credits_used || 0) + 1 }).catch(()=>{});
++}
++
+ // Generuoti laikų tarpus — visada prasideda lygia valanda, žingsnis 60 min
+ function generateSlots(start, end, duration) {
+   const slots = [];
+@@ -216,10 +225,7 @@ export default function BookingClient({ user, onClose }) {
+       notes:      notes.trim(),
+       package_id: activePackage.id,
+     }).catch(()=>{});
+-    // Nuskaičiuoti kreditą
+-    await pb.collection("training_packages").update(activePackage.id, {
+-      credits_used: (activePackage.credits_used || 0) + 1,
+-    }).catch(()=>{});
++    await incrementPackageCredit(activePackage.id);
+     await load();
+     setSaving(false);
+     setView("mybookings");
+@@ -240,9 +246,7 @@ export default function BookingClient({ user, onClose }) {
+       package_id: activePackage.id,
+       recurring_slot_id: myReservedSlot.id,
+     }).catch(()=>{});
+-    await pb.collection("training_packages").update(activePackage.id, {
+-      credits_used: (activePackage.credits_used || 0) + 1,
+-    }).catch(()=>{});
++    await incrementPackageCredit(activePackage.id);
+     await load();
+     setConfirmingRecurring(false);
+     setView("mybookings");
+-- 
+2.43.0
+
