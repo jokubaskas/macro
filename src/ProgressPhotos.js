@@ -142,7 +142,7 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
 
       {cropField && (
-        <PhotoCropper src={cropSrc} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); setEditHistoryItem(null); }} />
+        <PhotoCropper src={cropSrc} field={cropField} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); setEditHistoryItem(null); }} />
       )}
 
       {/* Preview modal */}
