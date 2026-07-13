@@ -1,0 +1,52 @@
+From b841ce90a28ba1beee96093d231af7f12eb7e853 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 13 Jul 2026 05:59:12 +0000
+Subject: [PATCH] Fix exercise modal still hiding behind the tab bar (stacking
+ context)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The previous z-index bump on ExercisePicker/ExerciseEditModal (1100/
+1150) only ordered them relative to siblings inside their own parent
+— the preset day-editor screen, which is itself position:fixed with
+zIndex:600 and therefore establishes its own separate stacking
+context. A nested z-index can never escape above a sibling outside
+that context no matter how high it's set, so the tab bar (zIndex:1000,
+outside that context) kept rendering on top regardless. Bumping the
+day-editor screen itself to zIndex:1050 lets the whole subtree —
+editor and its nested modals — clear the tab bar as a unit.
+---
+ src/WorkoutPresets.js | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/WorkoutPresets.js b/src/WorkoutPresets.js
+index 3f01634..202ca59 100644
+--- a/src/WorkoutPresets.js
++++ b/src/WorkoutPresets.js
+@@ -339,19 +339,19 @@ function PresetEditor({ preset, onClose, onSaved }) {
+   }
+ 
+   if (loading) return (
+-    <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
++    <div style={{position:"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       <p style={{color:"#fff"}}>Kraunama...</p>
+     </div>
+   );
+ 
+   if (!days[activeDay]) return (
+-    <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
++    <div style={{position:"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       <p style={{color:"#fff"}}>Kraunama...</p>
+     </div>
+   );
+ 
+   return (
+-    <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
++    <div style={{position:"fixed",inset:0,zIndex:1050,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+       {showPicker && <ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
+ 
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-- 
+2.43.0
+
