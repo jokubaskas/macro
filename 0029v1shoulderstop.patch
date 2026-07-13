@@ -1,0 +1,55 @@
+From ee1ad9d20d60dec295881bde380716e47d1fdebf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 13 Jul 2026 11:26:19 +0000
+Subject: [PATCH] Switch photo-crop silhouette to sharper outline, align
+ shoulders to frame top
+
+Use the straighter polyline body outline and move the guide so the
+shoulder line sits at the very top of the crop frame, pushing the head
+out of the photo entirely.
+---
+ src/PhotoCropper.js | 21 ++-------------------
+ 1 file changed, 2 insertions(+), 19 deletions(-)
+
+diff --git a/src/PhotoCropper.js b/src/PhotoCropper.js
+index ee7ada5..da9603a 100644
+--- a/src/PhotoCropper.js
++++ b/src/PhotoCropper.js
+@@ -13,7 +13,7 @@ function Silhouette({ field }) {
+   const isSide = field === "photo_side";
+   const gid = "silhouette-grad";
+   return (
+-    <svg viewBox="0 0 100 150" preserveAspectRatio="none" style={{ position:"absolute", left:0, top:"20%", width:"100%", height:"78%", pointerEvents:"none" }}>
++    <svg viewBox="0 0 100 150" preserveAspectRatio="none" style={{ position:"absolute", left:0, top:0, width:"100%", height:"98%", pointerEvents:"none" }}>
+       <defs>
+         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+           <stop offset="0%" stopColor="#FF9FC7" />
+@@ -24,24 +24,7 @@ function Silhouette({ field }) {
+         {isSide ? (
+           <path d="M 58,0 C 40,30 45,80 42,140 L 38,145 L 62,145 C 64,100 60,40 58,0 Z" />
+         ) : (
+-          <path d="M 24,0
+-            C 14,4 15,18 19,28
+-            C 24,38 32,40 30,46
+-            C 27,52 28,54 27,60
+-            C 25,80 26,105 24,128
+-            L 18,140
+-            Q 25,146 32,141
+-            L 40,128
+-            C 41,105 44,82 50,66
+-            C 56,82 59,105 60,128
+-            L 68,141
+-            Q 75,146 82,140
+-            L 76,128
+-            C 74,105 75,80 73,60
+-            C 72,54 73,52 70,46
+-            C 68,40 76,38 81,28
+-            C 85,18 86,4 76,0
+-            Z" />
++          <path d="M 24,0 L 18,26 L 30,46 L 28,58 L 26,95 L 24,128 L 18,140 L 32,142 L 40,128 L 50,66 L 60,128 L 68,142 L 82,140 L 76,128 L 74,95 L 72,58 L 70,46 L 82,25 L 76,0 Z" />
+         )}
+       </g>
+     </svg>
+-- 
+2.43.0
+

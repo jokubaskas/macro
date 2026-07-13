@@ -1,0 +1,51 @@
+From 0f4549b3418194d9ac407ecca1a4f046a7ab3d26 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 13 Jul 2026 11:23:01 +0000
+Subject: [PATCH] Unify front/back photo-crop silhouette into a single
+ continuous outline
+
+Replace the 5 disjoint shapes (torso + 2 legs + 2 foot ellipses) with one
+seamless SVG path so the guide reads as a body, not stitched segments.
+---
+ src/PhotoCropper.js | 25 ++++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/src/PhotoCropper.js b/src/PhotoCropper.js
+index d5d10d7..ee7ada5 100644
+--- a/src/PhotoCropper.js
++++ b/src/PhotoCropper.js
+@@ -24,13 +24,24 @@ function Silhouette({ field }) {
+         {isSide ? (
+           <path d="M 58,0 C 40,30 45,80 42,140 L 38,145 L 62,145 C 64,100 60,40 58,0 Z" />
+         ) : (
+-          <>
+-            <path d="M 22,0 L 78,0 L 68,50 L 32,50 Z" />
+-            <path d="M 32,50 L 48,50 L 42,138 L 24,138 Z" />
+-            <path d="M 52,50 L 68,50 L 76,138 L 58,138 Z" />
+-            <ellipse cx="27" cy="141" rx="9" ry="4.5" />
+-            <ellipse cx="73" cy="141" rx="9" ry="4.5" />
+-          </>
++          <path d="M 24,0
++            C 14,4 15,18 19,28
++            C 24,38 32,40 30,46
++            C 27,52 28,54 27,60
++            C 25,80 26,105 24,128
++            L 18,140
++            Q 25,146 32,141
++            L 40,128
++            C 41,105 44,82 50,66
++            C 56,82 59,105 60,128
++            L 68,141
++            Q 75,146 82,140
++            L 76,128
++            C 74,105 75,80 73,60
++            C 72,54 73,52 70,46
++            C 68,40 76,38 81,28
++            C 85,18 86,4 76,0
++            Z" />
+         )}
+       </g>
+     </svg>
+-- 
+2.43.0
+
