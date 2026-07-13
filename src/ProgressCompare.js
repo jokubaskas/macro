@@ -1,165 +1,69 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight, Edit } from "./ui/icons";
-import PhotoCropper from "./PhotoCropper";
+import { ArrowUp, ChevronRight, ArrowDown, Close, ChevronLeft, Camera } from "./ui/icons";
+import ProgressPhotos from "./ProgressPhotos";
 
-const PK = { dark:"#6D1B3B", mid:"#AD1457" };
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+const VIEWS = [
+  { key:"photo_front", label:"Priekis", Icon:ArrowUp },
+  { key:"photo_side",  label:"Šonas",   Icon:ChevronRight },
+  { key:"photo_back",  label:"Nugara",  Icon:ArrowDown },
+];
 
-export default function ProgressPhotos({ user, onClose, canEdit = false }) {
-  const [history, setHistory]   = useState([]);
-  const [loading, setLoading]   = useState(true);
+export default function ProgressCompare({ client, onClose }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [idxA, setIdxA]       = useState(null); // senesnė (kairė)
+  const [idxB, setIdxB]       = useState(null); // naujesnė (dešinė)
+  const [view, setView]       = useState("photo_front");
+  const [showAllA, setShowAllA] = useState(false);
+  const [showAllB, setShowAllB] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadDate, setUploadDate] = useState(todayStr());
-  const [photos, setPhotos]     = useState({ photo_front:null, photo_side:null, photo_back:null });
-  const [previews, setPreviews] = useState({ photo_front:null, photo_side:null, photo_back:null });
-  const [saving, setSaving]     = useState(false);
-  const [visibleCount, setVisibleCount] = useState(3);
+  const VISIBLE_DATES = 6;
 
-  const load = useCallback(async () => {
+  const load = useCallback(() => {
     setLoading(true);
-    const [data, profile] = await Promise.all([
+    return Promise.all([
       pb.collection("progress_photos").getFullList({
-        filter: `user_id="${user.id}"`, sort: "-date", requestKey: null,
+        filter: `user_id="${client.id}"`, sort: "date", requestKey: null,
       }).catch(()=>[]),
-      pb.collection("users").getOne(user.id, { requestKey: null }).catch(()=>null),
-    ]);
-
-    let combined = [...data];
-    if (profile?.photo_front) {
-      const regDate = profile.created ? profile.created.slice(0,10) : "0000-00-00";
-      const alreadyExists = data.some(d => d.date.slice(0,10) === regDate);
-      if (!alreadyExists) {
-        combined.push({
-          id: "registration",
-          date: regDate,
-          photo_front: profile.photo_front,
-          photo_side: profile.photo_side,
-          photo_back: profile.photo_back,
-          _isProfile: true,
-          _record: profile,
-        });
+      pb.collection("users").getOne(client.id, { requestKey: null }).catch(()=>null),
+    ]).then(([data, profile]) => {
+      let combined = [...data];
+      if (profile?.photo_front) {
+        const regDate = profile.created ? profile.created.slice(0,10) : "0000-00-00";
+        const alreadyExists = data.some(d => d.date === regDate);
+        if (!alreadyExists) {
+          combined.unshift({
+            id: "registration",
+            date: regDate,
+            photo_front: profile.photo_front,
+            photo_side: profile.photo_side,
+            photo_back: profile.photo_back,
+            _isProfile: true,
+            _record: profile,
+          });
+        }
       }
-    }
-    combined.sort((a,b) => {
-      const dateCmp = b.date.slice(0,10).localeCompare(a.date.slice(0,10));
-      if (dateCmp !== 0) return dateCmp;
-      // Tos pačios dienos įrašai — naujesnis (vėliau sukurtas) viršuje
-      const aCreated = a.created || a.date;
-      const bCreated = b.created || b.date;
-      return bCreated.localeCompare(aCreated);
-    });
-    setHistory(combined);
-    setLoading(false);
-  }, [user.id]);
+      combined.sort((a,b) => a.date.localeCompare(b.date));
+      setHistory(combined);
+      if (combined.length >= 2) { setIdxA(0); setIdxB(combined.length-1); }
+      else if (combined.length === 1) { setIdxA(0); setIdxB(0); }
+      setLoading(false);
+    }).catch(()=>setLoading(false));
+  }, [client.id]);
 
   useEffect(() => { load(); }, [load]);
 
-  const [cropField, setCropField]         = useState(null);
-  const [cropSrc, setCropSrc]             = useState(null);
-  const [editHistoryItem, setEditHistoryItem] = useState(null); // ne null = redaguojame esamą įrašą, ne naują įkėlimą
-  const [savingEdit, setSavingEdit]       = useState(false);
-  const [comment, setComment]             = useState("");
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [commentDraft, setCommentDraft]   = useState("");
-  const [savingComment, setSavingComment] = useState(false);
-
-  function handleFile(field, e) {
-    const file = e.target.files[0];
-    e.target.value = ""; // leidžia iškart perpasirinkti tą pačią nuotrauką
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => { setCropSrc(ev.target.result); setCropField(field); };
-    reader.readAsDataURL(file);
-  }
-
-  // Trenerei — pakeisti konkretaus seno įrašo konkrečią nuotrauką.
-  function handleEditFile(historyItem, field, e) {
-    const file = e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => { setCropSrc(ev.target.result); setCropField(field); setEditHistoryItem(historyItem); };
-    reader.readAsDataURL(file);
-  }
-
-  async function handleCropConfirm(blob) {
-    if (editHistoryItem) {
-      setSavingEdit(true);
-      const formData = new FormData();
-      formData.append(cropField, blob, `${cropField}.jpg`);
-      try {
-        if (editHistoryItem._isProfile) {
-          await pb.collection("users").update(editHistoryItem._record.id, formData);
-        } else {
-          await pb.collection("progress_photos").update(editHistoryItem.id, formData);
-        }
-        await load();
-      } catch (err) {
-        alert("Klaida keičiant nuotrauką: " + (err?.message || ""));
-      }
-      setSavingEdit(false);
-      setEditHistoryItem(null);
-      setCropField(null);
-      setCropSrc(null);
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    setPreviews(p => ({ ...p, [cropField]: url }));
-    setPhotos(p => ({ ...p, [cropField]: blob }));
-    setCropField(null);
-    setCropSrc(null);
-  }
-
-  async function handleSave() {
-    if (!photos.photo_front) return;
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append("user_id", user.id);
-      formData.append("date", uploadDate);
-      if (photos.photo_front) formData.append("photo_front", photos.photo_front, "photo_front.jpg");
-      if (photos.photo_side)  formData.append("photo_side", photos.photo_side, "photo_side.jpg");
-      if (photos.photo_back)  formData.append("photo_back", photos.photo_back, "photo_back.jpg");
-      if (comment.trim())     formData.append("trainer_comment", comment.trim());
-      await pb.collection("progress_photos").create(formData);
-      setShowUpload(false);
-      setPhotos({ photo_front:null, photo_side:null, photo_back:null });
-      setPreviews({ photo_front:null, photo_side:null, photo_back:null });
-      setComment("");
-      await load();
-    } catch(err) {
-      console.error("Progress photo save error:", err);
-      console.error("Error data:", JSON.stringify(err?.data || err?.response, null, 2));
-      alert("Klaida: " + JSON.stringify(err?.data?.data || err?.response?.data || err?.message));
-    }
-    setSaving(false);
-  }
-
-  async function handleSaveComment(historyItem) {
-    setSavingComment(true);
-    await pb.collection("progress_photos").update(historyItem.id, { trainer_comment: commentDraft.trim() }).catch(()=>{});
-    setSavingComment(false);
-    setEditingCommentId(null);
-    await load();
-  }
-
-  const fields = [
-    { key:"photo_front", label:"Priekis", Icon:ArrowUp,      required:true },
-    { key:"photo_side",  label:"Šonas",   Icon:ChevronRight, required:false },
-    { key:"photo_back",  label:"Nugara",  Icon:ArrowDown,    required:false },
-  ];
+  const photoA = idxA != null ? history[idxA] : null;
+  const photoB = idxB != null ? history[idxB] : null;
 
   const [preview, setPreview] = useState(null);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
-
-      {cropField && (
-        <PhotoCropper src={cropSrc} field={cropField} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); setEditHistoryItem(null); }} />
+    <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {showUpload && (
+        <ProgressPhotos user={client} onClose={() => { setShowUpload(false); load(); }} canEdit />
       )}
-
-      {/* Preview modal */}
       {preview && (
         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <button onClick={(e)=>{e.stopPropagation();setPreview(null);}} style={{ position:"absolute", top:"max(env(safe-area-inset-top), 16px)", right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, color:"#fff", fontSize:18, cursor:"pointer", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center" }}><Close size={18} /></button>
@@ -167,119 +71,96 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
         </div>
       )}
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={13} />Atgal</button>
-        <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso nuotraukos</h1>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+        <div style={{ flex:1 }}>
+          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso palyginimas</h1>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
+        </div>
+        <button onClick={() => setShowUpload(true)} style={{ background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", borderRadius:10, padding:"8px 12px", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
+          + Įkelti
+        </button>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
 
-        {!showUpload && (
-          <button onClick={()=>setShowUpload(true)} style={{ width:"100%", padding:"14px", marginBottom:20, borderRadius:16, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            + Įkelti naujas nuotraukas
-          </button>
-        )}
+        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
 
-        {showUpload && (
-          <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:18, padding:16, marginBottom:20 }}>
-            <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 12px" }}>Naujos nuotraukos</p>
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Data</label>
-              <input type="date" value={uploadDate} max={todayStr()} onChange={e=>setUploadDate(e.target.value)}
-                style={{ padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" }}/>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
-              {fields.map(f => (
-                <label key={f.key} style={{ cursor:"pointer", display:"block" }}>
-                  <input type="file" accept="image/*" onChange={e=>handleFile(f.key,e)} style={{ display:"none" }} />
-                  <div style={{ aspectRatio:"3/4", borderRadius:12, border:previews[f.key]?"2px solid rgba(255,255,255,0.6)":f.required?"2px dashed rgba(255,180,180,0.5)":"2px dashed rgba(255,255,255,0.25)", background:previews[f.key]?"transparent":"rgba(255,255,255,0.06)", overflow:"hidden", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4 }}>
-                    {previews[f.key] ? (
-                      <img src={previews[f.key]} alt={f.label} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                    ) : (
-                      <>
-                        <f.Icon size={18} color="rgba(255,255,255,0.8)" />
-                        <span style={{ fontSize:9, color:"rgba(255,255,255,0.5)", fontWeight:600 }}>{f.label}</span>
-                        {f.required && <span style={{ fontSize:8, color:"rgba(255,150,150,0.8)" }}>* privaloma</span>}
-                      </>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-            <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Komentaras klientui apie pasikeitimus (nebūtina)</label>
-              <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="pvz. Matosi aiškus progresas liemenyje, tęsk taip pat!" rows={3}
-                style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box" }}/>
-            </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={()=>{setShowUpload(false);setComment("");}} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
-              <button onClick={handleSave} disabled={!photos.photo_front||saving} style={{ flex:2, padding:"11px", borderRadius:12, background:photos.photo_front?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)", color:photos.photo_front?"#fff":"rgba(255,255,255,0.3)", border:"none", fontSize:14, fontWeight:700, cursor:photos.photo_front?"pointer":"default", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                {saving?"Saugoma...":<><Save size={14} />Išsaugoti</>}
-              </button>
-            </div>
+        {!loading && history.length === 0 && (
+          <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:"28px 16px", textAlign:"center", border:"2px dashed rgba(255,255,255,0.12)" }}>
+            <p style={{ color:"rgba(255,255,255,0.4)", fontSize:14, margin:"0 0 14px" }}>Klientas dar neįkėlė progreso nuotraukų</p>
+            <button onClick={() => setShowUpload(true)} style={{ padding:"11px 18px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              + Įkelti nuotraukas
+            </button>
           </div>
         )}
 
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
-          Istorija{savingEdit && <span style={{ fontSize:10, fontWeight:400, textTransform:"none", letterSpacing:"normal", color:"rgba(255,255,255,0.4)" }}>· keičiama...</span>}
-        </p>
+        {!loading && history.length > 0 && (
+          <>
+            {/* Rakursas */}
+            <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+              {VIEWS.map(v => (
+                <button key={v.key} onClick={()=>setView(v.key)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border:"none", background:view===v.key?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <v.Icon size={12} />{v.label}
+                </button>
+              ))}
+            </div>
 
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>}
-        {!loading && history.length===0 && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Nuotraukų dar nėra</p>}
-
-        {history.slice(0, visibleCount).map(h => (
-          <div key={h.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:12, marginBottom:10 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 8px", display:"flex", alignItems:"center", gap:5 }}>
-              <Calendar size={12} />{h.date.slice(0,10)} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
-            </p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-              {["photo_front","photo_side","photo_back"].map(k => (
-                <div key={k} style={{ position:"relative" }}>
-                  {h[k] ? (
-                    <img onClick={()=>setPreview(pb.files.getURL(h._isProfile ? h._record : h, h[k]))} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer", display:"block" }} />
-                  ) : (
-                    <div style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />
-                  )}
-                  {canEdit && (
-                    <label style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:"50%", background:"rgba(0,0,0,0.65)", border:"1px solid rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                      <input type="file" accept="image/*" onChange={e=>handleEditFile(h,k,e)} style={{ display:"none" }} />
-                      <Edit size={11} color="#fff" />
-                    </label>
-                  )}
+            {/* Palyginimas šalia */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+              {[{label:"Anksčiau", photo:photoA},{label:"Dabar", photo:photoB}].map((col,i) => (
+                <div key={i}>
+                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginBottom:6, fontWeight:700 }}>{col.label}</p>
+                  <div style={{ aspectRatio:"3/4", borderRadius:14, overflow:"hidden", background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {col.photo && col.photo[view] ? (
+                      <img onClick={()=>setPreview(pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view]))} src={pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", cursor:"pointer" }} />
+                    ) : (
+                      <span style={{ color:"rgba(255,255,255,0.2)", fontSize:12 }}>Nėra</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:6 }}>{col.photo?.date?.slice(0,10) || "–"}{col.photo?._isProfile && " (pradinė)"}</p>
                 </div>
               ))}
             </div>
-            {!h._isProfile && (
-              <div style={{ marginTop:10 }}>
-                {editingCommentId === h.id ? (
-                  <div>
-                    <textarea value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} placeholder="Komentaras klientui apie pasikeitimus..." rows={3}
-                      style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:12, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box", marginBottom:6 }}/>
-                    <div style={{ display:"flex", gap:6 }}>
-                      <button onClick={()=>setEditingCommentId(null)} style={{ flex:1, padding:"7px", borderRadius:8, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
-                      <button onClick={()=>handleSaveComment(h)} disabled={savingComment} style={{ flex:2, padding:"7px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                        {savingComment?"Saugoma...":"Išsaugoti"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {h.trainer_comment && <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:"0 0 6px", lineHeight:1.4, whiteSpace:"pre-wrap" }}>{h.trainer_comment}</p>}
-                    {canEdit && (
-                      <button onClick={()=>{setEditingCommentId(h.id);setCommentDraft(h.trainer_comment||"");}} style={{ background:"rgba(255,255,255,0.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 }}>
-                        <Edit size={10} />{h.trainer_comment ? "Redaguoti komentarą" : "+ Pridėti komentarą"}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
 
-        {history.length > visibleCount && (
-          <button onClick={()=>setVisibleCount(c=>c+5)} style={{ width:"100%", padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            Rodyti daugiau ({history.length - visibleCount} liko)
-          </button>
+            {/* Datos slankikliai */}
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Anksčiau (kairė)</label>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {(showAllA ? history : history.slice(-VISIBLE_DATES)).map((h) => {
+                  const i = history.indexOf(h);
+                  return (
+                    <button key={h.id} onClick={()=>setIdxA(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxA===i?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                      {h.date.slice(0,10)}
+                    </button>
+                  );
+                })}
+              </div>
+              {!showAllA && history.length > VISIBLE_DATES && (
+                <button onClick={()=>setShowAllA(true)} style={{ marginTop:8, padding:"7px 14px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Rodyti daugiau (+{history.length - VISIBLE_DATES})
+                </button>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:6 }}>Dabar (dešinė)</label>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {(showAllB ? history : history.slice(-VISIBLE_DATES)).map((h) => {
+                  const i = history.indexOf(h);
+                  return (
+                    <button key={h.id} onClick={()=>setIdxB(i)} style={{ padding:"7px 12px", borderRadius:10, border:"none", background:idxB===i?"#276749":"rgba(255,255,255,0.1)", color:"#fff", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                      {h.date.slice(0,10)}
+                    </button>
+                  );
+                })}
+              </div>
+              {!showAllB && history.length > VISIBLE_DATES && (
+                <button onClick={()=>setShowAllB(true)} style={{ marginTop:8, padding:"7px 14px", borderRadius:10, border:"1px dashed rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Rodyti daugiau (+{history.length - VISIBLE_DATES})
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
