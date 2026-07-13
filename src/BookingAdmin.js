@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
-import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle } from "./ui/icons";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
+const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
 const STATUS_LABEL = { pending:{Icon:Timer,label:"Laukia"}, approved:{Icon:CheckCircle,label:"Patvirtinta"}, rejected:{Icon:Close,label:"Atmesta"}, cancelled:{Icon:Ban,label:"Atšaukta"} };
 const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)", cancelled:"rgba(255,255,255,0.05)" };
 
@@ -432,20 +433,111 @@ function RecurringSlotsSettings({ onClose }) {
   );
 }
 
+// ── Treniruočių kalendorius (admin) ───────────────────────────────────────────
+// Rodo mėnesio tinklelį — dienos su patvirtintomis treniruotėmis pažymėtos,
+// paspaudus dieną matoma visų tos dienos treniruočių (klientų) apžvalga.
+function TrainerCalendar({ bookings, clients, onClose }) {
+  const [calMonth, setCalMonth] = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
+  const [selectedDate, setSelectedDate] = useState(null);
+  const today = todayStr();
+
+  const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
+  const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
+  const offset = firstDay===0 ? 6 : firstDay-1;
+
+  const approvedByDate = {};
+  bookings.forEach(b => {
+    if (b.status !== "approved") return;
+    (approvedByDate[b.date] ||= []).push(b);
+  });
+
+  const dayBookings = selectedDate
+    ? (approvedByDate[selectedDate]||[]).slice().sort((a,b)=>timeToMin(a.start_time)-timeToMin(b.start_time))
+    : [];
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={15} />Treniruočių kalendorius</h1>
+      </div>
+
+      <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+        <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <button onClick={()=>setCalMonth(p=>{ const d=new Date(p.y,p.m-1,1); return{y:d.getFullYear(),m:d.getMonth()}; })}
+              style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",fontSize:14}}>◀</button>
+            <span style={{color:"#fff",fontWeight:700,fontSize:14}}>{MONTHS[calMonth.m]} {calMonth.y}</span>
+            <button onClick={()=>setCalMonth(p=>{ const d=new Date(p.y,p.m+1,1); return{y:d.getFullYear(),m:d.getMonth()}; })}
+              style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",fontSize:14}}>▶</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
+            {["P","A","T","K","P","Š","S"].map((d,i)=><div key={i} style={{textAlign:"center",fontSize:9,color:"rgba(255,255,255,0.35)"}}>{d}</div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+            {Array(offset).fill(null).map((_,i)=><div key={"e"+i}/>)}
+            {Array(daysInMonth).fill(null).map((_,i)=>{
+              const d=i+1;
+              const ds=`${calMonth.y}-${String(calMonth.m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+              const dayBk = approvedByDate[ds] || [];
+              const count = dayBk.length;
+              const isSel = selectedDate===ds;
+              const isToday = ds===today;
+              const isPast = ds<today;
+              return (
+                <button key={d} onClick={()=>setSelectedDate(ds)} style={{
+                  aspectRatio:"1", borderRadius:8,
+                  border: isSel ? "2px solid rgba(255,255,255,0.9)" : isToday ? "1.5px solid rgba(255,255,255,0.5)" : "none",
+                  background: isSel ? "rgba(255,255,255,0.25)" : count>0 ? "rgba(46,204,113,0.3)" : "transparent",
+                  color: count>0 ? "#fff" : isPast ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)",
+                  fontWeight: count>0?700:400, fontSize:12, cursor:"pointer", fontFamily:"inherit", position:"relative",
+                }}>
+                  {d}
+                  {count>0 && <span style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",fontSize:8,fontWeight:800,color:"#2ECC71",background:"rgba(0,0,0,0.4)",borderRadius:6,padding:"0 3px",lineHeight:1.4}}>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selectedDate && (
+          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16}}>
+            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 12px",display:"flex",alignItems:"center",gap:6}}><Calendar size={13} />{selectedDate}</p>
+            {dayBookings.length===0 ? (
+              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną treniruočių nėra</p>
+            ) : (
+              dayBookings.map(b => (
+                <div key={b.id} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{clients[b.client_id]?.name||"Nežinomas"}</p>
+                    {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0,fontStyle:"italic"}}>"{b.notes}"</p>}
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,color:"#7FFFB0",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Timer size={12} />{b.start_time}–{b.end_time}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Rezervacijų sąrašas (admin) ───────────────────────────────────────────────
 export default function BookingAdmin({ onClose }) {
-  const [view, setView]           = useState("list"); // list | schedule | recurring
+  const [view, setView]           = useState("list"); // list | schedule | recurring | calendar
   const [bookings, setBookings]   = useState([]);
   const [clients, setClients]     = useState({});
   const [loading, setLoading]     = useState(true);
   const [filter, setFilter]       = useState("pending");
   const [search, setSearch]       = useState("");
   const [visibleCount, setVisibleCount] = useState(8);
+  const [showPast, setShowPast]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const [bk, cl] = await Promise.all([
-      pb.collection("bookings").getFullList({ sort:"-date,-start_time", requestKey:null }).catch(()=>[]),
+      pb.collection("bookings").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]),
       pb.collection("users").getFullList({ filter:'role="client"', requestKey:null }).catch(()=>[]),
     ]);
     const clientMap = {};
@@ -488,18 +580,29 @@ export default function BookingAdmin({ onClose }) {
     setBookings(prev => prev.map(b => (b.status==="approved" && !b.added_to_calendar) ? {...b,added_to_calendar:true} : b));
   }
 
+  async function handleDelete(id) {
+    if (!window.confirm("Ištrinti šį rezervacijos įrašą visam laikui?")) return;
+    await pb.collection("bookings").delete(id).catch(()=>{});
+    setBookings(prev => prev.filter(b => b.id !== id));
+  }
+
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
   if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
+  if (view === "calendar") return <TrainerCalendar bookings={bookings} clients={clients} onClose={()=>setView("list")} />;
 
+  const today = todayStr();
   const statusFiltered = bookings.filter(b => filter==="all" || b.status===filter);
+  const pastHidden = showPast ? statusFiltered : statusFiltered.filter(b => b.date >= today);
+  const hiddenPastCount = statusFiltered.length - pastHidden.length;
   const q = search.trim().toLowerCase();
-  const filtered = q ? statusFiltered.filter(b => clients[b.client_id]?.name?.toLowerCase().includes(q)) : statusFiltered;
+  const filtered = q ? pastHidden.filter(b => clients[b.client_id]?.name?.toLowerCase().includes(q)) : pastHidden;
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1,display:"flex",alignItems:"center",gap:6}}><Calendar size={15} />Rezervacijos</h1>
+        <button onClick={()=>setView("calendar")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Calendar size={12} />Kalendorius</button>
         <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Repeat size={12} />Įprasti</button>
         <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Settings size={12} />Darbo laikas</button>
       </div>
@@ -522,6 +625,12 @@ export default function BookingAdmin({ onClose }) {
 
         {statusFiltered.length > 8 && (
           <SearchInput value={search} onChange={v=>{setSearch(v);setVisibleCount(8);}} placeholder="Ieškoti kliento pagal vardą..." />
+        )}
+
+        {(hiddenPastCount > 0 || showPast) && (
+          <button onClick={()=>{setShowPast(s=>!s);setVisibleCount(8);}} style={{width:"100%",padding:"9px",marginBottom:12,borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.6)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+            {showPast ? "Slėpti praeities įrašus" : `Rodyti praeities įrašus (${hiddenPastCount})`}
+          </button>
         )}
 
         {loading && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Kraunama...</p>}
@@ -577,6 +686,11 @@ export default function BookingAdmin({ onClose }) {
                   )}
                   <AdminCancelButton booking={b} clientName={client?.name||"Klientas"} onCancelled={load} />
                 </div>
+              )}
+              {b.date < today && (
+                <button onClick={()=>handleDelete(b.id)} style={{width:"100%",marginTop:8,padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.04)",color:"rgba(255,255,255,0.45)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                  <Trash size={11} />Ištrinti įrašą
+                </button>
               )}
             </div>
           );
