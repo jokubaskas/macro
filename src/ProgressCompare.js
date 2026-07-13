@@ -62,7 +62,7 @@ export default function ProgressCompare({ client, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showUpload && (
-        <ProgressPhotos user={client} onClose={() => { setShowUpload(false); load(); }} />
+        <ProgressPhotos user={client} onClose={() => { setShowUpload(false); load(); }} canEdit />
       )}
       {preview && (
         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>

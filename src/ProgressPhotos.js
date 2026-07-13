@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight } from "./ui/icons";
+import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight, Edit } from "./ui/icons";
 import PhotoCropper from "./PhotoCropper";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-export default function ProgressPhotos({ user, onClose }) {
+export default function ProgressPhotos({ user, onClose, canEdit = false }) {
   const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showUpload, setShowUpload] = useState(false);
@@ -55,8 +55,10 @@ export default function ProgressPhotos({ user, onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const [cropField, setCropField] = useState(null);
-  const [cropSrc, setCropSrc]     = useState(null);
+  const [cropField, setCropField]         = useState(null);
+  const [cropSrc, setCropSrc]             = useState(null);
+  const [editHistoryItem, setEditHistoryItem] = useState(null); // ne null = redaguojame esamą įrašą, ne naują įkėlimą
+  const [savingEdit, setSavingEdit]       = useState(false);
 
   function handleFile(field, e) {
     const file = e.target.files[0];
@@ -67,7 +69,37 @@ export default function ProgressPhotos({ user, onClose }) {
     reader.readAsDataURL(file);
   }
 
-  function handleCropConfirm(blob) {
+  // Trenerei — pakeisti konkretaus seno įrašo konkrečią nuotrauką.
+  function handleEditFile(historyItem, field, e) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { setCropSrc(ev.target.result); setCropField(field); setEditHistoryItem(historyItem); };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleCropConfirm(blob) {
+    if (editHistoryItem) {
+      setSavingEdit(true);
+      const formData = new FormData();
+      formData.append(cropField, blob, `${cropField}.jpg`);
+      try {
+        if (editHistoryItem._isProfile) {
+          await pb.collection("users").update(editHistoryItem._record.id, formData);
+        } else {
+          await pb.collection("progress_photos").update(editHistoryItem.id, formData);
+        }
+        await load();
+      } catch (err) {
+        alert("Klaida keičiant nuotrauką: " + (err?.message || ""));
+      }
+      setSavingEdit(false);
+      setEditHistoryItem(null);
+      setCropField(null);
+      setCropSrc(null);
+      return;
+    }
     const url = URL.createObjectURL(blob);
     setPreviews(p => ({ ...p, [cropField]: url }));
     setPhotos(p => ({ ...p, [cropField]: blob }));
@@ -110,7 +142,7 @@ export default function ProgressPhotos({ user, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
 
       {cropField && (
-        <PhotoCropper src={cropSrc} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); }} />
+        <PhotoCropper src={cropSrc} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); setEditHistoryItem(null); }} />
       )}
 
       {/* Preview modal */}
@@ -168,7 +200,9 @@ export default function ProgressPhotos({ user, onClose }) {
           </div>
         )}
 
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Istorija</p>
+        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
+          Istorija{savingEdit && <span style={{ fontSize:10, fontWeight:400, textTransform:"none", letterSpacing:"normal", color:"rgba(255,255,255,0.4)" }}>· keičiama...</span>}
+        </p>
 
         {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>}
         {!loading && history.length===0 && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Nuotraukų dar nėra</p>}
@@ -179,9 +213,21 @@ export default function ProgressPhotos({ user, onClose }) {
               <Calendar size={12} />{h.date.slice(0,10)} {h._isProfile && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400 }}>(pradinė)</span>}
             </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-              {["photo_front","photo_side","photo_back"].map(k => h[k] ? (
-                <img key={k} onClick={()=>setPreview(pb.files.getURL(h._isProfile ? h._record : h, h[k]))} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer" }} />
-              ) : <div key={k} style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />)}
+              {["photo_front","photo_side","photo_back"].map(k => (
+                <div key={k} style={{ position:"relative" }}>
+                  {h[k] ? (
+                    <img onClick={()=>setPreview(pb.files.getURL(h._isProfile ? h._record : h, h[k]))} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer", display:"block" }} />
+                  ) : (
+                    <div style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />
+                  )}
+                  {canEdit && (
+                    <label style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:"50%", background:"rgba(0,0,0,0.65)", border:"1px solid rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                      <input type="file" accept="image/*" onChange={e=>handleEditFile(h,k,e)} style={{ display:"none" }} />
+                      <Edit size={11} color="#fff" />
+                    </label>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         ))}
