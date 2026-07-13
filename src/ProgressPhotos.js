@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight } from "./ui/icons";
+import PhotoCropper from "./PhotoCropper";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -54,13 +55,24 @@ export default function ProgressPhotos({ user, onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const [cropField, setCropField] = useState(null);
+  const [cropSrc, setCropSrc]     = useState(null);
+
   function handleFile(field, e) {
     const file = e.target.files[0];
+    e.target.value = ""; // leidžia iškart perpasirinkti tą pačią nuotrauką
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => setPreviews(p => ({...p, [field]: ev.target.result}));
+    reader.onload = ev => { setCropSrc(ev.target.result); setCropField(field); };
     reader.readAsDataURL(file);
-    setPhotos(p => ({...p, [field]: file}));
+  }
+
+  function handleCropConfirm(blob) {
+    const url = URL.createObjectURL(blob);
+    setPreviews(p => ({ ...p, [cropField]: url }));
+    setPhotos(p => ({ ...p, [cropField]: blob }));
+    setCropField(null);
+    setCropSrc(null);
   }
 
   async function handleSave() {
@@ -70,9 +82,9 @@ export default function ProgressPhotos({ user, onClose }) {
       const formData = new FormData();
       formData.append("user_id", user.id);
       formData.append("date", uploadDate);
-      if (photos.photo_front) formData.append("photo_front", photos.photo_front);
-      if (photos.photo_side)  formData.append("photo_side", photos.photo_side);
-      if (photos.photo_back)  formData.append("photo_back", photos.photo_back);
+      if (photos.photo_front) formData.append("photo_front", photos.photo_front, "photo_front.jpg");
+      if (photos.photo_side)  formData.append("photo_side", photos.photo_side, "photo_side.jpg");
+      if (photos.photo_back)  formData.append("photo_back", photos.photo_back, "photo_back.jpg");
       await pb.collection("progress_photos").create(formData);
       setShowUpload(false);
       setPhotos({ photo_front:null, photo_side:null, photo_back:null });
@@ -96,6 +108,10 @@ export default function ProgressPhotos({ user, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
+
+      {cropField && (
+        <PhotoCropper src={cropSrc} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); }} />
+      )}
 
       {/* Preview modal */}
       {preview && (
