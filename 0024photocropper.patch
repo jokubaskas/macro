@@ -1,0 +1,208 @@
+From 0171b04455b50b24212af1828343363a05d15573 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 13 Jul 2026 08:34:33 +0000
+Subject: [PATCH] Add a crop/zoom tool so progress photos stay comparable over
+ time
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Photos taken from different distances made the person appear at
+wildly different sizes across sessions, making before/after
+comparisons useless. Selecting a photo now opens a crop step first:
+drag to pan, slider to zoom, with head/feet guide lines overlaid so
+the subject is framed consistently every time. Confirming renders
+the adjusted crop to a fixed-size canvas and that becomes the
+uploaded file — the original camera framing is never stored.
+
+Rendered via a React portal straight into document.body so it can
+never get trapped inside a parent screen's z-index stacking context
+(the same class of bug fixed for the exercise-picker modals earlier).
+---
+ src/PhotoCropper.js   | 110 ++++++++++++++++++++++++++++++++++++++++++
+ src/ProgressPhotos.js |  26 ++++++++--
+ 2 files changed, 131 insertions(+), 5 deletions(-)
+ create mode 100644 src/PhotoCropper.js
+
+diff --git a/src/PhotoCropper.js b/src/PhotoCropper.js
+new file mode 100644
+index 0000000..fa04ba0
+--- /dev/null
++++ b/src/PhotoCropper.js
+@@ -0,0 +1,110 @@
++import { useState, useRef, useEffect } from "react";
++import { createPortal } from "react-dom";
++import { Close, Check } from "./ui/icons";
++
++// Fiksuotas 3:4 kadras — atitinka visur appe naudojamą nuotraukų aspektą.
++const FRAME_W = 280, FRAME_H = Math.round(FRAME_W * 4 / 3);
++const OUTPUT_W = 720, OUTPUT_H = Math.round(OUTPUT_W * 4 / 3);
++
++// Kadravimo įrankis su gairelėmis — leidžia pastumti/priartinti nuotrauką
++// prieš išsaugant, kad žmogus visada atsidurtų tokio pat dydžio kadre
++// (nesvarbu, iš kokio atstumo buvo fotografuota), tad senos ir naujos
++// progreso nuotraukos liktų palyginamos. Portalas į document.body — kad
++// niekada nepakliūtų į tėvinių ekranų izoliuotus z-index kontekstus.
++export default function PhotoCropper({ src, onConfirm, onCancel }) {
++  const [imgSize, setImgSize] = useState(null);
++  const [zoom, setZoom] = useState(1);
++  const [offset, setOffset] = useState({ x: 0, y: 0 });
++  const dragRef = useRef(null);
++  const imgRef = useRef(null);
++
++  useEffect(() => {
++    const img = new Image();
++    img.onload = () => {
++      const baseScale = Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight);
++      setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
++      setOffset({
++        x: (FRAME_W - img.naturalWidth * baseScale) / 2,
++        y: (FRAME_H - img.naturalHeight * baseScale) / 2,
++      });
++    };
++    img.src = src;
++    imgRef.current = img;
++  }, [src]);
++
++  if (!imgSize) {
++    return createPortal(
++      <div style={overlayStyle}><p style={{ color: "#fff" }}>Kraunama...</p></div>,
++      document.body
++    );
++  }
++
++  const baseScale = Math.max(FRAME_W / imgSize.w, FRAME_H / imgSize.h);
++  const scale = baseScale * zoom;
++  const dispW = imgSize.w * scale, dispH = imgSize.h * scale;
++  const clampedX = Math.min(0, Math.max(FRAME_W - dispW, offset.x));
++  const clampedY = Math.min(0, Math.max(FRAME_H - dispH, offset.y));
++
++  function handlePointerDown(e) {
++    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: clampedX, origY: clampedY };
++    e.currentTarget.setPointerCapture(e.pointerId);
++  }
++  function handlePointerMove(e) {
++    if (!dragRef.current) return;
++    const dx = e.clientX - dragRef.current.startX;
++    const dy = e.clientY - dragRef.current.startY;
++    setOffset({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
++  }
++  function handlePointerUp() { dragRef.current = null; }
++
++  function handleConfirm() {
++    const canvas = document.createElement("canvas");
++    canvas.width = OUTPUT_W; canvas.height = OUTPUT_H;
++    const ctx = canvas.getContext("2d");
++    const ratio = OUTPUT_W / FRAME_W;
++    ctx.drawImage(imgRef.current, clampedX * ratio, clampedY * ratio, dispW * ratio, dispH * ratio);
++    canvas.toBlob(blob => { if (blob) onConfirm(blob); }, "image/jpeg", 0.9);
++  }
++
++  return createPortal(
++    <div style={overlayStyle}>
++      <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Sutaikyk su gairelėmis</p>
++      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: "0 0 16px", textAlign: "center", maxWidth: FRAME_W }}>
++        Pastumk ir priartink, kad galva ir pėdos atitiktų linijas — taip senos ir naujos nuotraukos bus vienodo dydžio.
++      </p>
++      <div
++        onPointerDown={handlePointerDown}
++        onPointerMove={handlePointerMove}
++        onPointerUp={handlePointerUp}
++        onPointerCancel={handlePointerUp}
++        style={{ width: FRAME_W, height: FRAME_H, borderRadius: 16, overflow: "hidden", position: "relative", background: "#111", touchAction: "none", cursor: "grab", border: "2px solid rgba(255,255,255,0.3)" }}>
++        <img src={src} draggable={false} alt="" style={{
++          position: "absolute", left: clampedX, top: clampedY, width: dispW, height: dispH,
++          userSelect: "none", pointerEvents: "none", maxWidth: "none",
++        }} />
++        <div style={{ position: "absolute", left: 0, right: 0, top: "10%", borderTop: "2px dashed rgba(127,255,176,0.85)", pointerEvents: "none" }}>
++          <span style={{ position: "absolute", left: 4, top: -16, fontSize: 9, color: "#7FFFB0", fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "1px 5px", borderRadius: 4 }}>Galva</span>
++        </div>
++        <div style={{ position: "absolute", left: 0, right: 0, top: "92%", borderTop: "2px dashed rgba(255,215,0,0.85)", pointerEvents: "none" }}>
++          <span style={{ position: "absolute", left: 4, top: 4, fontSize: 9, color: "#FFD700", fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "1px 5px", borderRadius: 4 }}>Pėdos</span>
++        </div>
++      </div>
++      <div style={{ width: FRAME_W, marginTop: 16, display: "flex", alignItems: "center", gap: 8 }}>
++        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>−</span>
++        <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} style={{ flex: 1 }} />
++        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>+</span>
++      </div>
++      <div style={{ display: "flex", gap: 10, marginTop: 18, width: FRAME_W }}>
++        <button onClick={onCancel} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Close size={14} />Atšaukti</button>
++        <button onClick={handleConfirm} style={{ flex: 2, padding: "11px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Check size={14} />Naudoti</button>
++      </div>
++    </div>,
++    document.body
++  );
++}
++
++const overlayStyle = {
++  position: "fixed", inset: 0, zIndex: 5000, background: "rgba(0,0,0,0.92)",
++  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
++  padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
++};
+diff --git a/src/ProgressPhotos.js b/src/ProgressPhotos.js
+index 4c6946e..e04ebe4 100644
+--- a/src/ProgressPhotos.js
++++ b/src/ProgressPhotos.js
+@@ -1,6 +1,7 @@
+ import { useState, useEffect, useCallback } from "react";
+ import { pb } from "./pb";
+ import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight } from "./ui/icons";
++import PhotoCropper from "./PhotoCropper";
+ 
+ const PK = { dark:"#6D1B3B", mid:"#AD1457" };
+ function todayStr() { return new Date().toISOString().split("T")[0]; }
+@@ -54,13 +55,24 @@ export default function ProgressPhotos({ user, onClose }) {
+ 
+   useEffect(() => { load(); }, [load]);
+ 
++  const [cropField, setCropField] = useState(null);
++  const [cropSrc, setCropSrc]     = useState(null);
++
+   function handleFile(field, e) {
+     const file = e.target.files[0];
++    e.target.value = ""; // leidžia iškart perpasirinkti tą pačią nuotrauką
+     if (!file) return;
+     const reader = new FileReader();
+-    reader.onload = ev => setPreviews(p => ({...p, [field]: ev.target.result}));
++    reader.onload = ev => { setCropSrc(ev.target.result); setCropField(field); };
+     reader.readAsDataURL(file);
+-    setPhotos(p => ({...p, [field]: file}));
++  }
++
++  function handleCropConfirm(blob) {
++    const url = URL.createObjectURL(blob);
++    setPreviews(p => ({ ...p, [cropField]: url }));
++    setPhotos(p => ({ ...p, [cropField]: blob }));
++    setCropField(null);
++    setCropSrc(null);
+   }
+ 
+   async function handleSave() {
+@@ -70,9 +82,9 @@ export default function ProgressPhotos({ user, onClose }) {
+       const formData = new FormData();
+       formData.append("user_id", user.id);
+       formData.append("date", uploadDate);
+-      if (photos.photo_front) formData.append("photo_front", photos.photo_front);
+-      if (photos.photo_side)  formData.append("photo_side", photos.photo_side);
+-      if (photos.photo_back)  formData.append("photo_back", photos.photo_back);
++      if (photos.photo_front) formData.append("photo_front", photos.photo_front, "photo_front.jpg");
++      if (photos.photo_side)  formData.append("photo_side", photos.photo_side, "photo_side.jpg");
++      if (photos.photo_back)  formData.append("photo_back", photos.photo_back, "photo_back.jpg");
+       await pb.collection("progress_photos").create(formData);
+       setShowUpload(false);
+       setPhotos({ photo_front:null, photo_side:null, photo_back:null });
+@@ -97,6 +109,10 @@ export default function ProgressPhotos({ user, onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
+ 
++      {cropField && (
++        <PhotoCropper src={cropSrc} onConfirm={handleCropConfirm} onCancel={() => { setCropField(null); setCropSrc(null); }} />
++      )}
++
+       {/* Preview modal */}
+       {preview && (
+         <div onClick={()=>setPreview(null)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+-- 
+2.43.0
+
