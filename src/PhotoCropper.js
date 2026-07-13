@@ -6,28 +6,18 @@ import { Close, Check } from "./ui/icons";
 const FRAME_W = 280, FRAME_H = Math.round(FRAME_W * 4 / 3);
 const OUTPUT_W = 720, OUTPUT_H = Math.round(OUTPUT_W * 4 / 3);
 
-// Žmogaus siluetas (be galvos, nuo pečių iki pėdų) — vaizdinė gairelė
-// kadruojant, kad kūnas visada atsidurtų tame pačiame dydyje kadre.
-// "Priekis" ir "nugara" naudoja tą patį kontūrą (iš išorės neatskiriami).
-function Silhouette({ field }) {
-  const isSide = field === "photo_side";
-  const gid = "silhouette-grad";
+// Dvi lygiavimo linijos — smakras (viršuje) ir čiurna (apačioje) — kad
+// senos ir naujos progreso nuotraukos liktų vienodo dydžio kadre.
+function Silhouette() {
   return (
-    <svg viewBox="0 0 100 150" preserveAspectRatio="none" style={{ position:"absolute", left:0, top:0, width:"100%", height:"98%", pointerEvents:"none" }}>
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FF9FC7" />
-          <stop offset="100%" stopColor="#AD1457" />
-        </linearGradient>
-      </defs>
-      <g fill={`url(#${gid})`} fillOpacity="0.16" stroke={`url(#${gid})`} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{ filter: "drop-shadow(0 0 6px rgba(255,110,180,0.55))" }}>
-        {isSide ? (
-          <path d="M 58,0 C 40,30 45,80 42,140 L 38,145 L 62,145 C 64,100 60,40 58,0 Z" />
-        ) : (
-          <path d="M 24,0 L 18,26 L 30,46 L 28,58 L 26,95 L 24,128 L 18,140 L 32,142 L 40,128 L 50,66 L 60,128 L 68,142 L 82,140 L 76,128 L 74,95 L 72,58 L 70,46 L 82,25 L 76,0 Z" />
-        )}
-      </g>
-    </svg>
+    <>
+      <div style={{ position:"absolute", left:0, right:0, top:"9%", borderTop:"2px dashed rgba(255,159,199,0.85)", pointerEvents:"none" }}>
+        <span style={{ position:"absolute", left:4, top:-16, fontSize:9, color:"#FF9FC7", fontWeight:700, background:"rgba(0,0,0,0.55)", padding:"1px 5px", borderRadius:4 }}>Smakras</span>
+      </div>
+      <div style={{ position:"absolute", left:0, right:0, top:"90%", borderTop:"2px dashed rgba(173,20,87,0.85)", pointerEvents:"none" }}>
+        <span style={{ position:"absolute", left:4, top:4, fontSize:9, color:"#FF6EB4", fontWeight:700, background:"rgba(0,0,0,0.55)", padding:"1px 5px", borderRadius:4 }}>Čiurna</span>
+      </div>
+    </>
   );
 }
 
@@ -93,9 +83,9 @@ export default function PhotoCropper({ src, field, onConfirm, onCancel }) {
 
   return createPortal(
     <div style={overlayStyle}>
-      <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Sutaikyk su siluetu</p>
+      <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Sutaikyk su gairelėmis</p>
       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: "0 0 16px", textAlign: "center", maxWidth: FRAME_W }}>
-        Pastumk ir priartink, kad kūnas nuo pečių iki pėdų atitiktų kontūrą — taip senos ir naujos nuotraukos bus vienodo dydžio.
+        Pastumk ir priartink, kad smakras ir čiurna atitiktų linijas — taip senos ir naujos nuotraukos bus vienodo dydžio.
       </p>
       <div
         onPointerDown={handlePointerDown}
