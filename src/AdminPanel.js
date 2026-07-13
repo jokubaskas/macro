@@ -13,7 +13,7 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `
 @keyframes bdayCardGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,215,0,0.35), 0 0 14px rgba(255,215,0,0.15); } 50% { box-shadow: 0 0 0 1px rgba(255,215,0,0.6), 0 0 22px rgba(255,215,0,0.35); } }
@@ -195,7 +195,7 @@ function DayView({ clientId, date }) {
       {checkin && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", fontWeight: 600, display:"flex", alignItems:"center", gap:5 }}><Clipboard size={12} />Check-in</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
               <div style={{ marginBottom: 8 }}><TrafficOrb v={checkin.nutrition_score} /></div>
               <div style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{TRAFFIC_LABEL[checkin.nutrition_score] || "–"}</div>
@@ -205,6 +205,11 @@ function DayView({ clientId, date }) {
               <div style={{ marginBottom: 8 }}><TrafficOrb v={checkin.wellbeing_score} /></div>
               <div style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{TRAFFIC_LABEL[checkin.wellbeing_score] || "–"}</div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Savijauta</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
+              <div style={{ marginBottom: 8, display:"flex", justifyContent:"center" }}><Glass size={26} color={checkin.alcohol == null ? "rgba(255,255,255,0.2)" : checkin.alcohol ? "#FF7A6E" : "#5CE3A6"} /></div>
+              <div style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{checkin.alcohol == null ? "–" : checkin.alcohol ? "Taip" : "Ne"}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Alkoholis</div>
             </div>
           </div>
         </div>
@@ -243,6 +248,8 @@ function DayView({ clientId, date }) {
               if (checkin?.wellbeing_score === 3) parts.push({ text:"Savijauta puiki", Icon:Heart, color:"#7FFFB0" });
               else if (checkin?.wellbeing_score === 1) parts.push({ text:"Savijauta bloga", dot:"#FF7A6E" });
               else if (checkin?.wellbeing_score === 2) parts.push({ text:"Savijauta vidutinė", dot:"#FFC15E" });
+              if (checkin?.alcohol === true) parts.push({ text:"Vartojo alkoholį", dot:"#FF7A6E" });
+              else if (checkin?.alcohol === false) parts.push({ text:"Alkoholio nevartojo", Icon:CheckCircle });
               if (checkin?.steps >= 7000) parts.push({ text:`Žingsnių tikslas pasiektas (${checkin.steps.toLocaleString()})` });
               else if (checkin?.steps > 0) parts.push({ text:`Žingsniai: ${checkin.steps.toLocaleString()}` });
               if (sleep?.hours_slept >= 7) parts.push({ text:`Miegas pakankamas (${sleep.hours_slept}h)` });

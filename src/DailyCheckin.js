@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
-import { Clipboard, Salad, Heart, Check, Save } from "./ui/icons";
+import { Clipboard, Salad, Heart, Check, Save, Glass } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -17,6 +17,36 @@ function Orb({ c1, c2, size, glow }) {
       background: `radial-gradient(circle at 34% 28%, ${c1}, ${c2})`,
       boxShadow: glow ? `0 0 0 4px ${c1}22, 0 2px 10px ${c1}77` : `0 1px 4px ${c1}44`,
     }} />
+  );
+}
+
+const ALCOHOL_OPTS = [
+  { v: false, label: "Ne",   c1: "#5CE3A6", c2: "#2FBE84" },
+  { v: true,  label: "Taip", c1: "#FF7A6E", c2: "#E14A45" },
+];
+
+function AlcoholToggle({ value, onChange, disabled }) {
+  return (
+    <div style={{ display: "flex", gap: 10 }}>
+      {ALCOHOL_OPTS.map(o => {
+        const active = value === o.v;
+        return (
+          <button key={String(o.v)} onClick={() => !disabled && onChange(o.v)} style={{
+            flex: 1, padding: "13px 8px", borderRadius: 16,
+            border: `1.5px solid ${active ? o.c1 : "rgba(255,255,255,0.12)"}`,
+            background: active ? `linear-gradient(160deg, ${o.c1}29, ${o.c1}0d)` : "rgba(255,255,255,0.05)",
+            cursor: disabled ? "default" : "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            transition: "all 0.18s ease",
+            opacity: disabled && !active ? 0.4 : 1,
+            transform: active ? "translateY(-1px)" : "none",
+          }}>
+            <Orb c1={o.c1} c2={o.c2} size={22} glow={active} />
+            <span style={{ fontSize: 11, color: active ? "#fff" : "rgba(255,255,255,0.5)", fontWeight: active ? 700 : 500 }}>{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -66,6 +96,7 @@ export default function DailyCheckin({ userId, date, onSaved }) {
   const [saving,    setSaving]    = useState(false);
   const [nutrition, setNutrition] = useState(null);
   const [wellbeing, setWellbeing] = useState(null);
+  const [alcohol,   setAlcohol]   = useState(null);
 
   const load = useCallback(async () => {
     const data = await pbFirst("daily_checkins", `user_id="${userId}" && date="${currentDate}"`);
@@ -73,9 +104,11 @@ export default function DailyCheckin({ userId, date, onSaved }) {
     if (data) {
       setNutrition(data.nutrition_score);
       setWellbeing(data.wellbeing_score);
+      setAlcohol(typeof data.alcohol === "boolean" ? data.alcohol : null);
     } else {
       setNutrition(null);
       setWellbeing(null);
+      setAlcohol(null);
     }
     setLoaded(true);
   }, [userId, currentDate]);
@@ -83,7 +116,7 @@ export default function DailyCheckin({ userId, date, onSaved }) {
   useEffect(() => { load(); }, [load]);
 
   const isDone = checkin?.is_done === true || checkin?.is_done === "true";
-  const canSave = isToday && !isDone && nutrition && wellbeing;
+  const canSave = isToday && !isDone && nutrition && wellbeing && alcohol !== null;
 
   async function handleSave() {
     if (!canSave) return;
@@ -93,6 +126,7 @@ export default function DailyCheckin({ userId, date, onSaved }) {
       date:            currentDate,
       nutrition_score: nutrition,
       wellbeing_score: wellbeing,
+      alcohol:         alcohol,
       is_done:         true,
       done_at:         new Date().toISOString(),
     });
@@ -113,6 +147,12 @@ export default function DailyCheckin({ userId, date, onSaved }) {
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Mityba</span>
           {(() => { const t = TRAFFIC.find(x => x.v === checkin.wellbeing_score); return t ? <Orb c1={t.c1} c2={t.c2} size={13} /> : null; })()}
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Savijauta</span>
+          {typeof checkin.alcohol === "boolean" && (
+            <>
+              <Orb c1={checkin.alcohol ? "#FF7A6E" : "#5CE3A6"} c2={checkin.alcohol ? "#E14A45" : "#2FBE84"} size={13} />
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Alkoholis</span>
+            </>
+          )}
         </div>
         <span style={{ fontSize: 11, background: "rgba(127,255,176,0.2)", color: "#7FFFB0", borderRadius: 8, padding: "3px 10px", display: "inline-flex", alignItems: "center" }}><Check size={12} /></span>
       </div>
@@ -131,6 +171,11 @@ export default function DailyCheckin({ userId, date, onSaved }) {
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}><Heart size={13} color="#7FFFB0" />Kokia šiandien savijauta?</p>
         <TrafficLight value={wellbeing} onChange={setWellbeing} disabled={!isToday} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}><Glass size={13} />Ar šiandien vartojote alkoholį?</p>
+        <AlcoholToggle value={alcohol} onChange={setAlcohol} disabled={!isToday} />
       </div>
 
       {isToday && (

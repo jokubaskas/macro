@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart } from "./ui/icons";
+import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart, Glass } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 
@@ -190,6 +190,7 @@ export default function ClientStats({ user, onClose }) {
       avgWaterGoalL: waters.length ? waters.reduce((a,w)=>a+(w.goal||2000),0)/waters.length/1000 : null,
       avgNutrition: checkins.length ? checkins.reduce((a,c)=>a+(c.nutrition_score||0),0)/checkins.length : null,
       avgWellbeing: checkins.length ? checkins.reduce((a,c)=>a+(c.wellbeing_score||0),0)/checkins.length : null,
+      alcoholDays:  checkins.filter(c => c.alcohol === true).length,
     });
     setMeasurements(meas);
     setLoading(false);
@@ -242,6 +243,9 @@ export default function ClientStats({ user, onClose }) {
               <StatCard icon={Heart} c1="#FF9E9E" c2="#FF6E6E"
                 value={avgs.avgWellbeing ? avgs.avgWellbeing.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0"
                 pct={avgs.avgWellbeing ? avgs.avgWellbeing/3*100 : null} />
+              <StatCard icon={Glass} c1="#FF9E7A" c2="#E85D3D"
+                value={avgs.alcoholDays} label="Alkoholio dienos" sub={`iš ${period} d.`}
+                pct={Math.min(100, avgs.alcoholDays/period*100)} />
             </div>
 
             {/* Kūno matavimų kreivės */}

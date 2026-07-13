@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users } from "./ui/icons";
+import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users, Glass } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -76,6 +76,7 @@ function ClientRow({ client, stats }) {
   const waterColor = tierColor(stats.avgWaterL, 2.0, 1.3);
   const nutritionColor = tierColor(stats.avgNutrition, 2.2, 1.3);
   const wellbeingColor = tierColor(stats.avgWellbeing, 2.2, 1.3);
+  const alcoholColor = !stats.alcoholDays ? "#7FFFB0" : stats.alcoholDays <= 1 ? "#FFD700" : "#FF8888";
   const stepsColor = stats.stepsGoalRate == null ? "rgba(255,255,255,0.5)"
     : stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "#FF8888";
 
@@ -94,6 +95,7 @@ function ClientRow({ client, stats }) {
         {stats.avgWellbeing != null && <span style={{ fontSize:10, color:wellbeingColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}><Heart size={11} />{stats.avgWellbeing.toFixed(1)}/3</span>}
         {stats.avgSleep != null && <span style={{ fontSize:10, color:sleepColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}><Moon size={11} />{stats.avgSleep.toFixed(1)}h</span>}
         {stats.avgWaterL != null && <span style={{ fontSize:10, color:waterColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}><Droplet size={11} />{stats.avgWaterL.toFixed(1)}L</span>}
+        {stats.checkinDays > 0 && <span style={{ fontSize:10, color:alcoholColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}><Glass size={11} />{stats.alcoholDays}x alkoholis</span>}
         {stats.avgSteps != null && (
           <span style={{ fontSize:10, color:stepsColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
             <Footprints size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
@@ -140,6 +142,7 @@ export default function TrainerStats({ onClose }) {
         checkinDays: myCheckins.length,
         avgNutrition: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.nutrition_score||0),0)/myCheckins.length : null,
         avgWellbeing: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/myCheckins.length : null,
+        alcoholDays: myCheckins.filter(x=>x.alcohol===true).length,
         avgSleep: mySleeps.length ? mySleeps.reduce((a,x)=>a+(x.hours_slept||0),0)/mySleeps.length : null,
         avgWaterL: myWaters.length ? myWaters.reduce((a,w)=>a+(w.ml||0),0)/myWaters.length/1000 : null,
         avgSteps: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).reduce((a,x)=>a+(x.steps||0),0)/myCheckins.filter(x=>x.steps>0).length) : null,
@@ -153,6 +156,7 @@ export default function TrainerStats({ onClose }) {
     const totalCheckins = checkins.length;
     const avgNutritionAll = checkins.length ? checkins.reduce((a,x)=>a+(x.nutrition_score||0),0)/checkins.length : null;
     const avgWellbeingAll = checkins.length ? checkins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/checkins.length : null;
+    const totalAlcoholDays = checkins.filter(x=>x.alcohol===true).length;
     const pendingBookings = bookings.filter(b=>b.status==="pending").length;
     const approvedBookings = bookings.filter(b=>b.status==="approved").length;
     const cancelledBookings = bookings.filter(b=>b.status==="cancelled").length;
@@ -163,6 +167,7 @@ export default function TrainerStats({ onClose }) {
       totalCheckins,
       avgNutritionAll,
       avgWellbeingAll,
+      totalAlcoholDays,
       pendingBookings,
       approvedBookings,
       cancelledBookings,
@@ -212,6 +217,8 @@ export default function TrainerStats({ onClose }) {
               <StatCard icon={Heart} c1="#FF9E9E" c2="#FF6E6E"
                 value={overview.avgWellbeingAll ? overview.avgWellbeingAll.toFixed(1) : "–"} label="Vid. savijauta" sub="iš 3.0"
                 pct={overview.avgWellbeingAll ? overview.avgWellbeingAll / 3 * 100 : null} />
+              <StatCard icon={Glass} c1="#FF9E7A" c2="#E85D3D"
+                value={overview.totalAlcoholDays} label="Alkoholio dienos" sub={`per ${period} d.`} />
             </div>
 
             {/* Rezervacijos */}

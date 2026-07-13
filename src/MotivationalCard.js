@@ -16,6 +16,7 @@ const SCIENCE = {
   sleep:    { great: "Pakankamas miegas – vienas svarbiausių veiksnių svoriui ir energijai.", bad: "Miego trūkumas padidina alkio hormonus ir apsunkina svorio kontrolę." },
   wellbeing:{ great: "Gera savijauta signalizuoja, kad kūnas ir protas yra balanse.", bad: "Prasta savijauta gali reikšti per didelį krūvį – svarbiausia ilgalaikis nuoseklumas, ne intensyvumas." },
   nutrition:{ great: "Nuoseklus mitybos laikymasis – pagrindinis sėkmės veiksnys.", bad: "Tobulumas nereikalingas. Net 80% plano laikymasis duoda puikių rezultatų." },
+  alcohol:  { great: "Alkoholis stabdo riebalų deginimą ir blogina miego kokybę – savaitė be jo padeda progresui.", bad: "Alkoholis prideda tuščių kalorijų ir trikdo atsistatymą – saikingumas svarbiausia." },
   general:  "Nuoseklumas svarbiau nei intensyvumas. Kiekvieną dieną po mažą žingsnį – tai ir yra rezultatai.",
 };
 
@@ -60,6 +61,11 @@ async function analyzeAndGenerateMessage(userId, goalId) {
     const wellbeingAvg = checkins.reduce((a, c) => a + (c.wellbeing_score || 2), 0) / checkins.length;
     if (wellbeingAvg >= 2.5)      signals.push({ score: 2,  msg: "Savijauta puiki! Tai rodo, kad kūnas ir protas balanse", science: SCIENCE.wellbeing.great });
     else if (wellbeingAvg < 1.5)  signals.push({ score: -1, msg: "Savijauta šią savaitę prasta – gal per daug krūvio? Pailsėk ir nesibark!", science: SCIENCE.wellbeing.bad });
+
+    // Alkoholis
+    const alcoholDays = checkins.filter(c => c.alcohol === true).length;
+    if (alcoholDays === 0)      signals.push({ score: 1,  msg: "Šią savaitę be alkoholio – tai puikiai palaiko progresą!", science: SCIENCE.alcohol.great });
+    else if (alcoholDays >= 3)  signals.push({ score: -1, msg: `Alkoholis ${alcoholDays}x per savaitę – tai gali stabdyti progresą`, science: SCIENCE.alcohol.bad });
   }
 
   // Jei nėra duomenų

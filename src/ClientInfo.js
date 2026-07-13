@@ -69,6 +69,7 @@ export default function ClientInfo({ client, onClose }) {
         {(goalLabel || client.motivation) && (
           <Section title="Tikslas ir motyvacija">
             <InfoRow label="Tikslas" value={goalLabel} Icon={Target} />
+            <InfoRow label="Tikslinis svoris" value={client.goal_weight ? `${client.goal_weight} kg` : null} Icon={Scale} />
             <InfoRow label="Kodėl tai svarbu" value={client.motivation} Icon={Edit} />
           </Section>
         )}

@@ -161,6 +161,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
     weight: "",
     // 2 žingsnis
     goal: "",
+    goal_weight: "",
     motivation: "",
     // 3 žingsnis
     sleep_stress: "",
@@ -188,7 +189,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
 
   function canNext() {
     if (step === 0) return (form.dob && form.height && form.weight) || startStep > 0;
-    if (step === 1) return form.goal && form.motivation.trim().length > 2;
+    if (step === 1) return form.goal && form.goal_weight && form.motivation.trim().length > 2;
     if (step === 2) return form.sleep_stress.trim().length > 1 && form.act && form.steps_per_day;
     if (step === 3) return form.diet_desc.trim().length > 2 && form.wellbeing;
     return true;
@@ -206,6 +207,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
       weight:        parseFloat(form.weight) || null,
       act:           form.act,
       goal:          form.goal,
+      goal_weight:   parseFloat(form.goal_weight) || null,
       motivation:    form.motivation,
       sleep_stress:  form.sleep_stress,
       steps_per_day: form.steps_per_day,
@@ -336,6 +338,12 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
                   label={<><g.Icon size={14} />{g.label}</>} desc={g.desc} />
               ))}
             </Field>
+
+            {form.goal && (
+              <Field label={form.goal === "maintain" ? "Kiek kg nori palaikyti?" : "Kiek kg nori pasiekti?"}>
+                <TextInput type="number" value={form.goal_weight} onChange={set("goal_weight")} placeholder="65" />
+              </Field>
+            )}
 
             <Field label="Kodėl tau tai svarbu?" hint="Parašyk vieną sakinį – tai padės man geriau suprasti tavo motivaciją.">
               <TextArea value={form.motivation} onChange={set("motivation")}
