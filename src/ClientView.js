@@ -412,9 +412,9 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       </div>
       </div>
 
-      {/* Tab bar apačioje — tik track_progress vartotojams, paslėpta kai atidarytas kuris nors poekranis
-          (kitaip ji uždengia to ekrano apatinius mygtukus, lygiai ta pati problema kaip admin panelėje) */}
-      {profile?.track_progress && !activeTab && (
+      {/* Tab bar apačioje — tik track_progress vartotojams, visada matoma (kad matytųsi perėjimo
+          animacija) — poekraniai turi pakankamą paddingBottom, kad jų turinys nepasislėptų po juosta. */}
+      {profile?.track_progress && (
         <div style={{
           position:"fixed", left:14, right:14, bottom:"max(14px, env(safe-area-inset-bottom))", zIndex:1000,
           maxWidth:452, margin:"0 auto",
