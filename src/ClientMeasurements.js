@@ -17,6 +17,11 @@ const FIELDS = [
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
+function calcAge(dob) {
+  if (!dob) return null;
+  return Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+}
+
 // Catmull-Rom → kubinės Bezier kreivės konversija: glotnesnė linija nei laužtė.
 function smoothPath(pts) {
   if (pts.length < 2) return "";
@@ -155,7 +160,10 @@ export default function ClientMeasurements({ client, onClose }) {
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ruler size={15} />Matavimai</h1>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>
+            {client.name}
+            {(() => { const age = calcAge(client.dob); const parts = []; if (age != null) parts.push(`${age} m.`); if (client.height) parts.push(`${client.height} cm`); return parts.length ? ` · ${parts.join(" · ")}` : ""; })()}
+          </p>
         </div>
       </div>
 
