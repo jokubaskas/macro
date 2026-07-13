@@ -59,6 +59,10 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
   const [cropSrc, setCropSrc]             = useState(null);
   const [editHistoryItem, setEditHistoryItem] = useState(null); // ne null = redaguojame esamą įrašą, ne naują įkėlimą
   const [savingEdit, setSavingEdit]       = useState(false);
+  const [comment, setComment]             = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [commentDraft, setCommentDraft]   = useState("");
+  const [savingComment, setSavingComment] = useState(false);
 
   function handleFile(field, e) {
     const file = e.target.files[0];
@@ -117,10 +121,12 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
       if (photos.photo_front) formData.append("photo_front", photos.photo_front, "photo_front.jpg");
       if (photos.photo_side)  formData.append("photo_side", photos.photo_side, "photo_side.jpg");
       if (photos.photo_back)  formData.append("photo_back", photos.photo_back, "photo_back.jpg");
+      if (comment.trim())     formData.append("trainer_comment", comment.trim());
       await pb.collection("progress_photos").create(formData);
       setShowUpload(false);
       setPhotos({ photo_front:null, photo_side:null, photo_back:null });
       setPreviews({ photo_front:null, photo_side:null, photo_back:null });
+      setComment("");
       await load();
     } catch(err) {
       console.error("Progress photo save error:", err);
@@ -128,6 +134,14 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
       alert("Klaida: " + JSON.stringify(err?.data?.data || err?.response?.data || err?.message));
     }
     setSaving(false);
+  }
+
+  async function handleSaveComment(historyItem) {
+    setSavingComment(true);
+    await pb.collection("progress_photos").update(historyItem.id, { trainer_comment: commentDraft.trim() }).catch(()=>{});
+    setSavingComment(false);
+    setEditingCommentId(null);
+    await load();
   }
 
   const fields = [
@@ -191,8 +205,13 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
                 </label>
               ))}
             </div>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Komentaras klientui apie pasikeitimus (nebūtina)</label>
+              <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="pvz. Matosi aiškus progresas liemenyje, tęsk taip pat!" rows={3}
+                style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box" }}/>
+            </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button onClick={()=>setShowUpload(false)} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
+              <button onClick={()=>{setShowUpload(false);setComment("");}} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
               <button onClick={handleSave} disabled={!photos.photo_front||saving} style={{ flex:2, padding:"11px", borderRadius:12, background:photos.photo_front?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)", color:photos.photo_front?"#fff":"rgba(255,255,255,0.3)", border:"none", fontSize:14, fontWeight:700, cursor:photos.photo_front?"pointer":"default", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 {saving?"Saugoma...":<><Save size={14} />Išsaugoti</>}
               </button>
@@ -229,6 +248,31 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
                 </div>
               ))}
             </div>
+            {!h._isProfile && (
+              <div style={{ marginTop:10 }}>
+                {editingCommentId === h.id ? (
+                  <div>
+                    <textarea value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} placeholder="Komentaras klientui apie pasikeitimus..." rows={3}
+                      style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:12, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box", marginBottom:6 }}/>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <button onClick={()=>setEditingCommentId(null)} style={{ flex:1, padding:"7px", borderRadius:8, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Atšaukti</button>
+                      <button onClick={()=>handleSaveComment(h)} disabled={savingComment} style={{ flex:2, padding:"7px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        {savingComment?"Saugoma...":"Išsaugoti"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {h.trainer_comment && <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)", margin:"0 0 6px", lineHeight:1.4, whiteSpace:"pre-wrap" }}>{h.trainer_comment}</p>}
+                    {canEdit && (
+                      <button onClick={()=>{setEditingCommentId(h.id);setCommentDraft(h.trainer_comment||"");}} style={{ background:"rgba(255,255,255,0.08)", border:"none", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 }}>
+                        <Edit size={10} />{h.trainer_comment ? "Redaguoti komentarą" : "+ Pridėti komentarą"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ))}
 

@@ -7,7 +7,7 @@ import DailyCheckin from "./DailyCheckin";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
-import ProgressPhotos from "./ProgressPhotos";
+import ClientProgressCompare from "./ClientProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
 import StepsTracker from "./StepsTracker";
@@ -462,7 +462,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
-      {showProgress && <ProgressPhotos user={user} onClose={()=>openTab(null)} />}
+      {showProgress && <ClientProgressCompare user={user} onClose={()=>openTab(null)} />}
       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
       {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
       {showOnboarding && (
