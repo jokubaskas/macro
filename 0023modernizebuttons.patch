@@ -1,0 +1,315 @@
+From 7b4c004531b015be7dc1e44a79fac986c927ad22 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 13 Jul 2026 08:13:37 +0000
+Subject: [PATCH] Modernize the old flat pill buttons app-wide (Atgal,
+ Atsijungti, etc.)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Every 'Atgal' back button and secondary header action (Darbo laikas,
+Įprasti, Atsijungti/Išeiti, and similar) used a flat, borderless
+rgba(255,255,255,0.2)/0.12 fill with a plain 10px radius — dating
+from before the recent design pass. Swapped in a soft 1px border,
+slightly higher radius (12px) and lighter fill to match the glass
+aesthetic introduced by the tab bar and package/dashboard cards,
+across both admin and client screens. 26 buttons across 16 files;
+verified none of the confirmed-dead-code files (FoodSearch.js,
+RecipeSuggestion.js) were touched.
+---
+ src/AdminPanel.js         |  8 ++++----
+ src/BookingAdmin.js       | 10 +++++-----
+ src/BookingClient.js      |  4 ++--
+ src/ClientInfo.js         |  2 +-
+ src/ClientMeasurements.js |  2 +-
+ src/ClientStats.js        |  2 +-
+ src/ClientView.js         |  4 ++--
+ src/LiveTraining.js       |  2 +-
+ src/PackageAdmin.js       |  2 +-
+ src/ProgressCompare.js    |  2 +-
+ src/ProgressPhotos.js     |  2 +-
+ src/TrainerStats.js       |  2 +-
+ src/TrainingPackages.js   |  2 +-
+ src/WorkoutPlanBuilder.js |  2 +-
+ src/WorkoutPresets.js     |  4 ++--
+ src/WorkoutView.js        |  2 +-
+ 16 files changed, 26 insertions(+), 26 deletions(-)
+
+diff --git a/src/AdminPanel.js b/src/AdminPanel.js
+index 49e8d0a..01f9049 100644
+--- a/src/AdminPanel.js
++++ b/src/AdminPanel.js
+@@ -502,7 +502,7 @@ function ClientDetail({ client, onClose }) {
+       )}
+       <style>{BDAY_KEYFRAMES}</style>
+       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
+-        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>{client.name}</h1>
+           <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>{client.email}</p>
+@@ -728,7 +728,7 @@ export default function AdminPanel({ user, onLogout }) {
+   if (view === "new") return (
+     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
+       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+-        <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Naujas klientas</h1>
+       </div>
+       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+@@ -752,10 +752,10 @@ export default function AdminPanel({ user, onLogout }) {
+               </div>
+             </div>
+             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+-              <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
++              <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
+                 <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
+               </button>
+-              <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
++              <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
+             </div>
+           </div>
+         </div>
+diff --git a/src/BookingAdmin.js b/src/BookingAdmin.js
+index c15853c..924a0a5 100644
+--- a/src/BookingAdmin.js
++++ b/src/BookingAdmin.js
+@@ -272,7 +272,7 @@ function ScheduleSettings({ onClose }) {
+   return (
+     <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Darbo laikas</h1>
+       </div>
+       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+@@ -360,7 +360,7 @@ function RecurringSlotsSettings({ onClose }) {
+   return (
+     <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Repeat size={15} />Įprasti laikai</h1>
+       </div>
+       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+@@ -498,10 +498,10 @@ export default function BookingAdmin({ onClose }) {
+   return (
+     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1,display:"flex",alignItems:"center",gap:6}}><Calendar size={15} />Rezervacijos</h1>
+-        <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Repeat size={12} />Įprasti</button>
+-        <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Settings size={12} />Darbo laikas</button>
++        <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Repeat size={12} />Įprasti</button>
++        <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Settings size={12} />Darbo laikas</button>
+       </div>
+ 
+       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+diff --git a/src/BookingClient.js b/src/BookingClient.js
+index 83d4f85..9c373f8 100644
+--- a/src/BookingClient.js
++++ b/src/BookingClient.js
+@@ -301,7 +301,7 @@ export default function BookingClient({ user, onClose }) {
+     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both"}}>
+       {/* Header */}
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(10px)"}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={13} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={13} />Atgal</button>
+         <div style={{flex:1}}>
+           <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={14} />Rezervuoti laiką</h1>
+           {activePackage && (
+@@ -310,7 +310,7 @@ export default function BookingClient({ user, onClose }) {
+             </p>
+           )}
+         </div>
+-        <button onClick={()=>setView(v=>v==="mybookings"?"calendar":"mybookings")} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>
++        <button onClick={()=>setView(v=>v==="mybookings"?"calendar":"mybookings")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>
+           Mano
+           {myBookings.filter(b=>b.status==="pending").length>0 && (
+             <span style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#FF4444",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700}}>
+diff --git a/src/ClientInfo.js b/src/ClientInfo.js
+index 551ad96..341051a 100644
+--- a/src/ClientInfo.js
++++ b/src/ClientInfo.js
+@@ -37,7 +37,7 @@ export default function ClientInfo({ client, onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Clipboard size={15} />Kliento anketa</h1>
+           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
+diff --git a/src/ClientMeasurements.js b/src/ClientMeasurements.js
+index f8db971..b24db0c 100644
+--- a/src/ClientMeasurements.js
++++ b/src/ClientMeasurements.js
+@@ -157,7 +157,7 @@ export default function ClientMeasurements({ client, onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ruler size={15} />Matavimai</h1>
+           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>
+diff --git a/src/ClientStats.js b/src/ClientStats.js
+index 1fa1780..7a50bc9 100644
+--- a/src/ClientStats.js
++++ b/src/ClientStats.js
+@@ -202,7 +202,7 @@ export default function ClientStats({ user, onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:500, background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", paddingBottom:80, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}><TrendingUp size={16} />Mano statistika</h1>
+       </div>
+ 
+diff --git a/src/ClientView.js b/src/ClientView.js
+index 43be504..348a3ef 100644
+--- a/src/ClientView.js
++++ b/src/ClientView.js
+@@ -264,10 +264,10 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
+                 <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
+               </button>
+             )}
+-            <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
++            <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
+               <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
+             </button>
+-            <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Išeiti</button>
++            <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Išeiti</button>
+           </div>
+         </div>
+         <Sep />
+diff --git a/src/LiveTraining.js b/src/LiveTraining.js
+index 20d45ce..01d0d45 100644
+--- a/src/LiveTraining.js
++++ b/src/LiveTraining.js
+@@ -295,7 +295,7 @@ export default function LiveTraining({ client, onClose }) {
+       )}
+ 
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}>
+             <Dot color="#FF4444" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />Gyva treniruotė
+diff --git a/src/PackageAdmin.js b/src/PackageAdmin.js
+index 341eda3..6c11abd 100644
+--- a/src/PackageAdmin.js
++++ b/src/PackageAdmin.js
+@@ -52,7 +52,7 @@ export default function PackageAdmin({ onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ticket size={15} />Paketų valdymas</h1>
+       </div>
+ 
+diff --git a/src/ProgressCompare.js b/src/ProgressCompare.js
+index 63073c2..98cb3de 100644
+--- a/src/ProgressCompare.js
++++ b/src/ProgressCompare.js
+@@ -71,7 +71,7 @@ export default function ProgressCompare({ client, onClose }) {
+         </div>
+       )}
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <div style={{ flex:1 }}>
+           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso palyginimas</h1>
+           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
+diff --git a/src/ProgressPhotos.js b/src/ProgressPhotos.js
+index 4f18642..4c6946e 100644
+--- a/src/ProgressPhotos.js
++++ b/src/ProgressPhotos.js
+@@ -105,7 +105,7 @@ export default function ProgressPhotos({ user, onClose }) {
+         </div>
+       )}
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={13} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={13} />Atgal</button>
+         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Camera size={15} />Progreso nuotraukos</h1>
+       </div>
+ 
+diff --git a/src/TrainerStats.js b/src/TrainerStats.js
+index b335ecc..3c92af5 100644
+--- a/src/TrainerStats.js
++++ b/src/TrainerStats.js
+@@ -180,7 +180,7 @@ export default function TrainerStats({ onClose }) {
+   return (
+     <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><BarChart size={15} />Statistika</h1>
+       </div>
+ 
+diff --git a/src/TrainingPackages.js b/src/TrainingPackages.js
+index 564f058..7871511 100644
+--- a/src/TrainingPackages.js
++++ b/src/TrainingPackages.js
+@@ -160,7 +160,7 @@ export default function TrainingPackages({ user, onClose }) {
+ 
+       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
+         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+-          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", borderRadius:10, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
++          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}><Ticket size={16} />Treniruočių paketai</h1>
+         </div>
+       </div>
+diff --git a/src/WorkoutPlanBuilder.js b/src/WorkoutPlanBuilder.js
+index e847c84..ea4a35d 100644
+--- a/src/WorkoutPlanBuilder.js
++++ b/src/WorkoutPlanBuilder.js
+@@ -404,7 +404,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
+       {showPicker&&<ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
+ 
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Sporto planas</h1>
+           <p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:0}}>{client.name}</p>
+diff --git a/src/WorkoutPresets.js b/src/WorkoutPresets.js
+index 202ca59..99ca60c 100644
+--- a/src/WorkoutPresets.js
++++ b/src/WorkoutPresets.js
+@@ -355,7 +355,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
+       {showPicker && <ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
+ 
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{isNew?"Naujas šablonas":"Redaguoti šabloną"}</h1>
+       </div>
+ 
+@@ -471,7 +471,7 @@ export default function WorkoutPresets({ onClose }) {
+   return (
+     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Clipboard size={15} />Treniruočių šablonai</h1>
+       </div>
+ 
+diff --git a/src/WorkoutView.js b/src/WorkoutView.js
+index 7d838c2..93a1177 100644
+--- a/src/WorkoutView.js
++++ b/src/WorkoutView.js
+@@ -101,7 +101,7 @@ export default function WorkoutView({ user, onClose }) {
+   return (
+     <div style={{position:"fixed",inset:0,zIndex:500,background:`linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both"}}>
+       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(10px)"}}>
+-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
++        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
+         <div>
+           <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:7}}><Dumbbell size={15} />Treniruotė</h1>
+           {plan&&<p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:0}}>{plan.plan_name} · iki {plan.end_date}</p>}
+-- 
+2.43.0
+
