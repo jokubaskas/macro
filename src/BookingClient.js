@@ -123,6 +123,7 @@ export default function BookingClient({ user, onClose }) {
   const [visibleBookings, setVisibleBookings] = useState(8);
   const [calMonth, setCalMonth]     = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
   const [activePackage, setActivePackage] = useState(null);
+  const [totalRemaining, setTotalRemaining] = useState(0);
   const [recurringSlots, setRecurringSlots] = useState([]);
   const [confirmingRecurring, setConfirmingRecurring] = useState(false);
   const [decliningRecurring, setDecliningRecurring] = useState(false);
@@ -140,8 +141,12 @@ export default function BookingClient({ user, onClose }) {
     setSchedule(sched);
     setMyBookings(bk);
     setExceptions(exc);
+    // Aktyvus paketas (iš kurio bus nurašomas kitas kreditas) — seniausias
+    // patvirtintas paketas su likusiais kreditais. Rodomas skaičius klientui
+    // visgi yra VISŲ patvirtintų paketų kreditų suma, ne tik šio vieno.
     const active = pkgs.find(p => (p.credits_total - p.credits_used) > 0) || null;
     setActivePackage(active);
+    setTotalRemaining(pkgs.reduce((s,p) => s + Math.max(0, p.credits_total - p.credits_used), 0));
     setRecurringSlots(rec);
   }, [user.id]);
 
@@ -306,7 +311,7 @@ export default function BookingClient({ user, onClose }) {
           <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={14} />Rezervuoti laiką</h1>
           {activePackage && (
             <p style={{fontSize:10,color:"#7FFFB0",margin:0,display:"flex",alignItems:"center",gap:4}}>
-              <Ticket size={11} />{activePackage.credits_total - activePackage.credits_used} treniruočių liko
+              <Ticket size={11} />{totalRemaining} treniruočių liko
             </p>
           )}
         </div>

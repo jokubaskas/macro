@@ -125,7 +125,15 @@ export default function TrainingPackages({ user, onClose }) {
     setAgreed(false);
   }
 
-  const active = packages.find(p => p.status === "approved" && p.credits_used < p.credits_total);
+  // Rodoma bendra visų patvirtintų paketų kreditų suma, nepriklausomai kiek
+  // atskirų paketų buvo pirkta — nurašymo/grąžinimo logika toliau veikia
+  // su konkrečiu paketu (žr. BookingClient.js/BookingAdmin.js), bet čia
+  // klientui rodomas vienas bendras skaičius.
+  const approvedPackages = packages.filter(p => p.status === "approved");
+  const totalCredits   = approvedPackages.reduce((s,p) => s + (p.credits_total||0), 0);
+  const totalUsed      = approvedPackages.reduce((s,p) => s + (p.credits_used||0), 0);
+  const totalRemaining = totalCredits - totalUsed;
+  const hasActive      = approvedPackages.length > 0 && totalRemaining > 0;
   const pending = packages.filter(p => p.status === "pending");
 
   return (
@@ -168,11 +176,11 @@ export default function TrainingPackages({ user, onClose }) {
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
 
         {/* Aktyvus paketas */}
-        {active && (
+        {hasActive && (
           <div style={{ background:"rgba(127,255,176,0.1)", border:"1.5px solid rgba(127,255,176,0.3)", borderRadius:18, padding:"16px", marginBottom:16 }}>
             <p style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 6px", display:"flex", alignItems:"center", gap:5 }}><CheckCircle size={11} />Aktyvus paketas</p>
-            <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 6px" }}>{active.credits_total - active.credits_used} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {active.credits_total} treniruočių liko</span></p>
-            <ProgressBar pct={((active.credits_total-active.credits_used)/active.credits_total)*100} height={6}
+            <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 6px" }}>{totalRemaining} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {totalCredits} treniruočių liko</span></p>
+            <ProgressBar pct={(totalRemaining/totalCredits)*100} height={6}
               fill="linear-gradient(90deg,#2FBE84,#7FFFB0)" glow="#7FFFB099" />
           </div>
         )}
