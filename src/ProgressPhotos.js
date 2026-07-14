@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { pb } from "./pb";
+import { pb, pbFileToken } from "./pb";
 import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight, Edit } from "./ui/icons";
 import PhotoCropper from "./PhotoCropper";
 
@@ -15,6 +15,13 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
   const [previews, setPreviews] = useState({ photo_front:null, photo_side:null, photo_back:null });
   const [saving, setSaving]     = useState(false);
   const [visibleCount, setVisibleCount] = useState(3);
+  const [fileToken, setFileToken] = useState(null);
+
+  useEffect(() => { pbFileToken().then(setFileToken); }, []);
+
+  function photoUrl(record, filename) {
+    return pb.files.getURL(record, filename, fileToken ? { token: fileToken } : {});
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,7 +242,7 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
               {["photo_front","photo_side","photo_back"].map(k => (
                 <div key={k} style={{ position:"relative" }}>
                   {h[k] ? (
-                    <img onClick={()=>setPreview(pb.files.getURL(h._isProfile ? h._record : h, h[k]))} src={pb.files.getURL(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer", display:"block" }} />
+                    <img onClick={()=>setPreview(photoUrl(h._isProfile ? h._record : h, h[k]))} src={photoUrl(h._isProfile ? h._record : h, h[k])} alt="" style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", borderRadius:8, cursor:"pointer", display:"block" }} />
                   ) : (
                     <div style={{ aspectRatio:"3/4", borderRadius:8, background:"rgba(255,255,255,0.05)" }} />
                   )}

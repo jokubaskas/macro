@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { pb } from "./pb";
+import { pb, pbFileToken } from "./pb";
 import { ArrowUp, ChevronRight, ArrowDown, Close, ChevronLeft, Camera } from "./ui/icons";
 import ProgressPhotos from "./ProgressPhotos";
 
@@ -18,6 +18,13 @@ export default function ProgressCompare({ client, onClose }) {
   const [showAllA, setShowAllA] = useState(false);
   const [showAllB, setShowAllB] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [fileToken, setFileToken] = useState(null);
+
+  useEffect(() => { pbFileToken().then(setFileToken); }, []);
+
+  function photoUrl(record, filename) {
+    return pb.files.getURL(record, filename, fileToken ? { token: fileToken } : {});
+  }
   const VISIBLE_DATES = 6;
 
   const load = useCallback(() => {
@@ -112,7 +119,7 @@ export default function ProgressCompare({ client, onClose }) {
                   <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textAlign:"center", marginBottom:6, fontWeight:700 }}>{col.label}</p>
                   <div style={{ aspectRatio:"3/4", borderRadius:14, overflow:"hidden", background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {col.photo && col.photo[view] ? (
-                      <img onClick={()=>setPreview(pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view]))} src={pb.files.getURL(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", cursor:"pointer" }} />
+                      <img onClick={()=>setPreview(photoUrl(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view]))} src={photoUrl(col.photo._isProfile ? col.photo._record : col.photo, col.photo[view])} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", cursor:"pointer" }} />
                     ) : (
                       <span style={{ color:"rgba(255,255,255,0.2)", fontSize:12 }}>Nėra</span>
                     )}
