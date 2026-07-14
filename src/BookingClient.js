@@ -125,6 +125,7 @@ export default function BookingClient({ user, onClose }) {
   const [confirmingRecurring, setConfirmingRecurring] = useState(false);
   const [decliningRecurring, setDecliningRecurring] = useState(false);
   const [declinedRecurringStarts, setDeclinedRecurringStarts] = useState([]);
+  const [othersReservedStarts, setOthersReservedStarts] = useState([]);
   const [declineDone, setDeclineDone] = useState(false);
 
   const load = useCallback(async () => {
@@ -149,17 +150,20 @@ export default function BookingClient({ user, onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Kai pasirenkama data — krauti užimtus ir atsisakytus laikus tai dienai
+  // Kai pasirenkama data — krauti užimtus ir atsisakytus laikus tai dienai.
+  // Naudoja serverio endpoint'ą (ne tiesioginį bookings/recurring_slots
+  // sąrašą), nes API rules riboja klientui matyti tik SAVO įrašus (privatumo
+  // dėlei) — endpoint'as grąžina tik laikus, be jokių kitų klientų detalių,
+  // kad laisvų laikų tikrinimas veiktų visiems teisingai.
   useEffect(() => {
     setDeclineDone(false);
     if (!selectedDate) return;
-    pb.collection("bookings").getFullList({
-      filter: `date="${selectedDate}"`,
-      requestKey: null,
-    }).then(bk => {
-      setTakenSlots(bk.filter(b => b.status==="approved"||b.status==="pending").map(b => b.start_time));
-      setDeclinedRecurringStarts(bk.filter(b => b.status==="cancelled" && b.recurring_slot_id).map(b => b.start_time));
-    }).catch(()=>{});
+    pb.send(`/api/coachvilma/day-availability?date=${selectedDate}`, { requestKey: null })
+      .then(res => {
+        setTakenSlots(res.takenSlots || []);
+        setDeclinedRecurringStarts(res.declinedRecurringStarts || []);
+        setOthersReservedStarts(res.othersReservedStarts || []);
+      }).catch(()=>{ setTakenSlots([]); setDeclinedRecurringStarts([]); setOthersReservedStarts([]); });
   }, [selectedDate]);
 
   function getScheduleForDate(dateStr) {
@@ -196,7 +200,12 @@ export default function BookingClient({ user, onClose }) {
     if (declinedRecurringStarts.includes(slotStart)) return null; // savininkas jau atsisakė — atviras iškart
     if (!isRecurringHoldActive(dateStr)) return null;
     const dow = dowOf(dateStr);
-    return recurringSlots.find(r => r.day_of_week === dow && r.start_time === slotStart) || null;
+    const mine = recurringSlots.find(r => r.day_of_week === dow && r.start_time === slotStart);
+    if (mine) return mine;
+    // Kito kliento įprastas laikas — matomas tik per day-availability
+    // endpoint'ą (recurringSlots čia turi tik MANO pačios įrašus, žr. load()).
+    if (othersReservedStarts.includes(slotStart)) return { start_time: slotStart, day_of_week: dow };
+    return null;
   }
 
   // Ar aš (bet kokiu statusu — patvirtinau ar atsisakiau) jau atsakiau į šios
