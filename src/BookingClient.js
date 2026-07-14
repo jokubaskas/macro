@@ -79,11 +79,8 @@ function CancelButton({ booking, userId, onCancelled }) {
       cancel_reason: reason.trim(),
       cancelled_by: "client",
     }).catch(()=>{});
-    // Grąžinam kreditą, jei atšaukiama pakankamai iš anksto (žr. įspėjimą aukščiau).
-    if (!isLate && booking.package_id) {
-      const pkg = await pb.collection("training_packages").getOne(booking.package_id).catch(()=>null);
-      if (pkg) await pb.collection("training_packages").update(booking.package_id, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
-    }
+    // Kredito grąžinimą (jei atšaukiama pakankamai iš anksto — žr. įspėjimą
+    // aukščiau) atlieka serverio hook (bookings.pb.js) — čia nebedubliuojame.
     setSaving(false);
     setOpen(false);
     onCancelled();

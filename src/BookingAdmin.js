@@ -22,7 +22,8 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
       cancel_reason: reason.trim(),
       cancelled_by:  "trainer",
     }).catch(()=>{});
-    await refundCredit(booking.package_id);
+    // Kredito grąžinimą atlieka serverio hook (bookings.pb.js) — čia
+    // nebedubliuojame, kad kreditas nebūtų grąžintas du kartus.
     setSaving(false);
     setOpen(false);
     onCancelled();
@@ -46,16 +47,6 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
       </div>
     </div>
   );
-}
-
-// Grąžina 1 kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant —
-// naudojama atmetant arba atšaukiant rezervaciją, kad klientas neprarastų
-// kredito už treniruotę, kuri realiai neįvyko.
-async function refundCredit(packageId) {
-  if (!packageId) return;
-  const pkg = await pb.collection("training_packages").getOne(packageId).catch(()=>null);
-  if (!pkg) return;
-  await pb.collection("training_packages").update(packageId, { credits_used: Math.max(0, (pkg.credits_used || 0) - 1) }).catch(()=>{});
 }
 
 function downloadIcal(booking, clientName) {
@@ -549,11 +540,10 @@ export default function BookingAdmin({ onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Atmetant laukiančią užklausą, klientas dar nespėjo sunaudoti laiko —
-  // grąžiname kreditą į paketą, iš kurio jis buvo nurašytas rezervuojant.
+  // Atmetant laukiančią užklausą, kreditą grąžina serverio hook
+  // (bookings.pb.js, "rejected" šaka) — čia nebedubliuojame.
   async function handleReject(booking) {
     await pb.collection("bookings").update(booking.id, { status:"rejected" }).catch(()=>{});
-    await refundCredit(booking.package_id);
     setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"rejected"} : b));
   }
 
