@@ -89,16 +89,16 @@ export default function Login() {
           )}
           <div className="login-field" style={{ animationDelay:"0.06s" }}>
             <label style={lbl}>El. paštas</label>
-            <input className="login-inp" style={inp} type="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
+            <input className="login-inp" style={inp} type="email" name="email" autoComplete="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="login-field" style={{ animationDelay:"0.1s" }}>
             <label style={lbl}>Slaptažodis</label>
-            <input className="login-inp" style={inp} type="password" value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
+            <input className="login-inp" style={inp} type="password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
           </div>
           {mode === "register" && (
             <div className="login-field" style={{ animationDelay:"0.13s" }}>
               <label style={lbl}>Pakartokite slaptažodį</label>
-              <input className="login-inp" style={inp} type="password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
+              <input className="login-inp" style={inp} type="password" name="password2" autoComplete="new-password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
             </div>
           )}
 

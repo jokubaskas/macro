@@ -4,6 +4,7 @@ import { MOOD } from "./constants";
 import { Footprints, Edit, Save, Sparkle } from "./ui/icons";
 
 const GOAL = 7000;
+function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 function getMotivation(steps) {
   if (!steps || steps === 0) return null;
@@ -16,6 +17,7 @@ function getMotivation(steps) {
 }
 
 export default function StepsTracker({ userId, date }) {
+  const isToday = date === todayStr();
   const [steps, setSteps]   = useState(0);
   const [input, setInput]   = useState("");
   const [recId, setRecId]   = useState(null);
@@ -34,6 +36,7 @@ export default function StepsTracker({ userId, date }) {
   }, [userId, date]);
 
   async function handleSave() {
+    if (!isToday) return;
     const n = parseInt(input) || 0;
     setSteps(n);
     setSaving(true);
@@ -73,19 +76,21 @@ export default function StepsTracker({ userId, date }) {
         )}
       </div>
 
-      <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
-        <input type="range" min={0} max={15000} step={100} value={parseInt(input)||0}
+      <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10, opacity:isToday?1:0.5 }}>
+        <input type="range" min={0} max={15000} step={100} value={parseInt(input)||0} disabled={!isToday}
           onChange={e=>{ setInput(e.target.value); setSaved(false); }}
-          style={{ flex:1, accentColor:"#AD1457", cursor:"pointer" }}
+          style={{ flex:1, accentColor:"#AD1457", cursor:isToday?"pointer":"default" }}
         />
-        <input type="number" value={input} placeholder="0"
+        <input type="number" value={input} placeholder="0" disabled={!isToday}
           onChange={e=>{ setInput(e.target.value); setSaved(false); }}
           style={{ width:72, padding:"6px 8px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", textAlign:"center" }}
         />
         <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>žgn.</span>
       </div>
 
-      {saved ? (
+      {!isToday ? (
+        mot && <p style={{ fontSize:12, color:mot.color, margin:0, lineHeight:1.4, display:"flex", alignItems:"center", gap:5 }}><mot.Icon size={13} />{mot.text}</p>
+      ) : saved ? (
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           {mot && <p style={{ fontSize:12, color:mot.color, margin:0, lineHeight:1.4, flex:1, display:"flex", alignItems:"center", gap:5 }}><mot.Icon size={13} />{mot.text}</p>}
           <button onClick={()=>setSaved(false)} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"5px 12px", color:"rgba(255,255,255,0.6)", fontSize:11, cursor:"pointer", fontFamily:"inherit", flexShrink:0, marginLeft:8, display:"flex", alignItems:"center", gap:4 }}><Edit size={11} />Keisti</button>

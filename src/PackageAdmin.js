@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { pb } from "./pb";
 import { ChevronLeft, Ticket, Close, Check } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
@@ -45,7 +45,21 @@ export default function PackageAdmin({ onClose }) {
     load();
   }
 
-  const tabList = tab === "pending" ? pending : approved;
+  // "Aktyvūs" rodomi sugrupuoti pagal klientą (bendra visų jo patvirtintų
+  // paketų kreditų suma), o ne kiekvienas paketas atskirai — kad sutaptų su
+  // tuo, ką klientas mato savo pusėje.
+  const approvedByClient = useMemo(() => {
+    const map = {};
+    approved.forEach(p => {
+      if (!map[p.client_id]) map[p.client_id] = { client_id:p.client_id, credits_total:0, credits_used:0, count:0 };
+      map[p.client_id].credits_total += (p.credits_total||0);
+      map[p.client_id].credits_used  += (p.credits_used||0);
+      map[p.client_id].count += 1;
+    });
+    return Object.values(map);
+  }, [approved]);
+
+  const tabList = tab === "pending" ? pending : approvedByClient;
   const q = search.trim().toLowerCase();
   const list = q ? tabList.filter(p => clients[p.client_id]?.name?.toLowerCase().includes(q)) : tabList;
 
@@ -76,10 +90,9 @@ export default function PackageAdmin({ onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Nėra įrašų</p>
         )}
 
-        {list.slice(0, visibleCount).map(pkg => {
+        {tab === "pending" && list.slice(0, visibleCount).map(pkg => {
           const client = clients[pkg.client_id];
           const pkgInfo = PACKAGES[pkg.package_type];
-          const left = (pkg.credits_total||0) - (pkg.credits_used||0);
           return (
             <div key={pkg.id} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px", marginBottom:10 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
@@ -87,24 +100,33 @@ export default function PackageAdmin({ onClose }) {
                   <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0 }}>{pkgInfo?.label}</p>
                 </div>
-                {pkg.status==="approved" && (
-                  <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:18, fontWeight:800, color:left>0?"#7FFFB0":"rgba(255,255,255,0.3)", margin:0 }}>{left}/{pkg.credits_total}</p>
-                    <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>liko treniruočių</p>
-                  </div>
-                )}
               </div>
-              {pkg.status==="approved" && (
-                <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5, marginBottom:10 }}>
-                  <div style={{ width:`${left/pkg.credits_total*100}%`, height:"100%", borderRadius:99, background:"#7FFFB0" }} />
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={()=>handleReject(pkg)} style={{ flex:1, padding:"9px", borderRadius:10, border:"1px solid rgba(255,100,100,0.4)", background:"rgba(255,100,100,0.1)", color:"#FF8888", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Close size={12} />Atmesti</button>
+                <button onClick={()=>handleApprove(pkg)} style={{ flex:2, padding:"9px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Check size={12} />Patvirtinti</button>
+              </div>
+            </div>
+          );
+        })}
+
+        {tab === "approved" && list.slice(0, visibleCount).map(item => {
+          const client = clients[item.client_id];
+          const left = item.credits_total - item.credits_used;
+          return (
+            <div key={item.client_id} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px", marginBottom:10 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                <div>
+                  <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
+                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0 }}>{item.count} {item.count===1?"paketas":"paketai"}</p>
                 </div>
-              )}
-              {pkg.status==="pending" && (
-                <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={()=>handleReject(pkg)} style={{ flex:1, padding:"9px", borderRadius:10, border:"1px solid rgba(255,100,100,0.4)", background:"rgba(255,100,100,0.1)", color:"#FF8888", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Close size={12} />Atmesti</button>
-                  <button onClick={()=>handleApprove(pkg)} style={{ flex:2, padding:"9px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><Check size={12} />Patvirtinti</button>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:18, fontWeight:800, color:left>0?"#7FFFB0":"rgba(255,255,255,0.3)", margin:0 }}>{left}/{item.credits_total}</p>
+                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>liko treniruočių</p>
                 </div>
-              )}
+              </div>
+              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5 }}>
+                <div style={{ width:`${item.credits_total ? left/item.credits_total*100 : 0}%`, height:"100%", borderRadius:99, background:"#7FFFB0" }} />
+              </div>
             </div>
           );
         })}
