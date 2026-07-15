@@ -68,8 +68,11 @@ function CancelButton({ booking, userId, onCancelled }) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const isLate = booking.date <= todayStr(); // šiandien arba praeitis
-  const warning = isLate ? "Atsaukiant likus mažiau nei 1 dienai, pinigai negrąžinami!" : null;
+  // Tas pats skaičiavimas kaip serverio hook'e (bookings.pb.js) — tikra 24 val.
+  // riba pagal datą IR laiką, ne vien kalendorinė diena.
+  const hoursUntil = (new Date(booking.date + "T" + booking.start_time + ":00").getTime() - Date.now()) / (1000*60*60);
+  const isLate = hoursUntil < 24;
+  const warning = isLate ? "Atsaukiant likus mažiau nei 24 val., pinigai negrąžinami!" : null;
 
   async function handleCancel() {
     if (!reason.trim()) return;
