@@ -1,22 +1,28 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { pb } from "./pb";
 import { PK } from "./constants";
 
 export default function Login() {
   const [mode,      setMode]      = useState("login");
-  const [email,     setEmail]     = useState("");
-  const [password,  setPassword]  = useState("");
-  const [password2, setPassword2] = useState("");
-  const [name,      setName]      = useState("");
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState("");
   const [success,   setSuccess]   = useState("");
+
+  // Laukai laikomi "nekontroliuojami" (native DOM, ne React value/onChange),
+  // kad kiekvienas simbolis nekeltų React re-render — tai galėjo trukdyti
+  // iOS/Chrome slaptažodžių tvarkyklės plėtiniui teisingai užpildyti laukus
+  // (pastebėta, kad pasirinkus išsaugotą paskyrą per raktelio piktogramą,
+  // slaptažodis būdavo įrašomas į el. pašto lauką).
+  const nameRef      = useRef(null);
+  const emailRef      = useRef(null);
+  const passwordRef   = useRef(null);
+  const password2Ref  = useRef(null);
 
   async function handleLogin(e) {
     e.preventDefault();
     setLoading(true); setError("");
     try {
-      await pb.collection("users").authWithPassword(email, password);
+      await pb.collection("users").authWithPassword(emailRef.current.value, passwordRef.current.value);
       // App.js onChange listener picks up the new session automatically
     } catch {
       setError("Neteisingas el. paštas arba slaptažodis.");
@@ -27,6 +33,10 @@ export default function Login() {
   async function handleRegister(e) {
     e.preventDefault();
     setLoading(true); setError(""); setSuccess("");
+    const name = nameRef.current.value;
+    const email = emailRef.current.value;
+    const password = passwordRef.current.value;
+    const password2 = password2Ref.current.value;
     if (!name.trim())          { setError("Įveskite vardą ir pavardę."); setLoading(false); return; }
     if (password.length < 6)   { setError("Slaptažodis min. 6 simboliai."); setLoading(false); return; }
     if (password !== password2) { setError("Slaptažodžiai nesutampa."); setLoading(false); return; }
@@ -42,7 +52,9 @@ export default function Login() {
         emailVisibility: true,
       });
       setSuccess("Paskyra sukurta! Prisijunkite ir užpildykite anketą.");
-      setMode("login"); setPassword(""); setPassword2("");
+      setMode("login");
+      if (passwordRef.current) passwordRef.current.value = "";
+      if (password2Ref.current) password2Ref.current.value = "";
     } catch (err) {
       setError(err.response?.message || err.message || "Klaida kuriant paskyrą.");
     }
@@ -80,25 +92,25 @@ export default function Login() {
       </div>
 
       <div style={{ width:"100%", maxWidth:400, background:"rgba(255,255,255,0.06)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.12)", animation:"fadeInUp 0.5s ease-out 0.1s both" }}>
-        <form key={mode} onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        <form onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {mode === "register" && (
             <div className="login-field" style={{ animationDelay:"0.03s" }}>
               <label style={lbl} htmlFor="login-name">Vardas Pavardė</label>
-              <input id="login-name" className="login-inp" style={inp} type="text" name="name" autoComplete="name" value={name} placeholder="Vardas Pavardė" onChange={e => setName(e.target.value)} />
+              <input id="login-name" ref={nameRef} className="login-inp" style={inp} type="text" name="name" autoComplete="name" defaultValue="" placeholder="Vardas Pavardė" />
             </div>
           )}
           <div className="login-field" style={{ animationDelay:"0.06s" }}>
             <label style={lbl} htmlFor="login-email">El. paštas</label>
-            <input id="login-email" className="login-inp" style={inp} type="text" inputMode="email" name="username" autoComplete="username" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
+            <input id="login-email" ref={emailRef} className="login-inp" style={inp} type="text" inputMode="email" name="username" autoComplete="username" defaultValue="" placeholder="el.pastas@gmail.com" />
           </div>
           <div className="login-field" style={{ animationDelay:"0.1s" }}>
             <label style={lbl} htmlFor="login-password">Slaptažodis</label>
-            <input id="login-password" className="login-inp" style={inp} type="password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} placeholder="min. 6 simboliai" onChange={e => setPassword(e.target.value)} />
+            <input id="login-password" ref={passwordRef} className="login-inp" style={inp} type="password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} defaultValue="" placeholder="min. 6 simboliai" />
           </div>
           {mode === "register" && (
             <div className="login-field" style={{ animationDelay:"0.13s" }}>
               <label style={lbl} htmlFor="login-password2">Pakartokite slaptažodį</label>
-              <input id="login-password2" className="login-inp" style={inp} type="password" name="password2" autoComplete="new-password" value={password2} placeholder="pakartokite slaptažodį" onChange={e => setPassword2(e.target.value)} />
+              <input id="login-password2" ref={password2Ref} className="login-inp" style={inp} type="password" name="password2" autoComplete="new-password" defaultValue="" placeholder="pakartokite slaptažodį" />
             </div>
           )}
 
