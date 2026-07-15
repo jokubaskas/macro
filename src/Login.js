@@ -89,7 +89,7 @@ export default function Login() {
           )}
           <div className="login-field" style={{ animationDelay:"0.06s" }}>
             <label style={lbl}>El. paštas</label>
-            <input className="login-inp" style={inp} type="email" name="email" autoComplete="email" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
+            <input className="login-inp" style={inp} type="email" name="username" autoComplete="username" value={email} placeholder="el.pastas@gmail.com" onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="login-field" style={{ animationDelay:"0.1s" }}>
             <label style={lbl}>Slaptažodis</label>

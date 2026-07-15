@@ -98,12 +98,26 @@ function WeeklyRecap({ userId }) {
 }
 
 // ── Kalendoriaus modalas ──────────────────────────────────────────────────────
-function DatePickerModal({ value, minDate, onSelect, onClose }) {
+function DatePickerModal({ value, minDate, onSelect, onClose, userId }) {
   const today = todayStr();
   const [month, setMonth] = useState(() => {
     const d = new Date(value + "T12:00:00");
     return { y: d.getFullYear(), m: d.getMonth() };
   });
+  // Dienos, kai buvo užpildytas dienos check-in (is_done=true) — tas pats
+  // kriterijus, kokį naudoja trenerės statistika (TrainerStats.js).
+  const [filledDays, setFilledDays] = useState(new Set());
+
+  useEffect(() => {
+    if (!userId) return;
+    const lastDay = new Date(month.y, month.m + 1, 0).getDate();
+    const from = `${month.y}-${String(month.m+1).padStart(2,"0")}-01`;
+    const to   = `${month.y}-${String(month.m+1).padStart(2,"0")}-${String(lastDay).padStart(2,"0")}`;
+    pb.collection("daily_checkins").getFullList({
+      filter: `user_id="${userId}" && date>="${from}" && date<="${to}" && is_done=true`,
+      requestKey: null,
+    }).then(rows => setFilledDays(new Set(rows.map(r => r.date)))).catch(()=>{});
+  }, [userId, month.y, month.m]);
 
   const firstDay = new Date(month.y, month.m, 1).getDay();
   const daysInMonth = new Date(month.y, month.m + 1, 0).getDate();
@@ -135,16 +149,23 @@ function DatePickerModal({ value, minDate, onSelect, onClose }) {
             const isSelected = dateStr === value;
             const isToday = dateStr === today;
             const disabled = minDate && dateStr < minDate;
+            const isFilled = filledDays.has(dateStr);
             return (
               <button key={d} onClick={() => { if (!disabled) { onSelect(dateStr); onClose(); } }}
-                style={{ aspectRatio: "1", border: isSelected ? "2px solid rgba(255,255,255,0.8)" : "none", borderRadius: 10,
+                style={{ position: "relative", aspectRatio: "1", border: isSelected ? "2px solid rgba(255,255,255,0.8)" : "none", borderRadius: 10,
                   background: isSelected ? "rgba(255,255,255,0.25)" : isToday ? "rgba(255,255,255,0.1)" : "transparent",
                   cursor: disabled ? "default" : "pointer", color: disabled ? "rgba(255,255,255,0.2)" : "#fff",
-                  fontSize: 13, fontWeight: isSelected || isToday ? 700 : 400, fontFamily: "inherit" }}>{d}</button>
+                  fontSize: 13, fontWeight: isSelected || isToday ? 700 : 400, fontFamily: "inherit" }}>
+                {d}
+                {isFilled && <div style={{ position:"absolute", bottom:2, left:"50%", transform:"translateX(-50%)", width:4, height:4, borderRadius:"50%", background:"#2ECC71" }} />}
+              </button>
             );
           })}
         </div>
-        <button onClick={onClose} style={{ width: "100%", marginTop: 16, padding: "12px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 14, color: "rgba(255,255,255,0.7)", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Uždaryti</button>
+        <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", textAlign:"center", marginTop:10, display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+          <span style={{ width:4, height:4, borderRadius:"50%", background:"#2ECC71", display:"inline-block" }} />supildyta dienos anketa
+        </p>
+        <button onClick={onClose} style={{ width: "100%", marginTop: 10, padding: "12px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 14, color: "rgba(255,255,255,0.7)", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Uždaryti</button>
       </div>
     </div>
   );
@@ -469,7 +490,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(); setShowOnboarding(false); }} />
       )}
       {showCalendar && (
-        <DatePickerModal value={selectedDate} minDate={minDate}
+        <DatePickerModal value={selectedDate} minDate={minDate} userId={user.id}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
       )}
     </div>
