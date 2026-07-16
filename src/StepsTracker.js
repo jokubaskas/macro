@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { pb } from "./pb";
+import { pbFirst, pbUpsert } from "./pb";
 import { MOOD } from "./constants";
 import { Footprints, Edit, Save, Sparkle } from "./ui/icons";
 
@@ -20,17 +20,13 @@ export default function StepsTracker({ userId, date }) {
   const isToday = date === todayStr();
   const [steps, setSteps]   = useState(0);
   const [input, setInput]   = useState("");
-  const [recId, setRecId]   = useState(null);
   const [saved, setSaved]   = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setSaved(false);
-    pb.collection("daily_checkins").getFirstListItem(
-      `user_id="${userId}" && date="${date}"`, { requestKey: null }
-    ).then(r => {
-      setRecId(r.id);
-      if (r.steps) { setSteps(r.steps); setInput(String(r.steps)); setSaved(true); }
+    pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
+      if (r && r.steps) { setSteps(r.steps); setInput(String(r.steps)); setSaved(true); }
       else { setSteps(0); setInput(""); setSaved(false); }
     }).catch(() => {});
   }, [userId, date]);
@@ -41,12 +37,11 @@ export default function StepsTracker({ userId, date }) {
     setSteps(n);
     setSaving(true);
     try {
-      if (recId) {
-        await pb.collection("daily_checkins").update(recId, { steps: n });
-      } else {
-        const r = await pb.collection("daily_checkins").create({ user_id: userId, date, steps: n });
-        setRecId(r.id);
-      }
+      // Ieškoma/atnaujinama šviežiai per pbUpsert (ne pasikliaujama anksčiau
+      // įsimintu įrašo ID) — kitaip, jei tarpe DailyCheckin.js jau sukūrė
+      // šios dienos įrašą, čia atsirasdavo ANTRAS, atskiras įrašas tai
+      // pačiai user_id+date porai (steps likdavo nematomi kalendoriuje).
+      await pbUpsert("daily_checkins", `user_id="${userId}" && date="${date}"`, { user_id: userId, date, steps: n });
       setSaved(true);
     } catch(e) { console.error(e); }
     setSaving(false);
