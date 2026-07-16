@@ -9,6 +9,48 @@ const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Li
 const STATUS_LABEL = { pending:{Icon:Timer,label:"Laukia"}, approved:{Icon:CheckCircle,label:"Patvirtinta"}, rejected:{Icon:Close,label:"Atmesta"}, cancelled:{Icon:Ban,label:"Atšaukta"} };
 const STATUS_COLOR = { pending:"rgba(255,200,0,0.2)", approved:"rgba(127,255,176,0.15)", rejected:"rgba(255,100,100,0.15)", cancelled:"rgba(255,255,255,0.05)" };
 
+// Laukiančios rezervacijos atmetimas/patvirtinimas — atmetimas leidžia
+// įrašyti priežastį, kurią klientas pamatys laiške/pranešime (analogiškai
+// AdminCancelButton žemiau, skirtam jau patvirtintoms rezervacijoms).
+function PendingBookingActions({ booking, clientName, onApprove, onDone }) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason,    setReason]    = useState("");
+  const [saving,    setSaving]    = useState(false);
+
+  async function handleReject() {
+    if (!reason.trim()) return;
+    setSaving(true);
+    await pb.collection("bookings").update(booking.id, {
+      status:        "rejected",
+      cancel_reason: reason.trim(),
+      cancelled_by:  "trainer",
+    }).catch(()=>{});
+    setSaving(false);
+    setRejecting(false);
+    onDone();
+  }
+
+  if (rejecting) return (
+    <div style={{marginTop:8,background:"rgba(255,50,50,0.08)",borderRadius:10,padding:10,border:"1px solid rgba(255,100,100,0.25)"}}>
+      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Atmetimo priežastis klientui..." rows={2}
+        style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(255,100,100,0.25)",background:"rgba(0,0,0,0.2)",color:"#fff",fontSize:12,fontFamily:"inherit",outline:"none",resize:"none",boxSizing:"border-box",marginBottom:8}}/>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setRejecting(false)} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Atgal</button>
+        <button onClick={handleReject} disabled={!reason.trim()||saving} style={{flex:2,padding:"8px",borderRadius:8,border:"none",background:reason.trim()?"rgba(200,50,50,0.6)":"rgba(255,255,255,0.1)",color:"#fff",fontSize:12,fontWeight:700,cursor:reason.trim()?"pointer":"default",fontFamily:"inherit"}}>
+          {saving?"Atmetama...":"Patvirtinti atmetimą"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:"flex",gap:8,marginTop:8}}>
+      <button onClick={()=>setRejecting(true)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
+      <button onClick={onApprove} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti ir įtraukti į kalendorių</button>
+    </div>
+  );
+}
+
 function AdminCancelButton({ booking, clientName, onCancelled }) {
   const [open,   setOpen]   = useState(false);
   const [reason, setReason] = useState("");
@@ -540,12 +582,6 @@ export default function BookingAdmin({ onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Atmetant laukiančią užklausą, kreditą grąžina serverio hook
-  // (bookings.pb.js, "rejected" šaka) — čia nebedubliuojame.
-  async function handleReject(booking) {
-    await pb.collection("bookings").update(booking.id, { status:"rejected" }).catch(()=>{});
-    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"rejected"} : b));
-  }
 
   // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
   // kalendorių — nebereikia atskiro veiksmo ir vėliau nebeaišku, ar jau pridėta.
@@ -658,10 +694,8 @@ export default function BookingAdmin({ onClose }) {
                 </div>
               </div>
               {b.status==="pending" && (
-                <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>handleReject(b)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Close size={12} />Atmesti</button>
-                  <button onClick={()=>handleApprove(b, client?.name||"Klientas")} style={{flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#1a4731,#276749)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Check size={12} />Patvirtinti ir įtraukti į kalendorių</button>
-                </div>
+                <PendingBookingActions booking={b} clientName={client?.name||"Klientas"}
+                  onApprove={()=>handleApprove(b, client?.name||"Klientas")} onDone={load} />
               )}
               {b.status==="approved" && (
                 <div style={{display:"flex",gap:8,marginTop:8}}>
