@@ -4,6 +4,49 @@ import { calcMacros } from "./constants";
 import { Muscle, Droplet, Salad, Flame, Edit, Save, Lightbulb } from "./ui/icons";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
+function daysAgoStr(n) { return new Date(Date.now() - n*24*60*60*1000).toISOString().split("T")[0]; }
+
+// Aktyvumo lygis (1–5) apskaičiuojamas iš realių duomenų vietoj vienkartinio
+// anketos atsakymo: treniruočių dažnis per pastarąsias 4 sav. (live_sessions
+// + patvirtintos praėjusios bookings) nustato bazinį lygį, o vidutiniai
+// žingsniai per pastarąsias 2 sav. jį koreguoja ±1. Jei realių duomenų dar
+// nėra (naujas klientas), grąžinamas anketos atsakymas (fallbackAct).
+async function computeActivityLevel(userId, fallbackAct) {
+  const since28 = daysAgoStr(28);
+  const since14 = daysAgoStr(14);
+  const today = todayStr();
+
+  const [liveSessions, approvedBookings, checkins] = await Promise.all([
+    pb.collection("live_sessions").getFullList({
+      filter: `user_id="${userId}" && completed=true && date>="${since28}"`, requestKey: null,
+    }).catch(() => []),
+    pb.collection("bookings").getFullList({
+      filter: `client_id="${userId}" && status="approved" && date>="${since28}" && date<="${today}"`, requestKey: null,
+    }).catch(() => []),
+    pb.collection("daily_checkins").getFullList({
+      filter: `user_id="${userId}" && date>="${since14}" && steps>0`, requestKey: null,
+    }).catch(() => []),
+  ]);
+
+  const trainingDates = new Set([
+    ...liveSessions.map(s => (s.date || "").slice(0, 10)),
+    ...approvedBookings.map(b => b.date),
+  ]);
+  const sessionsPerWeek = trainingDates.size / 4;
+
+  const stepDays = checkins.length;
+  const avgSteps = stepDays > 0 ? checkins.reduce((s, c) => s + (c.steps || 0), 0) / stepDays : null;
+
+  const hasData = trainingDates.size > 0 || stepDays >= 5;
+  if (!hasData) return { level: fallbackAct, computed: false };
+
+  let level = sessionsPerWeek >= 5 ? 5 : sessionsPerWeek >= 3 ? 4 : sessionsPerWeek >= 1.5 ? 3 : sessionsPerWeek >= 0.5 ? 2 : 1;
+  if (avgSteps != null) {
+    if (avgSteps >= 12000) level = Math.min(5, level + 1);
+    else if (avgSteps < 3000) level = Math.max(1, level - 1);
+  }
+  return { level, computed: true };
+}
 
 function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled }) {
   const value = parseInt(input) || 0;
@@ -33,6 +76,7 @@ function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled 
 export default function MacroTracker({ userId, date, profile }) {
   const isToday = date === todayStr();
   const [weightKg, setWeightKg] = useState(null);
+  const [actInfo, setActInfo] = useState(null); // { level, computed }
   const [protein, setProtein] = useState("");
   const [fat,     setFat]     = useState("");
   const [carbs,   setCarbs]   = useState("");
@@ -52,6 +96,11 @@ export default function MacroTracker({ userId, date, profile }) {
   }, [userId, profile?.weight]);
 
   useEffect(() => {
+    if (!profile?.act) return;
+    computeActivityLevel(userId, profile.act).then(setActInfo);
+  }, [userId, profile?.act]);
+
+  useEffect(() => {
     setSaved(false); setLoaded(false);
     pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
       setProtein(r?.protein_g ? String(r.protein_g) : "");
@@ -65,10 +114,11 @@ export default function MacroTracker({ userId, date, profile }) {
   const age = profile?.dob
     ? Math.floor((new Date() - new Date(profile.dob)) / (365.25*24*60*60*1000))
     : null;
-  const canCalc = weightKg && profile?.height && age && profile?.gender && profile?.act && profile?.goal;
+  const effectiveAct = actInfo?.level || profile?.act;
+  const canCalc = weightKg && profile?.height && age && profile?.gender && effectiveAct && profile?.goal;
   const targets = canCalc ? calcMacros({
     gender: profile.gender, age, weight: weightKg, height: parseFloat(profile.height),
-    actId: profile.act, goalId: profile.goal,
+    actId: effectiveAct, goalId: profile.goal,
   }) : null;
 
   async function handleSave() {
@@ -100,10 +150,13 @@ export default function MacroTracker({ userId, date, profile }) {
 
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
         <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", display:"flex", alignItems:"center", gap:5 }}><Flame size={12} color="#FFA500" />Dienos tikslas</span>
         <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{targets.target} kcal</span>
       </div>
+      <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"0 0 14px" }}>
+        {actInfo?.computed ? "Aktyvumas apskaičiuotas pagal pastarųjų 4 sav. treniruočių dažnį ir žingsnius" : "Aktyvumas pagal anketą (dar nepakanka istorijos perskaičiuoti)"}
+      </p>
 
       <MacroRow Icon={Muscle} label="Baltymai" unit="g" color="#FF6EB4"
         target={targets.prot.g} input={protein}
