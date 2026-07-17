@@ -6,11 +6,33 @@ import { Muscle, Droplet, Salad, Flame, Edit, Save, Lightbulb } from "./ui/icons
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { return new Date(Date.now() - n*24*60*60*1000).toISOString().split("T")[0]; }
 
-// Aktyvumo lygis (1–5) apskaičiuojamas iš realių duomenų vietoj vienkartinio
-// anketos atsakymo: treniruočių dažnis per pastarąsias 4 sav. (live_sessions)
-// nustato bazinį lygį, o vidutiniai žingsniai per pastarąsias 2 sav. jį
-// koreguoja ±1. Jei realių duomenų dar nėra (naujas klientas), grąžinamas
-// anketos atsakymas (fallbackAct).
+// Treniruočių dažnio bazinis daugiklis (sesijos/savaitę suapvalinamos iki
+// artimiausio sveiko skaičiaus, 5+ traktuojama kaip aukščiausia pakopa).
+const TRAINING_MULT = [1.2, 1.35, 1.45, 1.55, 1.65, 1.75]; // 0,1,2,3,4,5+ sesijų/sav.
+const MULT_CAP = 1.8;
+
+function trainingMultiplier(sessionsPerWeek) {
+  const idx = Math.min(5, Math.max(0, Math.round(sessionsPerWeek)));
+  return TRAINING_MULT[idx];
+}
+
+// Žingsniai koreguoja treniruočių daugiklį nedideliu ± priedu (ne pakeičia jo
+// visiškai ir nesudauginami atskirai) — vidutinis žingsnių skaičius per 14 d.
+function stepsAdjustment(avgSteps) {
+  if (avgSteps == null)  return 0;
+  if (avgSteps < 4000)   return -0.05;
+  if (avgSteps < 7000)   return 0;
+  if (avgSteps < 10000)  return 0.03;
+  if (avgSteps < 12000)  return 0.05;
+  if (avgSteps < 15000)  return 0.08;
+  return 0.10;
+}
+
+// Aktyvumo koeficientas apskaičiuojamas iš realaus treniruočių dažnio per
+// pastarąsias 4 sav. (live_sessions) + žingsnių pakoregavimo, vietoj
+// vienkartinio anketos atsakymo. Jei realių duomenų dar nėra (naujas
+// klientas), grąžinamas anketos atsakymas (fallbackAct, naudojamas per
+// ACTIVITY lentelę constants.js).
 async function computeActivityLevel(userId, fallbackAct) {
   const since28 = daysAgoStr(28);
   const since14 = daysAgoStr(14);
@@ -31,14 +53,10 @@ async function computeActivityLevel(userId, fallbackAct) {
   const avgSteps = stepDays > 0 ? checkins.reduce((s, c) => s + (c.steps || 0), 0) / stepDays : null;
 
   const hasData = trainingDates.size > 0 || stepDays >= 5;
-  if (!hasData) return { level: fallbackAct, computed: false };
+  if (!hasData) return { computed: false, level: fallbackAct };
 
-  let level = sessionsPerWeek >= 5 ? 5 : sessionsPerWeek >= 3 ? 4 : sessionsPerWeek >= 1.5 ? 3 : sessionsPerWeek >= 0.5 ? 2 : 1;
-  if (avgSteps != null) {
-    if (avgSteps >= 12000) level = Math.min(5, level + 1);
-    else if (avgSteps < 3000) level = Math.max(1, level - 1);
-  }
-  return { level, computed: true };
+  const mult = Math.min(MULT_CAP, trainingMultiplier(sessionsPerWeek) + stepsAdjustment(avgSteps));
+  return { computed: true, mult, sessionsPerWeek, avgSteps };
 }
 
 function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled }) {
@@ -107,11 +125,12 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
   const age = profile?.dob
     ? Math.floor((new Date() - new Date(profile.dob)) / (365.25*24*60*60*1000))
     : null;
-  const effectiveAct = actInfo?.level || profile?.act;
-  const canCalc = weightKg && profile?.height && age && profile?.gender && effectiveAct && profile?.goal;
+  const hasActivityData = actInfo?.computed || profile?.act;
+  const canCalc = weightKg && profile?.height && age && profile?.gender && hasActivityData && profile?.goal;
   const targets = canCalc ? calcMacros({
     gender: profile.gender, age, weight: weightKg, height: parseFloat(profile.height),
-    actId: effectiveAct, goalId: profile.goal,
+    actId: profile.act, goalId: profile.goal,
+    multOverride: actInfo?.computed ? actInfo.mult : undefined,
   }) : null;
 
   async function handleSave() {
@@ -149,7 +168,9 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
         <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{targets.target} kcal</span>
       </div>
       <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"0 0 14px" }}>
-        {actInfo?.computed ? "Aktyvumas apskaičiuotas pagal pastarųjų 4 sav. treniruočių dažnį ir žingsnius" : "Aktyvumas pagal anketą (dar nepakanka istorijos perskaičiuoti)"}
+        {actInfo?.computed
+          ? `Aktyvumo koeficientas ${actInfo.mult.toFixed(2)} — pagal treniruočių dažnį (~${Math.round(actInfo.sessionsPerWeek*10)/10}/sav.) ir žingsnius`
+          : "Aktyvumas pagal anketą (dar nepakanka istorijos perskaičiuoti)"}
       </p>
 
       <MacroRow Icon={Muscle} label="Baltymai" unit="g" color="#FF6EB4"

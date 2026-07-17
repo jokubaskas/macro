@@ -76,9 +76,9 @@ export const GOALS = [
     tip: "300 kcal perteklius – lėtas švarus raumenų augimas." },
 ];
 
-export function calcMacros({ gender, age, weight, height, actId, goalId }) {
+export function calcMacros({ gender, age, weight, height, actId, goalId, multOverride }) {
   const G    = GOALS.find(g => g.id === goalId);
-  const mult = ACTIVITY.find(x => x.id === actId)?.mult ?? 1.55;
+  const mult = multOverride ?? (ACTIVITY.find(x => x.id === actId)?.mult ?? 1.55);
   const base = 10 * weight + 6.25 * height - 5 * age + (gender === "f" ? -161 : 5);
   const tdee = base * mult;
   const tgt  = Math.max(1200, Math.round(tdee + G.adj));
