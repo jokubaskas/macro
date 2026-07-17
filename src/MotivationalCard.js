@@ -98,7 +98,7 @@ async function analyzeAndGenerateMessage(userId, goalId) {
   return { icon: Smile, iconColor: "#FFD37A", main: positives[0]?.msg || "Taip laikykis!", tip: null, science: positives[0]?.science || SCIENCE.general, type: "neutral" };
 }
 
-export default function MotivationalCard({ userId, goalId }) {
+export default function MotivationalCard({ userId, goalId, compact, onClick }) {
   const [msg,     setMsg]     = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -108,6 +108,16 @@ export default function MotivationalCard({ userId, goalId }) {
       .then(m => { setMsg(m); setLoading(false); })
       .catch(() => setLoading(false));
   }, [userId]);
+
+  if (loading && compact) return (
+    <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 18, padding: "14px", height:"100%", boxSizing:"border-box", display: "flex", alignItems: "center", gap: 10 }}>
+      <Skeleton width={38} height={38} radius={19} />
+      <div style={{ flex:1 }}>
+        <Skeleton height={10} style={{ marginBottom:6, width:"85%" }} />
+        <Skeleton height={10} style={{ width:"60%" }} />
+      </div>
+    </div>
+  );
 
   if (loading) return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
@@ -120,9 +130,29 @@ export default function MotivationalCard({ userId, goalId }) {
   );
   if (!msg) return null;
 
-  const today = new Date().toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" });
   const MsgIcon = msg.icon;
   const iconColor = msg.iconColor || "#FF6EB4";
+
+  if (compact) return (
+    <div onClick={onClick} style={{
+      background: "rgba(0,0,0,0.2)", borderRadius: 18, padding: "14px", border: "1px solid rgba(255,255,255,0.15)",
+      height:"100%", boxSizing:"border-box", display:"flex", alignItems:"center", gap:10, cursor: onClick ? "pointer" : "default",
+    }}>
+      <div style={{
+        position:"relative", flexShrink: 0, width:36, height:36, borderRadius:"50%",
+        background:`radial-gradient(circle, ${iconColor}33, transparent 72%)`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+      }}>
+        <MsgIcon size={20} color={iconColor} />
+      </div>
+      <p style={{
+        fontSize: 12.5, fontWeight: 600, color: "#fff", margin: 0, lineHeight: 1.4,
+        display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden",
+      }}>{msg.main}</p>
+    </div>
+  );
+
+  const today = new Date().toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" });
 
   return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>

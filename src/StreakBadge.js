@@ -58,7 +58,7 @@ function getStreakStyle(streak) {
   return null;
 }
 
-export default function StreakBadge({ userId, compact }) {
+export default function StreakBadge({ userId, compact, row }) {
   const [streak, setStreak] = useState(0);
   const [best, setBest]     = useState(0);
   const [loading, setLoading] = useState(true);
@@ -104,6 +104,33 @@ export default function StreakBadge({ userId, compact }) {
         <style>{KEYFRAMES}</style>
         <style.Icon size={14} color={style.color} style={{ animation: TIER_ANIM[style.tier] }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: style.color }}>{streak}</span>
+      </div>
+    );
+  }
+
+  if (row) {
+    return (
+      <div style={{
+        background: `linear-gradient(135deg, ${style.color}22, ${style.color}11)`,
+        border: `1.5px solid ${style.color}44`,
+        borderRadius: 18,
+        padding: "14px 8px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        gap: 4,
+        height: "100%",
+        boxSizing: "border-box",
+        boxShadow: style.glow ? `0 0 20px ${style.color}33` : "none",
+      }}>
+        <style>{KEYFRAMES}</style>
+        <div style={{ position:"relative", filter: style.glow ? `drop-shadow(0 0 8px ${style.color})` : "none" }}>
+          <style.Icon size={28} color={style.color} style={{ animation: TIER_ANIM[style.tier] }} />
+        </div>
+        <p style={{ fontSize: 19, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.1 }}>{streak}</p>
+        <p style={{ fontSize: 10, color: style.color, fontWeight: 700, margin: 0, whiteSpace:"nowrap" }}>{style.label}</p>
       </div>
     );
   }

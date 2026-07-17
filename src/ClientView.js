@@ -16,7 +16,7 @@ import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check, Refresh } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check, Refresh, Close } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
@@ -184,6 +184,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showPackages, setShowPackages] = useState(false);
   const [showStats,    setShowStats]    = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
 
   // Aktyvus tab (null = pagrindinis)
   const activeTab = showPackages ? "packages"
@@ -370,8 +371,17 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           </div>
         )}
 
-        {/* Streak */}
-        {isToday && profile?.track_progress && <StreakBadge userId={user.id} />}
+        {/* Streak + dienos patarimas — viena eilutė */}
+        {isToday && profile?.track_progress && (
+          <div style={{ display:"flex", gap:10, marginBottom:12, alignItems:"stretch" }}>
+            <div style={{ flex:"1 1 0", minWidth:0 }}>
+              <StreakBadge userId={user.id} row />
+            </div>
+            <div style={{ flex:"2 1 0", minWidth:0 }}>
+              <MotivationalCard userId={user.id} goalId={profile?.goal} compact onClick={()=>setShowTipModal(true)} />
+            </div>
+          </div>
+        )}
 
         {/* Savaitės apžvalga */}
         {isToday && profile?.track_progress && <WeeklyRecap userId={user.id} />}
@@ -391,11 +401,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
               Įjungti
             </button>
           </div>
-        )}
-
-        {/* Motyvacija — tik sekiantiems */}
-        {isToday && profile?.track_progress && (
-          <MotivationalCard userId={user.id} res={null} goalId={profile?.goal} />
         )}
 
         {/* Daily Check-in — tik sekiantiems */}
@@ -500,6 +505,16 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {showCalendar && (
         <DatePickerModal value={selectedDate} minDate={minDate} userId={user.id}
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
+      )}
+      {showTipModal && (
+        <div onClick={()=>setShowTipModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"flex-end" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#3a0a20,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"20px 16px 40px" }}>
+            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
+              <button onClick={()=>setShowTipModal(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:"50%", width:32, height:32, color:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><Close size={15} /></button>
+            </div>
+            <MotivationalCard userId={user.id} goalId={profile?.goal} />
+          </div>
+        </div>
       )}
     </div>
   );
