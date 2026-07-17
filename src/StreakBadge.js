@@ -58,7 +58,7 @@ function getStreakStyle(streak) {
   return null;
 }
 
-export default function StreakBadge({ userId, compact, row }) {
+export default function StreakBadge({ userId, compact, row, onHasStreak }) {
   const [streak, setStreak] = useState(0);
   const [best, setBest]     = useState(0);
   const [loading, setLoading] = useState(true);
@@ -73,6 +73,7 @@ export default function StreakBadge({ userId, compact, row }) {
       const dates = new Set(items.map(i => i.date.slice(0,10)));
       const current = calcStreak(dates);
       setStreak(current);
+      onHasStreak?.(current >= 1);
 
       // Apskaičiuoti geriausią streak istoriškai (paprastas algoritmas)
       const sorted = [...dates].sort();
@@ -91,7 +92,8 @@ export default function StreakBadge({ userId, compact, row }) {
       }
       setBest(Math.max(maxStreak, current));
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => { onHasStreak?.(false); setLoading(false); });
+    // eslint-disable-next-line
   }, [userId]);
 
   if (loading) return null;

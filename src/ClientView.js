@@ -185,6 +185,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showStats,    setShowStats]    = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [hasStreak, setHasStreak] = useState(false);
 
   // Aktyvus tab (null = pagrindinis)
   const activeTab = showPackages ? "packages"
@@ -371,13 +372,16 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           </div>
         )}
 
-        {/* Streak + dienos patarimas — viena eilutė */}
+        {/* Streak + dienos patarimas — viena eilutė. StreakBadge visada
+            sumontuotas (kad galėtų pranešti, ar turi ką rodyti), bet jo
+            konteineris susitraukia iki nulio, kol serijos nėra arba dar
+            nežinoma — tada patarimo kortelė užima visą plotį. */}
         {isToday && profile?.track_progress && (
-          <div style={{ display:"flex", gap:10, marginBottom:12, alignItems:"stretch" }}>
-            <div style={{ flex:"1 1 0", minWidth:0 }}>
-              <StreakBadge userId={user.id} row />
+          <div style={{ display:"flex", gap: hasStreak ? 10 : 0, marginBottom:12, alignItems:"stretch" }}>
+            <div style={{ flex: hasStreak ? "1 1 0" : "0 0 0", minWidth:0, overflow:"hidden" }}>
+              <StreakBadge userId={user.id} row onHasStreak={setHasStreak} />
             </div>
-            <div style={{ flex:"2 1 0", minWidth:0 }}>
+            <div style={{ flex: hasStreak ? "2 1 0" : "1 1 0", minWidth:0 }}>
               <MotivationalCard userId={user.id} goalId={profile?.goal} compact onClick={()=>setShowTipModal(true)} />
             </div>
           </div>
