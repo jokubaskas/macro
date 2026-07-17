@@ -178,7 +178,7 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
           borderRadius: "0 0 20px 20px", padding: 14, marginBottom: 10,
           animation: "tileExpand 0.3s cubic-bezier(.23,1,.32,1) both", transformOrigin: "top",
         }}>
-          <DailyCheckin userId={userId} date={date} onSaved={() => { onCheckinSaved?.(); reload(); }} />
+          <DailyCheckin userId={userId} date={date} initialCheckin={checkin} onSaved={() => { onCheckinSaved?.(); reload(); }} />
         </div>
       )}
 
@@ -187,25 +187,25 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
         <Tile Icon={Footprints} color="#FF9F5A" title="Žingsniai" isOpen={open === "steps"} onToggle={() => toggle("steps")}
           big={steps ? steps.toLocaleString() : "–"} sub={`iš ${STEPS_GOAL.toLocaleString()}`}
           barPct={steps ? (steps / STEPS_GOAL) * 100 : 0}>
-          <StepsTracker userId={userId} date={date} />
+          <StepsTracker userId={userId} date={date} initialSteps={steps} onSaved={reload} />
         </Tile>
 
         <Tile Icon={Moon} color="#8FA8FF" title="Miegas" isOpen={open === "sleep"} onToggle={() => toggle("sleep")}
           big={sleepH != null ? `${sleepH}h` : "–"} sub={sleepH != null ? "praeitą naktį" : "dar nepažymėta"}
           barPct={sleepH != null ? (sleepH / 9) * 100 : 0}>
-          <SleepTracker userId={userId} age={profile?.dob ? Math.floor((new Date() - new Date(profile.dob)) / (365.25*24*60*60*1000)) : null} date={date} />
+          <SleepTracker userId={userId} age={profile?.dob ? Math.floor((new Date() - new Date(profile.dob)) / (365.25*24*60*60*1000)) : null} date={date} initialHours={sleepH ?? null} onSaved={reload} />
         </Tile>
 
         <Tile Icon={Droplet} color="#5BB8D4" title="Vanduo" isOpen={open === "water"} onToggle={() => toggle("water")}
           big={waterMl ? `${(waterMl/1000).toFixed(1)}L` : "–"} sub={`iš ${(waterGoal/1000).toFixed(1)}L`}
           barPct={waterGoal ? (waterMl / waterGoal) * 100 : 0}>
-          <WaterTracker goal={waterGoal} userId={userId} date={date} />
+          <WaterTracker goal={waterGoal} userId={userId} date={date} initialData={{ ml: waterMl, goal: water?.goal || waterGoal }} onSaved={reload} />
         </Tile>
 
         <Tile Icon={Salad} color="#FF6EB4" title="Mityba" isOpen={open === "macro"} onToggle={() => toggle("macro")}
           big={macroG ? `${macroG}g` : "–"} sub={macroG ? "surinkta iš viso" : "dar neįvesta"}
           barPct={null}>
-          <MacroTracker userId={userId} date={date} profile={profile} />
+          <MacroTracker userId={userId} date={date} profile={profile} initialMacros={{ protein_g: checkin?.protein_g || 0, fat_g: checkin?.fat_g || 0, carbs_g: checkin?.carbs_g || 0 }} onSaved={reload} />
         </Tile>
       </div>
     </div>

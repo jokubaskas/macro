@@ -16,19 +16,20 @@ function getMotivation(steps) {
   return { text: "Nuostabi diena! Tu judėjai daugiau nei planavai", color: "#FF6EB4", Icon: Sparkle };
 }
 
-export default function StepsTracker({ userId, date }) {
+export default function StepsTracker({ userId, date, initialSteps, onSaved }) {
   const isToday = date === todayStr();
-  const [steps, setSteps]   = useState(0);
-  const [input, setInput]   = useState("");
-  const [saved, setSaved]   = useState(false);
+  const [steps, setSteps]   = useState(initialSteps || 0);
+  const [input, setInput]   = useState(initialSteps ? String(initialSteps) : "");
+  const [saved, setSaved]   = useState(!!initialSteps);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSaved(false);
+    setSaved(!!initialSteps);
     pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
       if (r && r.steps) { setSteps(r.steps); setInput(String(r.steps)); setSaved(true); }
       else { setSteps(0); setInput(""); setSaved(false); }
     }).catch(() => {});
+    // eslint-disable-next-line
   }, [userId, date]);
 
   async function handleSave() {
@@ -43,6 +44,7 @@ export default function StepsTracker({ userId, date }) {
       // pačiai user_id+date porai (steps likdavo nematomi kalendoriuje).
       await pbUpsert("daily_checkins", `user_id="${userId}" && date="${date}"`, { user_id: userId, date, steps: n });
       setSaved(true);
+      onSaved?.();
     } catch(e) { console.error(e); }
     setSaving(false);
   }

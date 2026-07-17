@@ -51,14 +51,14 @@ function GradientBar({ pct, done, height = 6 }) {
   );
 }
 
-export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, compact = false }) {
+export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, compact = false, initialData, onSaved }) {
   const currentDate = date || todayStr();
   const isToday = currentDate === todayStr();
 
-  const [drunk,  setDrunk]  = useState(0);
-  const [goal,   setGoal]   = useState(defaultGoal);
+  const [drunk,  setDrunk]  = useState(initialData?.ml || 0);
+  const [goal,   setGoal]   = useState(initialData?.goal || defaultGoal);
   const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(!!initialData);
   const [splashIndex, setSplashIndex] = useState(-1);
   const scrollRef = useRef(null);
   const splashTimer = useRef(null);
@@ -70,7 +70,6 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
 
   useEffect(() => {
   if (!userId) return;
-  setLoaded(false);
   async function load() {
     const data = await pbFirst("water_log", `user_id="${userId}" && date="${currentDate}"`);
     if (data) { setDrunk(data.ml || 0); setGoal(data.goal || defaultGoal); }
@@ -89,6 +88,7 @@ export default function WaterTracker({ goal: defaultGoal = 2000, userId, date, c
     await pbUpsert("water_log", `user_id="${userId}" && date="${currentDate}"`, { user_id:userId, date:currentDate, ml:newDrunk, goal });
 
     setSaving(false);
+    onSaved?.();
   }
 
   function triggerSplash(index) {

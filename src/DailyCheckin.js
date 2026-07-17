@@ -87,16 +87,16 @@ function TrafficLight({ value, onChange, disabled }) {
   );
 }
 
-export default function DailyCheckin({ userId, date, onSaved }) {
+export default function DailyCheckin({ userId, date, onSaved, initialCheckin }) {
   const currentDate = date || todayStr();
   const isToday = currentDate === todayStr();
 
-  const [checkin,   setCheckin]   = useState(null);
-  const [loaded,    setLoaded]    = useState(false);
+  const [checkin,   setCheckin]   = useState(initialCheckin || null);
+  const [loaded,    setLoaded]    = useState(!!initialCheckin);
   const [saving,    setSaving]    = useState(false);
-  const [nutrition, setNutrition] = useState(null);
-  const [wellbeing, setWellbeing] = useState(null);
-  const [alcohol,   setAlcohol]   = useState(null);
+  const [nutrition, setNutrition] = useState(initialCheckin?.nutrition_score ?? null);
+  const [wellbeing, setWellbeing] = useState(initialCheckin?.wellbeing_score ?? null);
+  const [alcohol,   setAlcohol]   = useState(typeof initialCheckin?.alcohol === "boolean" ? initialCheckin.alcohol : null);
 
   const load = useCallback(async () => {
     const data = await pbFirst("daily_checkins", `user_id="${userId}" && date="${currentDate}"`);

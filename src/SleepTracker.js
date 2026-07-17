@@ -153,14 +153,14 @@ function TimePicker({ value, onChange, readOnly }) {
 }
 
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
-export default function SleepTracker({ userId, age, date, compact = false }) {
+export default function SleepTracker({ userId, age, date, compact = false, initialHours, onSaved }) {
   const currentDate = date || todayStr();
   const isToday     = currentDate === todayStr();
 
-  const [savedHours, setSavedHours] = useState(null);
+  const [savedHours, setSavedHours] = useState(initialHours ?? null);
   const [localHours, setLocalHours] = useState(null);
   const [saving,     setSaving]     = useState(false);
-  const [loaded,     setLoaded]     = useState(false);
+  const [loaded,     setLoaded]     = useState(initialHours !== undefined);
   const [weekAvg,    setWeekAvg]    = useState(null);
   const [inputMode,  setInputMode]  = useState("slider"); // "slider" | "time"
 
@@ -170,7 +170,6 @@ export default function SleepTracker({ userId, age, date, compact = false }) {
 
   useEffect(() => {
     if (!userId) return;
-    setLoaded(false);
     const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split("T")[0];
     Promise.all([
   pbFirst("sleep_log", `user_id="${userId}" && date="${currentDate}"`),
@@ -193,6 +192,7 @@ await pbUpsert("sleep_log", `user_id="${userId}" && date="${currentDate}"`, { us
     setSavedHours(localHours);
     setLocalHours(null);
     setSaving(false);
+    onSaved?.();
   }
 
   if (!loaded) return null;

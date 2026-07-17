@@ -73,16 +73,16 @@ function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled 
 
 // Reikalingi PocketBase "daily_checkins" kolekcijos laukai (Number tipo),
 // jei jų dar nėra: protein_g, fat_g, carbs_g.
-export default function MacroTracker({ userId, date, profile }) {
+export default function MacroTracker({ userId, date, profile, initialMacros, onSaved }) {
   const isToday = date === todayStr();
   const [weightKg, setWeightKg] = useState(null);
   const [actInfo, setActInfo] = useState(null); // { level, computed }
-  const [protein, setProtein] = useState("");
-  const [fat,     setFat]     = useState("");
-  const [carbs,   setCarbs]   = useState("");
-  const [saved,   setSaved]   = useState(false);
+  const [protein, setProtein] = useState(initialMacros?.protein_g ? String(initialMacros.protein_g) : "");
+  const [fat,     setFat]     = useState(initialMacros?.fat_g ? String(initialMacros.fat_g) : "");
+  const [carbs,   setCarbs]   = useState(initialMacros?.carbs_g ? String(initialMacros.carbs_g) : "");
+  const [saved,   setSaved]   = useState(!!(initialMacros?.protein_g || initialMacros?.fat_g || initialMacros?.carbs_g));
   const [saving,  setSaving]  = useState(false);
-  const [loaded,  setLoaded]  = useState(false);
+  const [loaded,  setLoaded]  = useState(!!initialMacros);
 
   // Naujausias trenerės įrašytas svoris (trainer_measurements), kad tikslai
   // atsinaujintų realiai, o ne liktų prie registracijos metu įvesto svorio.
@@ -101,7 +101,6 @@ export default function MacroTracker({ userId, date, profile }) {
   }, [userId, profile?.act]);
 
   useEffect(() => {
-    setSaved(false); setLoaded(false);
     pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
       setProtein(r?.protein_g ? String(r.protein_g) : "");
       setFat(r?.fat_g ? String(r.fat_g) : "");
@@ -109,6 +108,7 @@ export default function MacroTracker({ userId, date, profile }) {
       setSaved(!!(r?.protein_g || r?.fat_g || r?.carbs_g));
       setLoaded(true);
     }).catch(() => setLoaded(true));
+    // eslint-disable-next-line
   }, [userId, date]);
 
   const age = profile?.dob
@@ -134,6 +134,7 @@ export default function MacroTracker({ userId, date, profile }) {
         carbs_g:   parseInt(carbs) || 0,
       });
       setSaved(true);
+      onSaved?.();
     } catch(e) { console.error(e); }
     setSaving(false);
   }
