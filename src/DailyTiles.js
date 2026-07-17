@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { pb } from "./pb";
 import DailyCheckin from "./DailyCheckin";
 import StepsTracker from "./StepsTracker";
@@ -36,8 +36,18 @@ function Dot({ c1, c2, size = 10 }) {
 // Vienas kvadratėlis — sutrauktas rodo trumpą apžvalgą, paspaudus išsiskleidžia
 // vietoje (su animacija), po juo atsiranda pilnas trackerio turinys.
 function Tile({ Icon, color, title, big, sub, barPct, isOpen, onToggle, children }) {
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setTimeout(() => {
+      wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [isOpen]);
+
   return (
-    <div style={{ gridColumn: isOpen ? "1 / -1" : "auto" }}>
+    <div ref={wrapRef} style={{ gridColumn: isOpen ? "1 / -1" : "auto" }}>
       <button onClick={onToggle} className="tile-tap" style={{
         background: isOpen ? `linear-gradient(160deg, ${color}30, ${color}12)` : `linear-gradient(160deg, ${color}40, ${color}1c)`,
         border: `2px solid ${isOpen ? color + "88" : color + "5c"}`,
@@ -95,6 +105,15 @@ function Tile({ Icon, color, title, big, sub, barPct, isOpen, onToggle, children
 export default function DailyTiles({ userId, date, profile, waterGoal, onCheckinSaved }) {
   const [today, setToday] = useState(null);
   const [open, setOpen] = useState(null); // "checkin" | "steps" | "sleep" | "water" | "macro" | null
+  const checkinRef = useRef(null);
+
+  useEffect(() => {
+    if (open !== "checkin") return;
+    const t = setTimeout(() => {
+      checkinRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [open]);
 
   function reload() {
     Promise.all([
@@ -129,6 +148,7 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
       <style>{KEYFRAMES}</style>
 
       {/* Check-in — pilno pločio eilutė */}
+      <div ref={checkinRef}>
       <button onClick={() => toggle("checkin")} className="tile-tap" style={{
         width: "100%", boxSizing: "border-box", marginBottom: checkinOpen ? 0 : 10, textAlign: "left", fontFamily: "inherit", cursor: "pointer",
         background: checkinOpen
@@ -181,6 +201,7 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
           <DailyCheckin userId={userId} date={date} initialCheckin={checkin} onSaved={() => { onCheckinSaved?.(); reload(); }} />
         </div>
       )}
+      </div>
 
       {/* 2×2 tinklelis */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
