@@ -5,7 +5,7 @@ import StepsTracker from "./StepsTracker";
 import SleepTracker from "./SleepTracker";
 import WaterTracker from "./WaterTracker";
 import MacroTracker from "./MacroTracker";
-import { Clipboard, Footprints, Moon, Droplet, Salad, Close, Check, Sparkle } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, Salad, Close, Check, Sparkle, ChevronRight } from "./ui/icons";
 
 const STEPS_GOAL = 7000; // tas pats fiksuotas tikslas, kaip StepsTracker.js
 
@@ -39,8 +39,9 @@ function Tile({ Icon, color, title, big, sub, barPct, isOpen, onToggle, children
   return (
     <div style={{ gridColumn: isOpen ? "1 / -1" : "auto" }}>
       <button onClick={onToggle} className="tile-tap" style={{
-        background: `linear-gradient(160deg, ${color}22, ${color}0a)`,
-        border: `1.5px solid ${isOpen ? color + "77" : color + "3d"}`,
+        background: isOpen ? `linear-gradient(160deg, ${color}30, ${color}12)` : `linear-gradient(160deg, ${color}40, ${color}1c)`,
+        border: `2px solid ${isOpen ? color + "88" : color + "5c"}`,
+        boxShadow: isOpen ? "none" : `0 5px 18px ${color}30, inset 0 1px 0 rgba(255,255,255,0.12)`,
         borderRadius: isOpen ? "18px 18px 0 0" : 20,
         padding: "14px 14px",
         display: "flex", flexDirection: "column", gap: 8,
@@ -49,12 +50,12 @@ function Tile({ Icon, color, title, big, sub, barPct, isOpen, onToggle, children
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, background: `${color}2a`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon size={15} color={color} />
+            <div style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, background: `${color}4a`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon size={16} color={color} />
             </div>
             {isOpen && <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{title}</span>}
           </div>
-          {!isOpen && <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>}
+          {!isOpen && <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>}
           {isOpen && (
             <span style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Close size={12} color="rgba(255,255,255,0.7)" />
@@ -63,8 +64,11 @@ function Tile({ Icon, color, title, big, sub, barPct, isOpen, onToggle, children
         </div>
         {!isOpen && (
           <>
-            <p style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.15 }}>{big}</p>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0 }}>{sub}</p>
+            <p style={{ fontSize: 21, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.15 }}>{big}</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: 0 }}>{sub}</p>
+              <ChevronRight size={13} color={`${color}cc`} style={{ flexShrink: 0 }} />
+            </div>
             {barPct != null && <MiniBar pct={barPct} color={color} />}
           </>
         )}
@@ -127,8 +131,11 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
       {/* Check-in — pilno pločio eilutė */}
       <button onClick={() => toggle("checkin")} className="tile-tap" style={{
         width: "100%", boxSizing: "border-box", marginBottom: checkinOpen ? 0 : 10, textAlign: "left", fontFamily: "inherit", cursor: "pointer",
-        background: isDone ? "linear-gradient(160deg,#7FFFB022,#7FFFB00a)" : "linear-gradient(160deg,#FFD70022,#FFD7000a)",
-        border: `1.5px solid ${isDone ? "#7FFFB03d" : "#FFD7003d"}`,
+        background: checkinOpen
+          ? (isDone ? "linear-gradient(160deg,#7FFFB030,#7FFFB012)" : "linear-gradient(160deg,#FFD70030,#FFD70012)")
+          : (isDone ? "linear-gradient(160deg,#7FFFB040,#7FFFB01c)" : "linear-gradient(160deg,#FFD70040,#FFD7001c)"),
+        border: `2px solid ${isDone ? "#7FFFB0" : "#FFD700"}${checkinOpen ? "88" : "5c"}`,
+        boxShadow: checkinOpen ? "none" : `0 5px 18px ${isDone ? "#7FFFB0" : "#FFD700"}30, inset 0 1px 0 rgba(255,255,255,0.12)`,
         borderRadius: checkinOpen ? "20px 20px 0 0" : 20, padding: "14px 16px",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
       }}>
@@ -154,10 +161,15 @@ export default function DailyTiles({ userId, date, profile, waterGoal, onCheckin
           <span style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Close size={12} color="rgba(255,255,255,0.7)" />
           </span>
-        ) : isDone ? (
-          <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", background: "rgba(127,255,176,0.2)", color: "#7FFFB0", display: "flex", alignItems: "center", justifyContent: "center" }}><Check size={13} /></span>
         ) : (
-          <Sparkle size={16} color="#FFD700" style={{ flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            {isDone ? (
+              <span style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(127,255,176,0.25)", color: "#7FFFB0", display: "flex", alignItems: "center", justifyContent: "center" }}><Check size={13} /></span>
+            ) : (
+              <Sparkle size={16} color="#FFD700" />
+            )}
+            <ChevronRight size={14} color={isDone ? "#7FFFB0cc" : "#FFD700cc"} />
+          </div>
         )}
       </button>
       {checkinOpen && (
