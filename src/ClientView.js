@@ -1,17 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS, calcMacros, isBirthdayToday } from "./constants";
-import WaterTracker from "./WaterTracker";
-import SleepTracker from "./SleepTracker";
-import DailyCheckin from "./DailyCheckin";
+import DailyTiles from "./DailyTiles";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
 import ClientProgressCompare from "./ClientProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
-import StepsTracker from "./StepsTracker";
-import MacroTracker from "./MacroTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
@@ -254,9 +250,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
   if (loading) return <LoadingScreen background={`linear-gradient(160deg,#3a0a20,${PK.dark})`} textColor={PK.blush} />;
 
-  const profileAge = profile?.dob
-    ? Math.floor((new Date() - new Date(profile.dob)) / (365.25 * 24 * 60 * 60 * 1000))
-    : parseInt(profile?.age || 30);
   const goalLabel = GOALS.find(g => g.id === profile?.goal)?.label ?? "";
   const waterGoal = Math.round(parseFloat(profile?.weight || 60) * 33);
   const isBirthday = isBirthdayToday(profile?.dob);
@@ -407,44 +400,17 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           </div>
         )}
 
-        {/* Daily Check-in — tik sekiantiems */}
+        {/* Dienos sekimo kvadratėliai (check-in, žingsniai, miegas, vanduo,
+            mityba) — trumpa apžvalga, pilnas vaizdas paspaudus */}
         {profile?.track_progress && (
-          <DailyCheckin
+          <DailyTiles
             key={checkinKey}
             userId={user.id}
             date={selectedDate}
-            onSaved={() => setCheckinKey(k => k + 1)}
+            profile={profile}
+            waterGoal={waterGoal}
+            onCheckinSaved={() => setCheckinKey(k => k + 1)}
           />
-        )}
-
-        {/* Miegas — tik sekiantiems */}
-        {profile?.track_progress && (
-          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px", display:"flex", alignItems:"center", gap:6 }}><Moon size={14} />Miegas</p>
-            <SleepTracker userId={user.id} age={profileAge} date={selectedDate} />
-          </div>
-        )}
-
-        {/* Žingsniai — tik sekiantiems */}
-        {profile?.track_progress && (
-          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <StepsTracker userId={user.id} date={selectedDate} goal={profile?.steps_per_day} />
-          </div>
-        )}
-
-        {/* Vanduo — tik sekiantiems */}
-        {profile?.track_progress && (
-          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px", display:"flex", alignItems:"center", gap:6 }}><Droplet size={14} />Vanduo</p>
-            <WaterTracker goal={waterGoal} userId={user.id} date={selectedDate} />
-          </div>
-        )}
-
-        {/* Makroelementai — tik sekiantiems */}
-        {profile?.track_progress && (
-          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
-            <MacroTracker userId={user.id} date={selectedDate} profile={profile} />
-          </div>
         )}
 
       </div>
