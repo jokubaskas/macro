@@ -7,31 +7,24 @@ function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { return new Date(Date.now() - n*24*60*60*1000).toISOString().split("T")[0]; }
 
 // Aktyvumo lygis (1–5) apskaičiuojamas iš realių duomenų vietoj vienkartinio
-// anketos atsakymo: treniruočių dažnis per pastarąsias 4 sav. (live_sessions
-// + patvirtintos praėjusios bookings) nustato bazinį lygį, o vidutiniai
-// žingsniai per pastarąsias 2 sav. jį koreguoja ±1. Jei realių duomenų dar
-// nėra (naujas klientas), grąžinamas anketos atsakymas (fallbackAct).
+// anketos atsakymo: treniruočių dažnis per pastarąsias 4 sav. (live_sessions)
+// nustato bazinį lygį, o vidutiniai žingsniai per pastarąsias 2 sav. jį
+// koreguoja ±1. Jei realių duomenų dar nėra (naujas klientas), grąžinamas
+// anketos atsakymas (fallbackAct).
 async function computeActivityLevel(userId, fallbackAct) {
   const since28 = daysAgoStr(28);
   const since14 = daysAgoStr(14);
-  const today = todayStr();
 
-  const [liveSessions, approvedBookings, checkins] = await Promise.all([
+  const [liveSessions, checkins] = await Promise.all([
     pb.collection("live_sessions").getFullList({
       filter: `user_id="${userId}" && completed=true && date>="${since28}"`, requestKey: null,
-    }).catch(() => []),
-    pb.collection("bookings").getFullList({
-      filter: `client_id="${userId}" && status="approved" && date>="${since28}" && date<="${today}"`, requestKey: null,
     }).catch(() => []),
     pb.collection("daily_checkins").getFullList({
       filter: `user_id="${userId}" && date>="${since14}" && steps>0`, requestKey: null,
     }).catch(() => []),
   ]);
 
-  const trainingDates = new Set([
-    ...liveSessions.map(s => (s.date || "").slice(0, 10)),
-    ...approvedBookings.map(b => b.date),
-  ]);
+  const trainingDates = new Set(liveSessions.map(s => (s.date || "").slice(0, 10)));
   const sessionsPerWeek = trainingDates.size / 4;
 
   const stepDays = checkins.length;
