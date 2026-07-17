@@ -11,6 +11,7 @@ import ClientProgressCompare from "./ClientProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
 import StepsTracker from "./StepsTracker";
+import MacroTracker from "./MacroTracker";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
@@ -427,6 +428,13 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 12px", display:"flex", alignItems:"center", gap:6 }}><Droplet size={14} />Vanduo</p>
             <WaterTracker goal={waterGoal} userId={user.id} date={selectedDate} />
+          </div>
+        )}
+
+        {/* Makroelementai — tik sekiantiems */}
+        {profile?.track_progress && (
+          <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "16px 18px", marginBottom: 12 }}>
+            <MacroTracker userId={user.id} date={selectedDate} profile={profile} />
           </div>
         )}
 
