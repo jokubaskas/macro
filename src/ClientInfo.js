@@ -1,6 +1,58 @@
+import { useState } from "react";
+import { pb } from "./pb";
 import { GOALS, ACTIVITY } from "./constants";
 import { STEPS_OPTS, WELLBEING_OPTS } from "./Onboarding";
 import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle } from "./ui/icons";
+
+const TRAINING_FREQ_OPTS = [
+  { v: 1, label: "1" },
+  { v: 2, label: "2" },
+  { v: 3, label: "3" },
+  { v: 4, label: "4" },
+  { v: 5, label: "5+" },
+];
+
+// Treniruočių dažnio pasirinkimas kalorijų/makro skaičiuoklei — treneris
+// nustato rankiniu būdu, o ne pasikliaujama automatiniu live_sessions
+// skaičiavimu (kuris reikalauja, kad treneris nuosekliai žymėtų kiekvieną
+// gyvą treniruotę appe). "Automatinis" grąžina prie senos logikos.
+function TrainingFreqPicker({ client }) {
+  const [value, setValue] = useState(client.manual_training_freq || null);
+  const [saving, setSaving] = useState(false);
+
+  async function pick(v) {
+    const next = value === v ? null : v;
+    setValue(next);
+    setSaving(true);
+    await pb.collection("users").update(client.id, { manual_training_freq: next }).catch(() => {});
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 8px", display:"flex", alignItems:"center", gap:5 }}>
+        <Footprints size={11} />Treniruočių dažnis / sav. (kalorijų skaičiuoklei)
+      </p>
+      <div style={{ display:"flex", gap:6 }}>
+        {TRAINING_FREQ_OPTS.map(o => {
+          const active = value === o.v;
+          return (
+            <button key={o.v} onClick={() => pick(o.v)} disabled={saving} style={{
+              flex:1, padding:"9px 0", borderRadius:10, fontSize:13, fontWeight:700,
+              border: `1.5px solid ${active ? "#7FFFB0" : "rgba(255,255,255,0.15)"}`,
+              background: active ? "rgba(127,255,176,0.18)" : "rgba(255,255,255,0.05)",
+              color: active ? "#7FFFB0" : "rgba(255,255,255,0.6)",
+              cursor: saving ? "default" : "pointer", fontFamily:"inherit",
+            }}>{o.label}</button>
+          );
+        })}
+      </div>
+      <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"6px 0 0" }}>
+        {value ? "Naudojamas šis rankinis dažnis — automatinis treniruočių skaičiavimas išjungtas." : "Nepasirinkta — aktyvumas skaičiuojamas automatiškai pagal appe pažymėtas gyvas treniruotes."}
+      </p>
+    </div>
+  );
+}
 
 function InfoRow({ label, value, Icon }) {
   if (value == null || value === "") return null;
@@ -77,10 +129,14 @@ export default function ClientInfo({ client, onClose }) {
         {hasLifestyle && (
           <Section title="Gyvensena">
             <InfoRow label="Miegas / stresas" value={client.sleep_stress} Icon={Moon} />
-            <InfoRow label="Aktyvumo lygis" value={actOpt ? `${actOpt.label}${actOpt.desc ? ` — ${actOpt.desc}` : ""}` : null} Icon={Footprints} />
+            <InfoRow label="Aktyvumo lygis (anketa)" value={actOpt ? `${actOpt.label}${actOpt.desc ? ` — ${actOpt.desc}` : ""}` : null} Icon={Footprints} />
             <InfoRow label="Žingsnių tikslas" value={stepsOpt?.label} Icon={Footprints} />
           </Section>
         )}
+
+        <Section title="Kalorijų skaičiuoklė">
+          <TrainingFreqPicker client={client} />
+        </Section>
 
         {hasNutrition && (
           <Section title="Mityba ir iššūkiai">

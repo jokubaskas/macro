@@ -28,29 +28,34 @@ function stepsAdjustment(avgSteps) {
   return 0.10;
 }
 
-// Aktyvumo koeficientas apskaičiuojamas iš realaus treniruočių dažnio per
-// pastarąsias 4 sav. (live_sessions) + žingsnių pakoregavimo, vietoj
-// vienkartinio anketos atsakymo. Jei realių duomenų dar nėra (naujas
-// klientas), grąžinamas anketos atsakymas (fallbackAct, naudojamas per
-// ACTIVITY lentelę constants.js).
-async function computeActivityLevel(userId, fallbackAct) {
-  const since28 = daysAgoStr(28);
+// Aktyvumo koeficientas. Treniruočių dažnio komponentas ateina iš vieno iš
+// dviejų šaltinių: jei treneris klientės kortelėje rankiniu būdu nustatė
+// treniruočių dažnį (manualFreq, profile.manual_training_freq) — naudojamas
+// jis; kitaip skaičiuojamas automatiškai iš realiai appe pažymėtų gyvų
+// treniruočių (live_sessions) per pastarąsias 4 sav. Žingsnių pakoregavimas
+// (iš daily_checkins) pridedamas ant viršaus abiem atvejais. Jei realių
+// duomenų (nei rankinio dažnio, nei treniruočių/žingsnių istorijos) dar
+// nėra, grąžinamas anketos atsakymas (fallbackAct, naudojamas per ACTIVITY
+// lentelę constants.js).
+async function computeActivityLevel(userId, fallbackAct, manualFreq) {
   const since14 = daysAgoStr(14);
-
-  const [liveSessions, checkins] = await Promise.all([
-    pb.collection("live_sessions").getFullList({
-      filter: `user_id="${userId}" && completed=true && date>="${since28}"`, requestKey: null,
-    }).catch(() => []),
-    pb.collection("daily_checkins").getFullList({
-      filter: `user_id="${userId}" && date>="${since14}" && steps>0`, requestKey: null,
-    }).catch(() => []),
-  ]);
-
-  const trainingDates = new Set(liveSessions.map(s => (s.date || "").slice(0, 10)));
-  const sessionsPerWeek = trainingDates.size / 4;
-
+  const checkins = await pb.collection("daily_checkins").getFullList({
+    filter: `user_id="${userId}" && date>="${since14}" && steps>0`, requestKey: null,
+  }).catch(() => []);
   const stepDays = checkins.length;
   const avgSteps = stepDays > 0 ? checkins.reduce((s, c) => s + (c.steps || 0), 0) / stepDays : null;
+
+  if (manualFreq) {
+    const mult = Math.min(MULT_CAP, trainingMultiplier(manualFreq) + stepsAdjustment(avgSteps));
+    return { computed: true, mult, sessionsPerWeek: manualFreq, avgSteps, manual: true };
+  }
+
+  const since28 = daysAgoStr(28);
+  const liveSessions = await pb.collection("live_sessions").getFullList({
+    filter: `user_id="${userId}" && completed=true && date>="${since28}"`, requestKey: null,
+  }).catch(() => []);
+  const trainingDates = new Set(liveSessions.map(s => (s.date || "").slice(0, 10)));
+  const sessionsPerWeek = trainingDates.size / 4;
 
   const hasData = trainingDates.size > 0 || stepDays >= 5;
   if (!hasData) return { computed: false, level: fallbackAct };
@@ -107,9 +112,9 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
   }, [userId, profile?.weight]);
 
   useEffect(() => {
-    if (!profile?.act) return;
-    computeActivityLevel(userId, profile.act).then(setActInfo);
-  }, [userId, profile?.act]);
+    if (!profile?.act && !profile?.manual_training_freq) return;
+    computeActivityLevel(userId, profile.act, profile.manual_training_freq).then(setActInfo);
+  }, [userId, profile?.act, profile?.manual_training_freq]);
 
   useEffect(() => {
     pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
@@ -169,7 +174,7 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
       </div>
       <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"0 0 14px" }}>
         {actInfo?.computed
-          ? `Aktyvumo koeficientas ${actInfo.mult.toFixed(2)} — pagal treniruočių dažnį (~${Math.round(actInfo.sessionsPerWeek*10)/10}/sav.) ir žingsnius`
+          ? `Aktyvumo koeficientas ${actInfo.mult.toFixed(2)} — ${actInfo.manual ? "trenerės nustatytas" : "automatiškai apskaičiuotas"} dažnis (~${Math.round(actInfo.sessionsPerWeek*10)/10}/sav.) + žingsniai`
           : "Aktyvumas pagal anketą (dar nepakanka istorijos perskaičiuoti)"}
       </p>
 
