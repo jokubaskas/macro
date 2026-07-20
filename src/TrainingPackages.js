@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ProgressBar } from "./ui/kit";
+import { effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
 import {
   ChevronLeft, ChevronRight, Ticket, Dumbbell, Flame, Muscle, Salad, Laptop, MapPin, Timer,
   Users, Clipboard, Calendar, Close, CheckCircle, Check, AlertTriangle,
@@ -98,16 +99,21 @@ const INFO_SECTIONS = [
 
 export default function TrainingPackages({ user, onClose }) {
   const [packages, setPackages]   = useState([]);
+  const [vacations, setVacations] = useState([]);
   const [sending, setSending]     = useState(false);
   const [openInfo, setOpenInfo]   = useState(null);
   const [rulesFor, setRulesFor]   = useState(null); // paketas kurio taisykles rodomos
   const [agreed, setAgreed]       = useState(false);
 
   const load = useCallback(async () => {
-    const data = await pb.collection("training_packages").getFullList({
-      filter: `client_id="${user.id}"`, sort: "-created", requestKey: null,
-    }).catch(() => []);
+    const [data, vac] = await Promise.all([
+      pb.collection("training_packages").getFullList({
+        filter: `client_id="${user.id}"`, sort: "-created", requestKey: null,
+      }).catch(() => []),
+      fetchAllDayVacations(),
+    ]);
     setPackages(data);
+    setVacations(vac);
   }, [user.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -129,12 +135,28 @@ export default function TrainingPackages({ user, onClose }) {
   // atskirų paketų buvo pirkta — nurašymo/grąžinimo logika toliau veikia
   // su konkrečiu paketu (žr. BookingClient.js/BookingAdmin.js), bet čia
   // klientui rodomas vienas bendras skaičius.
-  const approvedPackages = packages.filter(p => p.status === "approved");
+  // Pasibaigusio galiojimo paketai (senų, be valid_until, dar neliečiame —
+  // jie lieka matomi kaip anksčiau) čia nebeskaičiuojami aktyviais.
+  const approvedPackages = packages.filter(p => {
+    if (p.status !== "approved") return false;
+    const dl = effectiveDeadline(p, vacations);
+    return !dl || daysUntil(dl) >= 0;
+  });
   const totalCredits   = approvedPackages.reduce((s,p) => s + (p.credits_total||0), 0);
   const totalUsed      = approvedPackages.reduce((s,p) => s + (p.credits_used||0), 0);
   const totalRemaining = totalCredits - totalUsed;
   const hasActive      = approvedPackages.length > 0 && totalRemaining > 0;
   const pending = packages.filter(p => p.status === "pending");
+
+  // Artimiausias (anksčiausias) terminas iš dar neišnaudotų paketų — su
+  // trenerės atostogų pratęsimu jau įskaičiuotu (žr. packageDeadline.js).
+  const nearestDeadline = approvedPackages
+    .filter(p => (p.credits_total||0) > (p.credits_used||0))
+    .map(p => effectiveDeadline(p, vacations))
+    .filter(Boolean)
+    .sort()[0] || null;
+  const nearestDays = nearestDeadline != null ? daysUntil(nearestDeadline) : null;
+  const expiringSoon = nearestDays != null && nearestDays <= 7;
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", paddingBottom:80, WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
@@ -175,6 +197,18 @@ export default function TrainingPackages({ user, onClose }) {
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
 
+        {/* Įspėjimas apie besibaigiantį terminą */}
+        {expiringSoon && (
+          <div style={{ background:"rgba(255,200,0,0.12)", border:"1.5px solid rgba(255,200,0,0.35)", borderRadius:16, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:10 }}>
+            <AlertTriangle size={18} color="#FFD700" style={{ flexShrink:0 }} />
+            <p style={{ fontSize:12, color:"#FFD700", margin:0, lineHeight:1.4 }}>
+              {nearestDays === 0
+                ? "Jūsų paketo galiojimas baigiasi šiandien — nepamirškite rezervuoti likusių treniruočių!"
+                : `Jūsų paketo galiojimas baigiasi po ${nearestDays} ${nearestDays===1?"dienos":"dienų"} — nepamirškite rezervuoti likusių treniruočių!`}
+            </p>
+          </div>
+        )}
+
         {/* Aktyvus paketas */}
         {hasActive && (
           <div style={{ background:"rgba(127,255,176,0.1)", border:"1.5px solid rgba(127,255,176,0.3)", borderRadius:18, padding:"16px", marginBottom:16 }}>
@@ -182,6 +216,14 @@ export default function TrainingPackages({ user, onClose }) {
             <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 6px" }}>{totalRemaining} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {totalCredits} treniruočių liko</span></p>
             <ProgressBar pct={(totalRemaining/totalCredits)*100} height={6}
               fill="linear-gradient(90deg,#2FBE84,#7FFFB0)" glow="#7FFFB099" />
+            {nearestDeadline && (() => {
+              const d = daysUntil(nearestDeadline);
+              return (
+                <p style={{ fontSize:11, color: d <= 7 ? "#FFD700" : "rgba(255,255,255,0.6)", margin:"10px 0 0", display:"flex", alignItems:"center", gap:5 }}>
+                  <Timer size={11} />Galioja iki {nearestDeadline} (liko {d} d.)
+                </p>
+              );
+            })()}
           </div>
         )}
 

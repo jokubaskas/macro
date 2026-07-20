@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
+import { effectiveDeadline, daysUntil } from "./packageDeadline";
 import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle, MessageCircle } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
@@ -143,11 +144,17 @@ export default function BookingClient({ user, onClose }) {
     setMyBookings(bk);
     setExceptions(exc);
     // Aktyvus paketas (iš kurio bus nurašomas kitas kreditas) — seniausias
-    // patvirtintas paketas su likusiais kreditais. Rodomas skaičius klientui
-    // visgi yra VISŲ patvirtintų paketų kreditų suma, ne tik šio vieno.
-    const active = pkgs.find(p => (p.credits_total - p.credits_used) > 0) || null;
+    // patvirtintas, dar negaliojimo pabaigos pasiekęs paketas su likusiais
+    // kreditais (atostogų pratęsimas įskaičiuotas). Rodomas skaičius klientui
+    // visgi yra VISŲ tokių paketų kreditų suma, ne tik šio vieno.
+    const vacations = exc.filter(e => e.all_day);
+    const usablePkgs = pkgs.filter(p => {
+      const dl = effectiveDeadline(p, vacations);
+      return !dl || daysUntil(dl) >= 0;
+    });
+    const active = usablePkgs.find(p => (p.credits_total - p.credits_used) > 0) || null;
     setActivePackage(active);
-    setTotalRemaining(pkgs.reduce((s,p) => s + Math.max(0, p.credits_total - p.credits_used), 0));
+    setTotalRemaining(usablePkgs.reduce((s,p) => s + Math.max(0, p.credits_total - p.credits_used), 0));
     setRecurringSlots(rec);
   }, [user.id]);
 

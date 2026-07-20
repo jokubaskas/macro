@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, Ticket, Close, Check } from "./ui/icons";
+import { computeBaseValidUntil, effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
+import { ChevronLeft, Ticket, Close, Check, Calendar, AlertTriangle } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const PACKAGES = {
@@ -13,6 +14,7 @@ export default function PackageAdmin({ onClose }) {
   const [pending,  setPending]  = useState([]);
   const [approved, setApproved] = useState([]);
   const [clients,  setClients]  = useState({});
+  const [vacations, setVacations] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState("pending");
   const [search,   setSearch]   = useState("");
@@ -20,23 +22,33 @@ export default function PackageAdmin({ onClose }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [pkgs, cls] = await Promise.all([
+    const [pkgs, cls, vac] = await Promise.all([
       pb.collection("training_packages").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]),
       pb.collection("users").getFullList({ filter:'role="client"', requestKey:null }).catch(()=>[]),
+      fetchAllDayVacations(),
     ]);
     const clientMap = {};
     cls.forEach(c => { clientMap[c.id] = c; });
     setClients(clientMap);
+    setVacations(vac);
     setPending(pkgs.filter(p=>p.status==="pending"));
-    // Išnaudoti paketai (0 liko) nebelaikomi "aktyviais" — jų čia nerodome
-    setApproved(pkgs.filter(p=>p.status==="approved" && (p.credits_total||0) > (p.credits_used||0)));
+    // Išnaudoti (0 liko) arba pasibaigusio galiojimo (su atostogų pratęsimu
+    // įskaičiuotu) paketai nebelaikomi "aktyviais" — jų čia nerodome.
+    setApproved(pkgs.filter(p => {
+      if (p.status !== "approved" || (p.credits_total||0) <= (p.credits_used||0)) return false;
+      const dl = effectiveDeadline(p, vac);
+      return !dl || daysUntil(dl) >= 0;
+    }));
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   async function handleApprove(pkg) {
-    await pb.collection("training_packages").update(pkg.id, { status:"approved" }).catch(()=>{});
+    await pb.collection("training_packages").update(pkg.id, {
+      status: "approved",
+      valid_until: computeBaseValidUntil(pkg.package_type),
+    }).catch(()=>{});
     load();
   }
 
@@ -47,17 +59,22 @@ export default function PackageAdmin({ onClose }) {
 
   // "Aktyvūs" rodomi sugrupuoti pagal klientą (bendra visų jo patvirtintų
   // paketų kreditų suma), o ne kiekvienas paketas atskirai — kad sutaptų su
-  // tuo, ką klientas mato savo pusėje.
+  // tuo, ką klientas mato savo pusėje. Terminas — artimiausias (anksčiausias)
+  // iš to kliento aktyvių paketų, jau su atostogų pratęsimu įskaičiuotu.
   const approvedByClient = useMemo(() => {
     const map = {};
     approved.forEach(p => {
-      if (!map[p.client_id]) map[p.client_id] = { client_id:p.client_id, credits_total:0, credits_used:0, count:0 };
+      if (!map[p.client_id]) map[p.client_id] = { client_id:p.client_id, credits_total:0, credits_used:0, count:0, nearestDeadline:null };
       map[p.client_id].credits_total += (p.credits_total||0);
       map[p.client_id].credits_used  += (p.credits_used||0);
       map[p.client_id].count += 1;
+      const deadline = effectiveDeadline(p, vacations);
+      if (deadline && (!map[p.client_id].nearestDeadline || deadline < map[p.client_id].nearestDeadline)) {
+        map[p.client_id].nearestDeadline = deadline;
+      }
     });
     return Object.values(map);
-  }, [approved]);
+  }, [approved, vacations]);
 
   const tabList = tab === "pending" ? pending : approvedByClient;
   const q = search.trim().toLowerCase();
@@ -112,8 +129,14 @@ export default function PackageAdmin({ onClose }) {
         {tab === "approved" && list.slice(0, visibleCount).map(item => {
           const client = clients[item.client_id];
           const left = item.credits_total - item.credits_used;
+          const days = item.nearestDeadline != null ? daysUntil(item.nearestDeadline) : null;
+          const soon = days != null && days <= 7;
           return (
-            <div key={item.client_id} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px", marginBottom:10 }}>
+            <div key={item.client_id} style={{
+              background: soon ? "rgba(255,200,0,0.1)" : "rgba(255,255,255,0.08)",
+              border: `1px solid ${soon ? "rgba(255,200,0,0.35)" : "rgba(255,255,255,0.15)"}`,
+              borderRadius:16, padding:"14px 16px", marginBottom:10,
+            }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
                 <div>
                   <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
@@ -124,9 +147,17 @@ export default function PackageAdmin({ onClose }) {
                   <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>liko treniruočių</p>
                 </div>
               </div>
-              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5 }}>
+              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5, marginBottom: item.nearestDeadline ? 8 : 0 }}>
                 <div style={{ width:`${item.credits_total ? left/item.credits_total*100 : 0}%`, height:"100%", borderRadius:99, background:"#7FFFB0" }} />
               </div>
+              {item.nearestDeadline && (
+                <p style={{ fontSize:11, color: soon ? "#FFD700" : "rgba(255,255,255,0.5)", fontWeight: soon ? 700 : 400, margin:0, display:"flex", alignItems:"center", gap:5 }}>
+                  {soon ? <AlertTriangle size={11} /> : <Calendar size={11} />}
+                  {days === 0
+                    ? "Terminas baigiasi šiandien"
+                    : `Galioja iki ${item.nearestDeadline} (liko ${days} d.)`}
+                </p>
+              )}
             </div>
           );
         })}
