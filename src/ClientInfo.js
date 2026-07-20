@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { GOALS, ACTIVITY } from "./constants";
+import { resolveMacroTargets, daysAgoStr } from "./macroCalc";
 import { STEPS_OPTS, WELLBEING_OPTS } from "./Onboarding";
-import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle } from "./ui/icons";
+import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle, Flame, Muscle, Droplet } from "./ui/icons";
 
 const TRAINING_FREQ_OPTS = [
   { v: 1, label: "1" },
@@ -49,6 +50,94 @@ function TrainingFreqPicker({ client }) {
       </div>
       <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"6px 0 0" }}>
         {value ? "Naudojamas šis rankinis dažnis — automatinis treniruočių skaičiavimas išjungtas." : "Nepasirinkta — aktyvumas skaičiuojamas automatiškai pagal appe pažymėtas gyvas treniruotes."}
+      </p>
+    </div>
+  );
+}
+
+function AdherenceRow({ Icon, label, unit, color, target, actual }) {
+  const pct = target && actual != null ? Math.round((actual / target) * 100) : null;
+  const barColor = pct == null ? "rgba(255,255,255,0.25)"
+    : (pct >= 85 && pct <= 115) ? "#7FFFB0" : (pct >= 60) ? "#FFD700" : "#FF8888";
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+        <span style={{ fontSize:12, color:"rgba(255,255,255,0.7)", display:"flex", alignItems:"center", gap:5 }}><Icon size={12} color={color} />{label}</span>
+        <span style={{ fontSize:12, fontWeight:700 }}>
+          <span style={{ color: pct != null ? barColor : "rgba(255,255,255,0.4)" }}>{actual != null ? Math.round(actual) : "–"}{unit}</span>
+          <span style={{ color:"rgba(255,255,255,0.4)", fontWeight:400 }}> / {target}{unit}</span>
+        </span>
+      </div>
+      <div style={{ borderRadius:99, height:6, background:"rgba(255,255,255,0.1)" }}>
+        <div style={{ width:`${Math.min(100, pct || 0)}%`, height:"100%", borderRadius:99, background:barColor, transition:"width 0.4s cubic-bezier(.23,1,.32,1)" }} />
+      </div>
+    </div>
+  );
+}
+
+// Kliento dienos kcal/makro tikslai (ta pati logika, kuri naudojama kliento
+// pusėje, žr. macroCalc.js) + kiek realiai klientas per pastarąją savaitę
+// suvedė daily_checkins.protein_g/fat_g/carbs_g laukuose — kad treneris matytų
+// ne tik tikslą, bet ir kaip sekasi jį pasiekti.
+function MacroGoalsCard({ client }) {
+  const [resolved, setResolved]     = useState(null); // { targets, actInfo } | null
+  const [adherence, setAdherence]   = useState(null); // { avgProtein, avgFat, avgCarbs, days } | null
+  const [loading, setLoading]       = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      resolveMacroTargets(client.id, client),
+      pb.collection("daily_checkins").getFullList({
+        filter: `user_id="${client.id}" && date>="${daysAgoStr(6)}"`, requestKey: null,
+      }).catch(() => []),
+    ]).then(([res, checkins]) => {
+      if (cancelled) return;
+      setResolved(res);
+      const withMacros = checkins.filter(c => c.protein_g || c.fat_g || c.carbs_g);
+      setAdherence(withMacros.length ? {
+        avgProtein: withMacros.reduce((s,c)=>s+(c.protein_g||0),0) / withMacros.length,
+        avgFat:     withMacros.reduce((s,c)=>s+(c.fat_g||0),0)     / withMacros.length,
+        avgCarbs:   withMacros.reduce((s,c)=>s+(c.carbs_g||0),0)   / withMacros.length,
+        days: withMacros.length,
+      } : null);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [client.id]);
+
+  if (loading) return <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", margin:0 }}>Kraunama...</p>;
+
+  if (!resolved) {
+    return (
+      <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", margin:0, lineHeight:1.5 }}>
+        Trūksta duomenų tikslams apskaičiuoti (svoris, ūgis, gimimo data, lytis ar tikslas) — papildykite anketoje arba matavimuose.
+      </p>
+    );
+  }
+
+  const { targets, actInfo } = resolved;
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+        <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:5 }}><Flame size={13} color="#FFA500" />Dienos tikslas</span>
+        <span style={{ fontSize:17, fontWeight:800, color:"#fff" }}>{targets.target} kcal</span>
+      </div>
+      <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"0 0 12px" }}>
+        {actInfo?.computed
+          ? `Koeficientas ${actInfo.mult.toFixed(2)} — ${actInfo.manual ? "trenerės nustatytas" : "automatiškai apskaičiuotas"} dažnis (~${Math.round(actInfo.sessionsPerWeek*10)/10}/sav.) + žingsniai`
+          : "Aktyvumas pagal anketą"}
+      </p>
+
+      <AdherenceRow Icon={Muscle} label="Baltymai" unit="g" color="#FF6EB4" target={targets.prot.g} actual={adherence?.avgProtein} />
+      <AdherenceRow Icon={Droplet} label="Riebalai" unit="g" color="#FFD700" target={targets.fat.g} actual={adherence?.avgFat} />
+      <AdherenceRow Icon={Salad} label="Angliavandeniai" unit="g" color="#7FFFB0" target={targets.carb.g} actual={adherence?.avgCarbs} />
+
+      <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:"8px 0 0" }}>
+        {adherence
+          ? `Vidurkis iš pastarųjų ${adherence.days} d., kai klientas suvedė makro duomenis (7 d. langas)`
+          : "Klientas per pastarąją savaitę makro duomenų dar neįvedė"}
       </p>
     </div>
   );
@@ -136,6 +225,8 @@ export default function ClientInfo({ client, onClose }) {
 
         <Section title="Kalorijų skaičiuoklė">
           <TrainingFreqPicker client={client} />
+          <div style={{ height:1, background:"rgba(255,255,255,0.1)", margin:"4px 0 14px" }} />
+          <MacroGoalsCard client={client} />
         </Section>
 
         {hasNutrition && (

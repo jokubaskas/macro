@@ -1,68 +1,7 @@
 import { useState, useEffect } from "react";
-import { pb, pbFirst, pbUpsert } from "./pb";
-import { calcMacros } from "./constants";
+import { pbFirst, pbUpsert } from "./pb";
+import { resolveMacroTargets, todayStr } from "./macroCalc";
 import { Muscle, Droplet, Salad, Flame, Edit, Save, Lightbulb } from "./ui/icons";
-
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-function daysAgoStr(n) { return new Date(Date.now() - n*24*60*60*1000).toISOString().split("T")[0]; }
-
-// Treniruočių dažnio bazinis daugiklis (sesijos/savaitę suapvalinamos iki
-// artimiausio sveiko skaičiaus, 5+ traktuojama kaip aukščiausia pakopa).
-const TRAINING_MULT = [1.2, 1.35, 1.45, 1.55, 1.65, 1.75]; // 0,1,2,3,4,5+ sesijų/sav.
-const MULT_CAP = 1.8;
-
-function trainingMultiplier(sessionsPerWeek) {
-  const idx = Math.min(5, Math.max(0, Math.round(sessionsPerWeek)));
-  return TRAINING_MULT[idx];
-}
-
-// Žingsniai koreguoja treniruočių daugiklį nedideliu ± priedu (ne pakeičia jo
-// visiškai ir nesudauginami atskirai) — vidutinis žingsnių skaičius per 14 d.
-function stepsAdjustment(avgSteps) {
-  if (avgSteps == null)  return 0;
-  if (avgSteps < 4000)   return -0.05;
-  if (avgSteps < 7000)   return 0;
-  if (avgSteps < 10000)  return 0.03;
-  if (avgSteps < 12000)  return 0.05;
-  if (avgSteps < 15000)  return 0.08;
-  return 0.10;
-}
-
-// Aktyvumo koeficientas. Treniruočių dažnio komponentas ateina iš vieno iš
-// dviejų šaltinių: jei treneris klientės kortelėje rankiniu būdu nustatė
-// treniruočių dažnį (manualFreq, profile.manual_training_freq) — naudojamas
-// jis; kitaip skaičiuojamas automatiškai iš realiai appe pažymėtų gyvų
-// treniruočių (live_sessions) per pastarąsias 4 sav. Žingsnių pakoregavimas
-// (iš daily_checkins) pridedamas ant viršaus abiem atvejais. Jei realių
-// duomenų (nei rankinio dažnio, nei treniruočių/žingsnių istorijos) dar
-// nėra, grąžinamas anketos atsakymas (fallbackAct, naudojamas per ACTIVITY
-// lentelę constants.js).
-async function computeActivityLevel(userId, fallbackAct, manualFreq) {
-  const since14 = daysAgoStr(14);
-  const checkins = await pb.collection("daily_checkins").getFullList({
-    filter: `user_id="${userId}" && date>="${since14}" && steps>0`, requestKey: null,
-  }).catch(() => []);
-  const stepDays = checkins.length;
-  const avgSteps = stepDays > 0 ? checkins.reduce((s, c) => s + (c.steps || 0), 0) / stepDays : null;
-
-  if (manualFreq) {
-    const mult = Math.min(MULT_CAP, trainingMultiplier(manualFreq) + stepsAdjustment(avgSteps));
-    return { computed: true, mult, sessionsPerWeek: manualFreq, avgSteps, manual: true };
-  }
-
-  const since28 = daysAgoStr(28);
-  const liveSessions = await pb.collection("live_sessions").getFullList({
-    filter: `user_id="${userId}" && completed=true && date>="${since28}"`, requestKey: null,
-  }).catch(() => []);
-  const trainingDates = new Set(liveSessions.map(s => (s.date || "").slice(0, 10)));
-  const sessionsPerWeek = trainingDates.size / 4;
-
-  const hasData = trainingDates.size > 0 || stepDays >= 5;
-  if (!hasData) return { computed: false, level: fallbackAct };
-
-  const mult = Math.min(MULT_CAP, trainingMultiplier(sessionsPerWeek) + stepsAdjustment(avgSteps));
-  return { computed: true, mult, sessionsPerWeek, avgSteps };
-}
 
 function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled }) {
   const value = parseInt(input) || 0;
@@ -91,8 +30,7 @@ function MacroRow({ Icon, label, unit, color, target, input, onChange, disabled 
 // jei jų dar nėra: protein_g, fat_g, carbs_g.
 export default function MacroTracker({ userId, date, profile, initialMacros, onSaved }) {
   const isToday = date === todayStr();
-  const [weightKg, setWeightKg] = useState(null);
-  const [actInfo, setActInfo] = useState(null); // { level, computed }
+  const [resolved, setResolved] = useState(null); // { targets, actInfo } | null
   const [protein, setProtein] = useState(initialMacros?.protein_g ? String(initialMacros.protein_g) : "");
   const [fat,     setFat]     = useState(initialMacros?.fat_g ? String(initialMacros.fat_g) : "");
   const [carbs,   setCarbs]   = useState(initialMacros?.carbs_g ? String(initialMacros.carbs_g) : "");
@@ -100,21 +38,10 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
   const [saving,  setSaving]  = useState(false);
   const [loaded,  setLoaded]  = useState(!!initialMacros);
 
-  // Naujausias trenerės įrašytas svoris (trainer_measurements), kad tikslai
-  // atsinaujintų realiai, o ne liktų prie registracijos metu įvesto svorio.
   useEffect(() => {
-    pb.collection("trainer_measurements").getList(1, 10, {
-      filter: `user_id="${userId}"`, sort: "-measured_at", requestKey: null,
-    }).then(res => {
-      const withWeight = (res.items || []).find(m => m.weight_measured);
-      setWeightKg(parseFloat(withWeight?.weight_measured) || parseFloat(profile?.weight) || null);
-    }).catch(() => setWeightKg(parseFloat(profile?.weight) || null));
-  }, [userId, profile?.weight]);
-
-  useEffect(() => {
-    if (!profile?.act && !profile?.manual_training_freq) return;
-    computeActivityLevel(userId, profile.act, profile.manual_training_freq).then(setActInfo);
-  }, [userId, profile?.act, profile?.manual_training_freq]);
+    resolveMacroTargets(userId, profile).then(setResolved);
+    // eslint-disable-next-line
+  }, [userId, profile?.weight, profile?.height, profile?.dob, profile?.gender, profile?.goal, profile?.act, profile?.manual_training_freq]);
 
   useEffect(() => {
     pbFirst("daily_checkins", `user_id="${userId}" && date="${date}"`).then(r => {
@@ -127,16 +54,8 @@ export default function MacroTracker({ userId, date, profile, initialMacros, onS
     // eslint-disable-next-line
   }, [userId, date]);
 
-  const age = profile?.dob
-    ? Math.floor((new Date() - new Date(profile.dob)) / (365.25*24*60*60*1000))
-    : null;
-  const hasActivityData = actInfo?.computed || profile?.act;
-  const canCalc = weightKg && profile?.height && age && profile?.gender && hasActivityData && profile?.goal;
-  const targets = canCalc ? calcMacros({
-    gender: profile.gender, age, weight: weightKg, height: parseFloat(profile.height),
-    actId: profile.act, goalId: profile.goal,
-    multOverride: actInfo?.computed ? actInfo.mult : undefined,
-  }) : null;
+  const targets = resolved?.targets || null;
+  const actInfo = resolved?.actInfo || null;
 
   async function handleSave() {
     if (!isToday) return;

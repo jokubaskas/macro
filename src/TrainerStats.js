@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users, Glass } from "./ui/icons";
+import { resolveMacroTargets } from "./macroCalc";
+import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users, Glass, Flame } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -16,6 +17,15 @@ const PERIOD_OPTIONS = [
 function tierColor(val, greenMin, yellowMin) {
   if (val == null) return "rgba(255,255,255,0.5)";
   return val >= greenMin ? "#7FFFB0" : val >= yellowMin ? "#FFD700" : "#FF8888";
+}
+
+// Makro tikslo procentui — čia "geriau" nereiškia "daugiau", o "arčiau 100%",
+// todėl spalvinama pagal atstumą nuo tikslo, ne pagal paprastą slenkstį.
+function macroTierColor(pct) {
+  if (pct == null) return "rgba(255,255,255,0.5)";
+  if (pct >= 85 && pct <= 115) return "#7FFFB0";
+  if (pct >= 60 && pct <= 140) return "#FFD700";
+  return "#FF8888";
 }
 
 function ProgressRing({ pct, c1, c2, hit, size = 46 }) {
@@ -79,6 +89,7 @@ function ClientRow({ client, stats }) {
   const alcoholColor = !stats.alcoholDays ? "#7FFFB0" : stats.alcoholDays <= 1 ? "#FFD700" : "#FF8888";
   const stepsColor = stats.stepsGoalRate == null ? "rgba(255,255,255,0.5)"
     : stats.stepsGoalRate >= 80 ? "#7FFFB0" : stats.stepsGoalRate >= 50 ? "#FFD700" : "#FF8888";
+  const macroColor = macroTierColor(stats.macroPct);
 
   return (
     <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8 }}>
@@ -99,6 +110,15 @@ function ClientRow({ client, stats }) {
         {stats.avgSteps != null && (
           <span style={{ fontSize:10, color:stepsColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
             <Footprints size={11} />{stats.avgSteps.toLocaleString()} ({stats.stepsGoalRate}% tikslo)
+          </span>
+        )}
+        {stats.macroPct != null ? (
+          <span style={{ fontSize:10, color:macroColor, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
+            <Flame size={11} />{Math.round(stats.avgKcal)} / {stats.macroTargetKcal} kcal ({stats.macroPct}%)
+          </span>
+        ) : stats.macroTargetKcal != null && (
+          <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
+            <Flame size={11} />tikslas {stats.macroTargetKcal} kcal — dar neįvedė
           </span>
         )}
       </div>
@@ -122,7 +142,10 @@ export default function TrainerStats({ onClose }) {
 
     const [cl, checkins, sleeps, waters, bookings] = await Promise.all([
       pb.collection("users").getFullList({ filter:'role="client"', requestKey:null }).catch(()=>[]),
-      pb.collection("daily_checkins").getFullList({ filter:`date>="${from}" && date<="${today}" && is_done=true`, requestKey:null }).catch(()=>[]),
+      // Be is_done filtro — žingsniai ir makro laukai gali būti suvesti be
+      // formalaus dienos check-in užbaigimo (StepsTracker/MacroTracker to
+      // nereikalauja), tad is_done=true čia paliktų juos nematomus.
+      pb.collection("daily_checkins").getFullList({ filter:`date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
       pb.collection("sleep_log").getFullList({ filter:`date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
       pb.collection("water_log").getFullList({ filter:`date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
       pb.collection("bookings").getFullList({ filter:`date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
@@ -130,33 +153,53 @@ export default function TrainerStats({ onClose }) {
 
     setClients(cl);
 
+    // Kiekvieno kliento kcal/makro tikslas (ta pati logika, kuri naudojama
+    // kliento pusėje) — skaičiuojama lygiagrečiai visiems klientams.
+    const macroTargets = {};
+    await Promise.all(cl.map(async c => {
+      const res = await resolveMacroTargets(c.id, c).catch(() => null);
+      macroTargets[c.id] = res?.targets?.target || null;
+    }));
+
     // Per-client statistika
     const stats = {};
     cl.forEach(c => {
-      const myCheckins = checkins.filter(x => x.user_id === c.id);
-      const mySleeps    = sleeps.filter(x => x.user_id === c.id);
-      const myWaters    = waters.filter(x => x.user_id === c.id);
+      const myCheckins     = checkins.filter(x => x.user_id === c.id);
+      const myDoneCheckins = myCheckins.filter(x => x.is_done === true || x.is_done === "true");
+      const mySleeps       = sleeps.filter(x => x.user_id === c.id);
+      const myWaters       = waters.filter(x => x.user_id === c.id);
+      const myStepsData    = myCheckins.filter(x => x.steps > 0);
+      const myMacroData    = myCheckins.filter(x => x.protein_g || x.fat_g || x.carbs_g);
+
+      const avgProtein = myMacroData.length ? myMacroData.reduce((a,x)=>a+(x.protein_g||0),0)/myMacroData.length : null;
+      const avgFat     = myMacroData.length ? myMacroData.reduce((a,x)=>a+(x.fat_g||0),0)/myMacroData.length : null;
+      const avgCarbs   = myMacroData.length ? myMacroData.reduce((a,x)=>a+(x.carbs_g||0),0)/myMacroData.length : null;
+      const avgKcal    = myMacroData.length ? (avgProtein||0)*4 + (avgFat||0)*9 + (avgCarbs||0)*4 : null;
+      const macroTargetKcal = macroTargets[c.id];
 
       stats[c.id] = {
         totalDays: period,
-        checkinDays: myCheckins.length,
-        avgNutrition: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.nutrition_score||0),0)/myCheckins.length : null,
-        avgWellbeing: myCheckins.length ? myCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/myCheckins.length : null,
-        alcoholDays: myCheckins.filter(x=>x.alcohol===true).length,
+        checkinDays: myDoneCheckins.length,
+        avgNutrition: myDoneCheckins.length ? myDoneCheckins.reduce((a,x)=>a+(x.nutrition_score||0),0)/myDoneCheckins.length : null,
+        avgWellbeing: myDoneCheckins.length ? myDoneCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/myDoneCheckins.length : null,
+        alcoholDays: myDoneCheckins.filter(x=>x.alcohol===true).length,
         avgSleep: mySleeps.length ? mySleeps.reduce((a,x)=>a+(x.hours_slept||0),0)/mySleeps.length : null,
         avgWaterL: myWaters.length ? myWaters.reduce((a,w)=>a+(w.ml||0),0)/myWaters.length/1000 : null,
-        avgSteps: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).reduce((a,x)=>a+(x.steps||0),0)/myCheckins.filter(x=>x.steps>0).length) : null,
-        stepsGoalRate: myCheckins.filter(x=>x.steps>0).length ? Math.round(myCheckins.filter(x=>x.steps>0).filter(x=>x.steps>=7000).length/myCheckins.filter(x=>x.steps>0).length*100) : null,
+        avgSteps: myStepsData.length ? Math.round(myStepsData.reduce((a,x)=>a+(x.steps||0),0)/myStepsData.length) : null,
+        stepsGoalRate: myStepsData.length ? Math.round(myStepsData.filter(x=>x.steps>=7000).length/myStepsData.length*100) : null,
+        avgKcal, macroTargetKcal,
+        macroPct: (macroTargetKcal && avgKcal != null) ? Math.round(avgKcal / macroTargetKcal * 100) : null,
       };
     });
     setClientStats(stats);
 
-    // Bendra apžvalga
+    // Bendra apžvalga (tik užbaigti check-in'ai — is_done=true)
+    const doneCheckinsAll = checkins.filter(x => x.is_done === true || x.is_done === "true");
     const activeClients = cl.filter(c => stats[c.id]?.checkinDays > 0).length;
-    const totalCheckins = checkins.length;
-    const avgNutritionAll = checkins.length ? checkins.reduce((a,x)=>a+(x.nutrition_score||0),0)/checkins.length : null;
-    const avgWellbeingAll = checkins.length ? checkins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/checkins.length : null;
-    const totalAlcoholDays = checkins.filter(x=>x.alcohol===true).length;
+    const totalCheckins = doneCheckinsAll.length;
+    const avgNutritionAll = doneCheckinsAll.length ? doneCheckinsAll.reduce((a,x)=>a+(x.nutrition_score||0),0)/doneCheckinsAll.length : null;
+    const avgWellbeingAll = doneCheckinsAll.length ? doneCheckinsAll.reduce((a,x)=>a+(x.wellbeing_score||0),0)/doneCheckinsAll.length : null;
+    const totalAlcoholDays = doneCheckinsAll.filter(x=>x.alcohol===true).length;
     const pendingBookings = bookings.filter(b=>b.status==="pending").length;
     const approvedBookings = bookings.filter(b=>b.status==="approved").length;
     const cancelledBookings = bookings.filter(b=>b.status==="cancelled").length;
