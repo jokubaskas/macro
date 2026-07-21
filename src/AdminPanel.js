@@ -312,6 +312,120 @@ function DayView({ client, date }) {
     </div>
   );
 }
+
+// ── Periodo palyginimas (vietoj kasdien atskirai peržiūrėti) ─────────────────
+const PERIOD_OPTIONS = [{ k:7, l:"7 d." }, { k:14, l:"14 d." }, { k:30, l:"30 d." }];
+
+function VerdictRow({ text, warn, good }) {
+  const color = warn ? "#FF8888" : good ? "#7FFFB0" : "rgba(255,255,255,0.7)";
+  return (
+    <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:8 }}>
+      <div style={{ width:6, height:6, borderRadius:"50%", background:color, marginTop:5, flexShrink:0 }} />
+      <p style={{ fontSize:12, color, margin:0, lineHeight:1.5 }}>{text}</p>
+    </div>
+  );
+}
+
+function StatRow({ Icon, label, value, color }) {
+  return (
+    <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:5 }}><Icon size={12} />{label}</span>
+      <span style={{ fontSize:13, fontWeight:700, color: color || "#fff" }}>{value}</span>
+    </div>
+  );
+}
+
+function PeriodSummary({ client }) {
+  const [period, setPeriod] = useState(7);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const from = daysAgoStr(period - 1);
+    const today = todayStr();
+    Promise.all([
+      pb.collection("daily_checkins").getFullList({ filter:`user_id="${client.id}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
+      pb.collection("sleep_log").getFullList({ filter:`user_id="${client.id}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
+      pb.collection("water_log").getFullList({ filter:`user_id="${client.id}" && date>="${from}" && date<="${today}"`, requestKey:null }).catch(()=>[]),
+      resolveMacroTargets(client.id, client),
+    ]).then(([checkins, sleeps, waters, targets]) => {
+      if (cancelled) return;
+      const doneCheckins = checkins.filter(x => x.is_done === true || x.is_done === "true");
+      const stepsData    = checkins.filter(x => x.steps > 0);
+      const macroData    = checkins.filter(x => x.protein_g || x.fat_g || x.carbs_g);
+      const avgProtein = macroData.length ? macroData.reduce((a,x)=>a+(x.protein_g||0),0)/macroData.length : null;
+      const avgFat     = macroData.length ? macroData.reduce((a,x)=>a+(x.fat_g||0),0)/macroData.length : null;
+      const avgCarbs   = macroData.length ? macroData.reduce((a,x)=>a+(x.carbs_g||0),0)/macroData.length : null;
+      const avgKcal    = macroData.length ? (avgProtein||0)*4 + (avgFat||0)*9 + (avgCarbs||0)*4 : null;
+      setStats({
+        totalDays: period,
+        checkinDays: doneCheckins.length,
+        avgNutrition: doneCheckins.length ? doneCheckins.reduce((a,x)=>a+(x.nutrition_score||0),0)/doneCheckins.length : null,
+        avgWellbeing: doneCheckins.length ? doneCheckins.reduce((a,x)=>a+(x.wellbeing_score||0),0)/doneCheckins.length : null,
+        alcoholDays: doneCheckins.filter(x=>x.alcohol===true).length,
+        avgSleep: sleeps.length ? sleeps.reduce((a,x)=>a+(x.hours_slept||0),0)/sleeps.length : null,
+        avgWaterL: waters.length ? waters.reduce((a,w)=>a+(w.ml||0),0)/waters.length/1000 : null,
+        avgWaterGoalL: waters.length ? waters.reduce((a,w)=>a+(w.goal||2000),0)/waters.length/1000 : null,
+        avgSteps: stepsData.length ? Math.round(stepsData.reduce((a,x)=>a+(x.steps||0),0)/stepsData.length) : null,
+        stepsGoalRate: stepsData.length ? Math.round(stepsData.filter(x=>x.steps>=7000).length/stepsData.length*100) : null,
+        avgKcal, kcalTarget: targets?.targets?.target, macroDays: macroData.length,
+      });
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [client.id, period]);
+
+  return (
+    <div>
+      <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+        {PERIOD_OPTIONS.map(p => (
+          <button key={p.k} onClick={()=>setPeriod(p.k)} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:period===p.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            {p.l}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Kraunama...</p>}
+
+      {!loading && stats && (() => {
+        const verdicts = [];
+        const checkinRate = Math.round(stats.checkinDays / stats.totalDays * 100);
+        verdicts.push(stats.checkinDays === 0
+          ? { text:"Nė karto neužpildė dienos check-in per šį laikotarpį", warn:true }
+          : { text:`Check-in užpildytas ${stats.checkinDays}/${stats.totalDays} d. (${checkinRate}%)`, warn: checkinRate < 50, good: checkinRate >= 80 });
+        if (stats.avgSteps != null) verdicts.push({ text:`Vid. žingsniai ${stats.avgSteps.toLocaleString()}/d. — tikslas pasiektas ${stats.stepsGoalRate}% dienų`, warn: stats.stepsGoalRate < 40, good: stats.stepsGoalRate >= 70 });
+        if (stats.avgSleep != null) { const ok = stats.avgSleep >= 7 && stats.avgSleep <= 9; verdicts.push({ text:`Vid. miegas ${stats.avgSleep.toFixed(1)}h/naktį`, warn: !ok, good: ok }); }
+        if (stats.avgWaterL != null) { const ok = stats.avgWaterL >= (stats.avgWaterGoalL||2)*0.85; verdicts.push({ text:`Vid. vanduo ${stats.avgWaterL.toFixed(1)}L/d.`, warn: !ok, good: ok }); }
+        if (stats.avgNutrition != null) verdicts.push({ text:`Vid. mitybos vertinimas ${stats.avgNutrition.toFixed(1)}/3`, warn: stats.avgNutrition < 1.8, good: stats.avgNutrition >= 2.5 });
+        if (stats.avgWellbeing != null) verdicts.push({ text:`Vid. savijauta ${stats.avgWellbeing.toFixed(1)}/3`, warn: stats.avgWellbeing < 1.8, good: stats.avgWellbeing >= 2.5 });
+        if (stats.alcoholDays > 0) verdicts.push({ text:`Alkoholis vartotas ${stats.alcoholDays}x per ${stats.totalDays} d.`, warn: true });
+        if (stats.avgKcal != null && stats.kcalTarget) {
+          const pct = Math.round(stats.avgKcal / stats.kcalTarget * 100);
+          verdicts.push({ text:`Vid. kalorijos ${Math.round(stats.avgKcal)}/${stats.kcalTarget} kcal (${pct}%) iš ${stats.macroDays} d. su suvestais duomenimis`, warn: pct < 80 || pct > 120, good: pct >= 90 && pct <= 110 });
+        }
+
+        return (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
+              <StatRow Icon={Footprints} label="Žingsniai" value={stats.avgSteps ? stats.avgSteps.toLocaleString() : "–"} />
+              <StatRow Icon={Moon} label="Miegas" value={stats.avgSleep ? `${stats.avgSleep.toFixed(1)}h` : "–"} />
+              <StatRow Icon={Droplet} label="Vanduo" value={stats.avgWaterL!=null ? `${stats.avgWaterL.toFixed(1)}L` : "–"} />
+              <StatRow Icon={Flame} label="Kalorijos" value={stats.avgKcal!=null ? `${Math.round(stats.avgKcal)}${stats.kcalTarget?`/${stats.kcalTarget}`:""}` : "–"} />
+            </div>
+
+            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Trumpa išvada</p>
+            <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:16, padding:"14px 16px" }}>
+              {verdicts.map((v,i) => <VerdictRow key={i} {...v} />)}
+            </div>
+          </>
+        );
+      })()}
+    </div>
+  );
+}
+
 function ClientCard({ client, pkgInfo, onOpen }) {
   const badge = !client.onboarding_done
     ? { text: "Anketa nebaigta", color: "#FFC15E", Icon: AlertTriangle }
@@ -437,6 +551,7 @@ function PlanDayExercises({ dayId }) {
 function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
+  const [calendarView, setCalendarView] = useState("day"); // "day" | "period"
   const [showPlanBuilder, setShowPlanBuilder] = useState(false);
   const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
@@ -636,11 +751,24 @@ function ClientDetail({ client, onClose }) {
           })}
         </div>
 
-        {/* Kalendorius */}
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>Pasirinkite dieną</p>
-        <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} checkinDates={checkinDates} />
+        {/* Kalendorius / periodo palyginimas */}
+        <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+          {[{k:"day",l:"Diena"},{k:"period",l:"Periodo palyginimas"}].map(t => (
+            <button key={t.k} onClick={()=>setCalendarView(t.k)} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:calendarView===t.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              {t.l}
+            </button>
+          ))}
+        </div>
 
-        <DayView client={client} date={selectedDate} />
+        {calendarView === "day" ? (
+          <>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>Pasirinkite dieną</p>
+            <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} checkinDates={checkinDates} />
+            <DayView client={client} date={selectedDate} />
+          </>
+        ) : (
+          <PeriodSummary client={client} />
+        )}
       </div>
     </div>
   );
