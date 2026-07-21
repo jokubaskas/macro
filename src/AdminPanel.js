@@ -13,7 +13,8 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad } from "./ui/icons";
+import { resolveMacroTargets } from "./macroCalc";
 
 const BDAY_KEYFRAMES = `
 @keyframes bdayCardGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,215,0,0.35), 0 0 14px rgba(255,215,0,0.15); } 50% { box-shadow: 0 0 0 1px rgba(255,215,0,0.6), 0 0 22px rgba(255,215,0,0.35); } }
@@ -153,10 +154,12 @@ function MiniCalendar({ selectedDate, onSelect, checkinDates }) {
   );
 }
 
-// ── Dienos duomenų vaizdas (tik check-in / miegas / vanduo) ──────────────────
-function DayView({ clientId, date }) {
+// ── Dienos duomenų vaizdas (check-in / miegas / vanduo / kcal ir makro) ──────
+function DayView({ client, date }) {
+  const clientId = client.id;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [targets, setTargets] = useState(null); // kliento kcal/makro tikslai — tie patys visoms dienoms
 
   useEffect(() => {
     async function load() {
@@ -175,12 +178,20 @@ function DayView({ clientId, date }) {
     load();
   }, [clientId, date]);
 
+  useEffect(() => {
+    resolveMacroTargets(clientId, client).then(setTargets);
+    // eslint-disable-next-line
+  }, [clientId]);
+
   const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday: "long", month: "long", day: "numeric" });
 
   if (loading) return <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>Kraunama...</p>;
 
   const { checkin, sleep, water } = data;
+  const hasMacros = checkin?.protein_g || checkin?.fat_g || checkin?.carbs_g;
   const hasAny = checkin || sleep || water;
+  const kcal = hasMacros ? (checkin.protein_g||0)*4 + (checkin.fat_g||0)*9 + (checkin.carbs_g||0)*4 : null;
+  const kcalTarget = targets?.targets?.target;
 
   return (
     <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 16, padding: "16px" }}>
@@ -230,11 +241,36 @@ function DayView({ clientId, date }) {
       )}
 
       {water && (
-        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", marginBottom: hasMacros ? 8 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Droplet size={13} />Vanduo</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{water.ml} / {water.goal} ml</span>
         </div>
       )}
+
+      {hasMacros && (() => {
+        const rows = [
+          { label:"Baltymai", Icon:Muscle,  color:"#FF6EB4", v:checkin.protein_g, t:targets?.targets?.prot.g },
+          { label:"Riebalai",  Icon:Droplet, color:"#FFD700", v:checkin.fat_g,     t:targets?.targets?.fat.g  },
+          { label:"Angliav.",  Icon:Salad,   color:"#7FFFB0", v:checkin.carbs_g,   t:targets?.targets?.carb.g },
+        ];
+        return (
+          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 8 }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", display:"inline-flex", alignItems:"center", gap:5 }}><Flame size={13} color="#FFA500" />Kalorijos</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{Math.round(kcal)}{kcalTarget ? ` / ${kcalTarget} kcal` : " kcal"}</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+              {rows.map(r => (
+                <div key={r.label} style={{ background:"rgba(0,0,0,0.18)", borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
+                  <r.Icon size={13} color={r.color} style={{ marginBottom:4 }} />
+                  <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>{r.v||0}{r.t ? <span style={{ fontWeight:400, color:"rgba(255,255,255,0.4)" }}>/{r.t}</span> : null}g</p>
+                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{r.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Trumpa išvada */}
       {hasAny && (
@@ -256,6 +292,10 @@ function DayView({ clientId, date }) {
               else if (sleep?.hours_slept) parts.push({ text:`Miegas per mažas (${sleep.hours_slept}h)`, Icon:AlertTriangle });
               if (water?.ml >= (water?.goal || 2000)) parts.push({ text:"Vanduo išgertas", Icon:CheckCircle });
               else if (water?.ml) parts.push({ text:`Vanduo: ${(water.ml/1000).toFixed(1)}L iš ${((water.goal||2000)/1000).toFixed(1)}L` });
+              if (kcal != null) {
+                if (kcalTarget && kcal >= kcalTarget*0.85 && kcal <= kcalTarget*1.15) parts.push({ text:`Kalorijos arti tikslo (${Math.round(kcal)}/${kcalTarget})`, Icon:CheckCircle });
+                else parts.push({ text:`Kalorijos: ${Math.round(kcal)}${kcalTarget?`/${kcalTarget}`:""} kcal` });
+              }
               if (!parts.length) return "Duomenys surinkti.";
               return parts.map((p, i) => (
                 <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
@@ -600,7 +640,7 @@ function ClientDetail({ client, onClose }) {
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>Pasirinkite dieną</p>
         <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} checkinDates={checkinDates} />
 
-        <DayView clientId={client.id} date={selectedDate} />
+        <DayView client={client} date={selectedDate} />
       </div>
     </div>
   );
