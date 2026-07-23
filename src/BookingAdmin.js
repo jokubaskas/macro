@@ -285,6 +285,7 @@ function ScheduleExceptions() {
 function ScheduleSettings({ onClose }) {
   const [schedule, setSchedule] = useState([]);
   const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState("");
 
   useEffect(() => {
     pb.collection("trainer_schedule").getFullList({ sort:"day_of_week", requestKey:null })
@@ -300,12 +301,28 @@ function ScheduleSettings({ onClose }) {
 
   async function handleSave() {
     setSaving(true);
-    for (const day of schedule) {
+    setError("");
+    const failed = [];
+    const updated = [...schedule];
+    for (let i = 0; i < updated.length; i++) {
+      const day = updated[i];
       const data = { day_of_week:day.day_of_week, start_time:day.start_time, end_time:day.end_time, slot_duration:day.slot_duration, is_active:day.is_active };
-      if (day.id) await pb.collection("trainer_schedule").update(day.id, data).catch(()=>{});
-      else { const rec = await pb.collection("trainer_schedule").create(data).catch(()=>null); if (rec) day.id = rec.id; }
+      if (day.id) {
+        await pb.collection("trainer_schedule").update(day.id, data).catch(err => failed.push({ day: DAYS[i], err }));
+      } else {
+        const rec = await pb.collection("trainer_schedule").create(data).catch(err => { failed.push({ day: DAYS[i], err }); return null; });
+        if (rec) updated[i] = { ...day, id: rec.id };
+      }
     }
+    setSchedule(updated);
     setSaving(false);
+    if (failed.length) {
+      const status = failed[0].err?.status;
+      setError(status === 403
+        ? `Nepavyko išsaugoti (${failed.map(f=>f.day).join(", ")}) — PocketBase blokuoja įrašymą (403). Reikia patikrinti "trainer_schedule" kolekcijos Create/Update taisykles admin panelėje.`
+        : `Nepavyko išsaugoti (${failed.map(f=>f.day).join(", ")}): ${failed[0].err?.message || "nežinoma klaida"}`);
+      return;
+    }
     onClose();
   }
 
@@ -349,6 +366,14 @@ function ScheduleSettings({ onClose }) {
             )}
           </div>
         ))}
+
+        {error && (
+          <div style={{background:"rgba(255,100,100,0.12)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:12,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"flex-start",gap:8}}>
+            <AlertTriangle size={14} color="#FF8888" style={{flexShrink:0,marginTop:1}} />
+            <p style={{fontSize:12,color:"#FFB3B3",margin:0}}>{error}</p>
+          </div>
+        )}
+
         <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           {saving?"Saugoma...":<><Save size={14} />Išsaugoti</>}
         </button>
