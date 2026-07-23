@@ -36,7 +36,7 @@ export async function fetchLastPerformanceMap(clientId, excludeSessionIds = []) 
   }).catch(() => []);
   const past = sessions.filter(s => !excludeSessionIds.includes(s.id)).slice(0, 20);
   if (!past.length) return {};
-  const dateById = {}; past.forEach(s => { dateById[s.id] = s.date; });
+  const dateById = {}; past.forEach(s => { dateById[s.id] = (s.date || "").slice(0, 10); });
   const filter = past.map(s => `session_id="${s.id}"`).join(" || ");
   const exs = await pb.collection("live_session_exercises").getFullList({ filter, requestKey: null }).catch(() => []);
   const sorted = [...exs].sort((a,b) => (dateById[b.session_id]||"").localeCompare(dateById[a.session_id]||""));
@@ -55,7 +55,7 @@ export async function fetchExerciseHistory(clientId, exerciseName) {
   }).catch(() => []);
   if (!sessions.length) return [];
   const capped = sessions.slice(-MAX_SESSIONS_FOR_BULK_FETCH);
-  const dateById = {}; capped.forEach(s => { dateById[s.id] = s.date; });
+  const dateById = {}; capped.forEach(s => { dateById[s.id] = (s.date || "").slice(0, 10); });
   const filter = capped.map(s => `session_id="${s.id}"`).join(" || ");
   const exs = await pb.collection("live_session_exercises").getFullList({
     filter: `(${filter}) && exercise_name="${exerciseName.replace(/"/g,'\\"')}"`, requestKey: null,
