@@ -186,6 +186,8 @@ export default function LiveTraining({ client, onClose }) {
   const [visiblePast, setVisiblePast] = useState(8);
   const [savingNote, setSavingNote] = useState(false);
   const [lastPerf, setLastPerf] = useState({});
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingSession, setDeletingSession] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -278,6 +280,21 @@ export default function LiveTraining({ client, onClose }) {
     if (rec) setTodaySession(rec);
   }
 
+  // Visiškai atšaukia (ištrina) šiandienos treniruotę — jei pradėta klaidingai
+  // arba klientas neatvyko — kartu su visais jos pratimais. Grąžina ekraną į
+  // pradinę būseną, tarsi treniruotė dar nebūtų pradėta.
+  async function handleDeleteSession() {
+    if (!todaySession) return;
+    setDeletingSession(true);
+    await Promise.all(todayExercises.map(ex => pb.collection("live_session_exercises").delete(ex.id).catch(() => {})));
+    await pb.collection("live_sessions").delete(todaySession.id).catch(() => {});
+    setTodaySession(null);
+    setTodayExercises([]);
+    setNote("");
+    setConfirmingDelete(false);
+    setDeletingSession(false);
+  }
+
   async function togglePast(session) {
     if (expandedId === session.id) { setExpandedId(null); return; }
     setExpandedId(session.id);
@@ -368,14 +385,31 @@ export default function LiveTraining({ client, onClose }) {
 
             {todaySession && (
               todaySession.completed ? (
-                <button onClick={toggleCompleted} style={{ width:"100%", padding:12, borderRadius:14, background:"rgba(127,255,176,0.08)", border:"1.5px solid rgba(127,255,176,0.3)", color:"#7FFFB0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <button onClick={toggleCompleted} style={{ width:"100%", padding:12, borderRadius:14, background:"rgba(127,255,176,0.08)", border:"1.5px solid rgba(127,255,176,0.3)", color:"#7FFFB0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                   <CheckCircle size={14} />Treniruotė baigta · atidaryti iš naujo
                 </button>
               ) : (
-                <button onClick={toggleCompleted} disabled={todayExercises.length===0} style={{ width:"100%", padding:13, borderRadius:14, background: todayExercises.length===0 ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg,#1a4731,#276749)", border:"none", color: todayExercises.length===0 ? "rgba(255,255,255,0.35)" : "#fff", fontSize:14, fontWeight:700, cursor: todayExercises.length===0 ? "default" : "pointer", fontFamily:"inherit", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <button onClick={toggleCompleted} disabled={todayExercises.length===0} style={{ width:"100%", padding:13, borderRadius:14, background: todayExercises.length===0 ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg,#1a4731,#276749)", border:"none", color: todayExercises.length===0 ? "rgba(255,255,255,0.35)" : "#fff", fontSize:14, fontWeight:700, cursor: todayExercises.length===0 ? "default" : "pointer", fontFamily:"inherit", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                   <CheckCircle size={15} />Baigti treniruotę
                 </button>
               )
+            )}
+
+            {todaySession && !confirmingDelete && (
+              <button onClick={() => setConfirmingDelete(true)} style={{ width:"100%", padding:10, borderRadius:14, background:"transparent", border:"none", color:"rgba(255,136,136,0.7)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                <Close size={12} />Atšaukti šiandienos treniruotę
+              </button>
+            )}
+            {todaySession && confirmingDelete && (
+              <div style={{ background:"rgba(255,100,100,0.08)", border:"1px solid rgba(255,100,100,0.25)", borderRadius:14, padding:"12px 14px", marginBottom:20 }}>
+                <p style={{ fontSize:12, color:"#FF8888", margin:"0 0 10px", lineHeight:1.4 }}>Tikrai atšaukti šiandienos treniruotę? Visi {todayExercises.length} įrašyti pratimai bus ištrinti negrįžtamai.</p>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={() => setConfirmingDelete(false)} disabled={deletingSession} style={{ flex:1, padding:"9px", borderRadius:10, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"#fff", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Ne, palikti</button>
+                  <button onClick={handleDeleteSession} disabled={deletingSession} style={{ flex:1, padding:"9px", borderRadius:10, border:"none", background:"rgba(255,100,100,0.2)", color:"#FF8888", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                    {deletingSession ? "Trinama..." : "Taip, atšaukti"}
+                  </button>
+                </div>
+              </div>
             )}
 
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 10px" }}>

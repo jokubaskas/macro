@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, maxWeightOf } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
-import { ChevronLeft, Close, TrendingUp, Flame, Muscle, Walk, AlertTriangle } from "./ui/icons";
+import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const KEYFRAMES = `.tile-tap{ transition: transform 0.15s ease; } .tile-tap:active{ transform: scale(0.96); }`;
@@ -137,7 +137,7 @@ function ExerciseHistoryView({ clientId }) {
         </button>
 
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
-          {selectedMuscle === "Cardio" ? <Walk size={14} color="#89CFF0" /> : <Muscle size={14} color="#FF6EB4" />}
+          {selectedMuscle === "Cardio" ? <Walk size={14} color="#89CFF0" /> : <Dumbbell size={14} color="#FF6EB4" />}
           <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.6)" }}>{selectedName}</span>
         </div>
 
@@ -191,7 +191,7 @@ function ExerciseHistoryView({ clientId }) {
               display:"flex", flexDirection:"column", gap:10,
             }}>
               <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Muscle size={15} color="#FF6EB4" />}
+                {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Dumbbell size={15} color="#FF6EB4" />}
               </div>
               <div>
                 <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
@@ -245,7 +245,7 @@ function MuscleBalanceView({ clientId }) {
               <div key={muscle} style={{ position:"relative", height:40, borderRadius:12, background:"rgba(255,255,255,0.08)", overflow:"hidden", marginBottom:8 }}>
                 <div style={{ position:"absolute", inset:0, width:`${(count/max)*100}%`, background:"linear-gradient(90deg,#AD1457,#FF6EB4)", transition:"width 0.7s cubic-bezier(.23,1,.32,1)" }} />
                 <div style={{ position:"relative", height:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 14px" }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Muscle size={13} />{muscle}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Dumbbell size={13} />{muscle}</span>
                   <span style={{ fontSize:15, fontWeight:800, color:"#fff" }}>{count}</span>
                 </div>
               </div>
