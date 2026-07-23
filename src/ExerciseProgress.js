@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, maxWeightOf } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
 import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
-const KEYFRAMES = `.tile-tap{ transition: transform 0.15s ease; } .tile-tap:active{ transform: scale(0.96); }`;
+const KEYFRAMES = `
+.tile-tap{ transition: transform 0.15s ease; } .tile-tap:active{ transform: scale(0.96); }
+@keyframes chartFadeIn { from { opacity:0; transform:scaleY(0.9); } to { opacity:1; transform:scaleY(1); } }
+`;
 
 function fmtDate(d) { return d ? new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" }) : "–"; }
 
@@ -26,7 +29,6 @@ function smoothPath(pts) {
 // (viewBox 0-100 x, non-scaling-stroke), taškai kaip HTML overlay (kad
 // neiškraipytų viewBox tempimas), paliečiamas taškas rodo mini tooltip.
 function WeightChart({ entries, prId }) {
-  const pathRef = useRef(null);
   const [active, setActive] = useState(entries.length - 1);
   const H = 150, PAD_X = 3, PAD_Y = 20;
   const n = entries.length;
@@ -40,19 +42,6 @@ function WeightChart({ entries, prId }) {
   const linePath = smoothPath(pts);
   const areaPath = n > 1 ? `${linePath} L${pts[n-1][0]},${H-PAD_Y} L${pts[0][0]},${H-PAD_Y} Z` : "";
 
-  useEffect(() => {
-    const el = pathRef.current;
-    if (!el || n < 2) return;
-    const len = el.getTotalLength();
-    el.style.transition = "none";
-    el.style.strokeDasharray = len;
-    el.style.strokeDashoffset = len;
-    requestAnimationFrame(() => {
-      el.style.transition = "stroke-dashoffset 1s cubic-bezier(.23,1,.32,1)";
-      el.style.strokeDashoffset = 0;
-    });
-  }, [n]);
-
   const activeEntry = entries[active];
   const [ax, ay] = pts[active] || [50, H/2];
 
@@ -65,8 +54,8 @@ function WeightChart({ entries, prId }) {
             <stop offset="100%" stopColor="#FF6EB4" stopOpacity="0"/>
           </linearGradient>
         </defs>
-        {n > 1 && <path d={areaPath} fill="url(#wc-area)" stroke="none" />}
-        {n > 1 && <path ref={pathRef} d={linePath} fill="none" stroke="#FF6EB4" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />}
+        {n > 1 && <path d={areaPath} fill="url(#wc-area)" stroke="none" style={{ animation:"chartFadeIn 0.5s ease both", transformOrigin:"bottom" }} />}
+        {n > 1 && <path d={linePath} fill="none" stroke="#FF6EB4" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" style={{ animation:"chartFadeIn 0.5s ease both", transformOrigin:"bottom" }} />}
       </svg>
       {pts.map(([x,y], i) => {
         const isPr = entries[i].id === prId;
