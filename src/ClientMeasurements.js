@@ -6,13 +6,13 @@ import { ShowMoreButton } from "./ui/kit";
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
 
 const FIELDS = [
-  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale },
-  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart },
-  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler },
-  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler },
-  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler },
-  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle },
-  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler },
+  { key:"weight_measured", label:"Svoris",    unit:"kg",  Icon:Scale,    color:"#FF6EB4" },
+  { key:"body_fat",        label:"Riebalai",  unit:"%",   Icon:BarChart, color:"#FFD700" },
+  { key:"waist_cm",        label:"Liemuo",    unit:"cm",  Icon:Ruler,    color:"#89CFF0" },
+  { key:"hips_cm",         label:"Klubai",    unit:"cm",  Icon:Ruler,    color:"#C9A0FF" },
+  { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler,    color:"#7FFFB0" },
+  { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle,   color:"#FF8888" },
+  { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler,    color:"#FFB347" },
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -186,9 +186,18 @@ export default function ClientMeasurements({ client, onClose }) {
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
               {FIELDS.map(f => (
-                <div key={f.key}>
-                  <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:4, marginBottom:5 }}><f.Icon size={11} />{f.label} ({f.unit})</label>
-                  <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–" style={inp}/>
+                <div key={f.key} style={{ background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)", borderRadius:14, padding:"9px 12px" }}>
+                  <label style={{ fontSize:11, color:"rgba(255,255,255,0.65)", display:"flex", alignItems:"center", gap:6, marginBottom:6, fontWeight:600 }}>
+                    <span style={{ width:20, height:20, borderRadius:"50%", background:`${f.color}2a`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <f.Icon size={11} color={f.color} />
+                    </span>
+                    {f.label}
+                  </label>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+                    <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–"
+                      style={{ border:"none", background:"transparent", color:"#fff", fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none", width:"100%", padding:0 }}/>
+                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{f.unit}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -212,8 +221,11 @@ export default function ClientMeasurements({ client, onClose }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
               {FIELDS.filter(f => latest[f.key]).map(f => (
                 <div key={f.key} style={{ textAlign:"center" }}>
+                  <span style={{ width:22, height:22, borderRadius:"50%", background:`${f.color}2a`, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:4 }}>
+                    <f.Icon size={11} color={f.color} />
+                  </span>
                   <p style={{ fontSize:18, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{latest[f.key]}</p>
-                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0, display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}><f.Icon size={9} />{f.label}</p>
+                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{f.label}</p>
                   <MiniChart data={[...history].reverse()} field={f.key} />
                 </div>
               ))}
@@ -239,11 +251,10 @@ export default function ClientMeasurements({ client, onClose }) {
                 {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#FF6EB4", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
               </p>
             </div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:"6px 14px" }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
               {FIELDS.filter(f => m[f.key]).map(f => (
-                <span key={f.key} style={{ fontSize:12, color:"rgba(255,255,255,0.7)" }}>
-                  <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10 }}>{f.label} </span>
-                  <b style={{ color:"#fff" }}>{m[f.key]} {f.unit}</b>
+                <span key={f.key} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:f.color, background:`${f.color}1f`, borderRadius:8, padding:"3px 8px" }}>
+                  <f.Icon size={10} />{m[f.key]}{f.unit}
                 </span>
               ))}
             </div>

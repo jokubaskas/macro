@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { ExercisePicker, ExerciseEditModal } from "./WorkoutPlanBuilder";
+import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
-import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
@@ -14,29 +14,16 @@ function formatDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 }
 
-function exerciseSummary(ex) {
-  if (ex.category === "cardio") return `${ex.duration_min || "–"} min`;
-  if (ex.set_weights) {
-    try {
-      const ws = JSON.parse(ex.set_weights);
-      return `${ex.sets || "–"} × ${ex.reps || "–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`;
-    } catch { /* naudoti paprastą suvestinę žemiau */ }
-  }
-  return `${ex.sets || "–"} × ${ex.reps || "–"}${ex.weight_kg ? ` · ${ex.weight_kg}kg` : ""}`;
-}
-
 function ExerciseRow({ ex, onClick, onRemove }) {
   return (
     <div onClick={onClick} style={{
       background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"11px 14px", marginBottom:8,
-      display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default",
+      display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default", gap:10,
     }}>
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 2px" }}>{ex.exercise_name}</p>
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0, display:"flex", alignItems:"center", gap:4 }}>
-          {ex.category === "cardio" ? <Timer size={11} /> : null}{exerciseSummary(ex)}
-          {onClick && <span style={{ color:"rgba(255,255,255,0.3)" }}> · paliesk redaguoti</span>}
-        </p>
+        <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px" }}>{ex.exercise_name}</p>
+        <ExerciseSummary ex={ex} />
+        {onClick && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>paliesk redaguoti</span>}
       </div>
       {onRemove && (
         <button onClick={(e)=>{ e.stopPropagation(); onRemove(); }} style={{ background:"rgba(255,100,100,0.15)", border:"1px solid rgba(255,100,100,0.3)", borderRadius:8, padding:"6px 10px", color:"#FF8888", cursor:"pointer", flexShrink:0 }}>

@@ -193,13 +193,16 @@ function ScheduleExceptions() {
       {exceptions.map(ex => {
         const isRange = ex.end_date && ex.end_date !== ex.date;
         return (
-          <div key={ex.id} style={{background:"rgba(255,100,100,0.08)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-            <div style={{minWidth:0}}>
-              <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                <Calendar size={12} />{ex.date}{isRange && <>–{ex.end_date}</>}
+          <div key={ex.id} style={{background:"linear-gradient(135deg,rgba(255,100,100,0.14),rgba(255,100,100,0.04))",border:"1px solid rgba(255,100,100,0.25)",borderRadius:16,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"flex-start",gap:10}}>
+            <span style={{width:34,height:34,borderRadius:"50%",background:"rgba(255,100,100,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {ex.all_day ? <Sun size={15} color="#FF8888" /> : <Timer size={15} color="#FF8888" />}
+            </span>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 3px",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                <Calendar size={11} />{ex.date}{isRange && <>–{ex.end_date}</>}
                 {ex.all_day
-                  ? <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.7)",background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"2px 6px",display:"inline-flex",alignItems:"center",gap:3}}><Ban size={9} />Visa diena</span>
-                  : <span style={{fontWeight:400,color:"rgba(255,255,255,0.6)"}}>· {ex.start_time}–{ex.end_time}</span>}
+                  ? <span style={{fontSize:9,fontWeight:700,color:"#FF8888",background:"rgba(255,100,100,0.18)",borderRadius:6,padding:"2px 6px",display:"inline-flex",alignItems:"center",gap:3}}><Ban size={9} />Visa diena</span>
+                  : <span style={{fontSize:11,fontWeight:400,color:"rgba(255,255,255,0.6)"}}>{ex.start_time}–{ex.end_time}</span>}
               </p>
               {ex.reason && <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:"0 0 2px"}}>{ex.reason}</p>}
               {ex.client_message && <p style={{fontSize:11,color:"#7FC9FF",margin:0,display:"flex",alignItems:"flex-start",gap:4}}><MessageCircle size={11} style={{marginTop:1,flexShrink:0}} />{ex.client_message}</p>}
@@ -226,9 +229,16 @@ function ScheduleExceptions() {
             </div>
           </div>
 
-          <button onClick={()=>setForm(f=>({...f,all_day:!f.all_day}))} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:form.all_day?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:10}}>
-            <Sun size={13} />{form.all_day ? "Visa diena (pvz. atostogos)" : "Tik konkreti valanda"}
-          </button>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <button onClick={()=>setForm(f=>({...f,all_day:false}))} style={{flex:1,padding:"12px 8px",borderRadius:12,border:`1.5px solid ${!form.all_day?"#AD1457":"rgba(255,255,255,0.15)"}`,background:!form.all_day?"rgba(173,20,87,0.22)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+              <Timer size={16} color={!form.all_day?"#FF6EB4":"rgba(255,255,255,0.4)"} />
+              Konkreti valanda
+            </button>
+            <button onClick={()=>setForm(f=>({...f,all_day:true}))} style={{flex:1,padding:"12px 8px",borderRadius:12,border:`1.5px solid ${form.all_day?"#AD1457":"rgba(255,255,255,0.15)"}`,background:form.all_day?"rgba(173,20,87,0.22)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+              <Sun size={16} color={form.all_day?"#FFD700":"rgba(255,255,255,0.4)"} />
+              Visa diena (atostogos)
+            </button>
+          </div>
 
           {!form.all_day && (
             <div style={{display:"flex",gap:8,marginBottom:10}}>

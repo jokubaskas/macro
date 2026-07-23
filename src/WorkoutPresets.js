@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
+import { ExerciseSummary } from "./WorkoutPlanBuilder";
 import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -393,24 +394,19 @@ function PresetEditor({ preset, onClose, onSaved }) {
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
             {days[activeDay].exercises.map((ex,j)=>(
-              <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+              <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"linear-gradient(160deg, rgba(255,110,180,0.1), rgba(255,255,255,0.05))",border:"1px solid rgba(255,110,180,0.18)",borderRadius:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
                 <div style={{display:"flex",flexDirection:"column",gap:3,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
                   <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
                   <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
                 </div>
-                <div style={{flex:1}}>
-                  <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:"0 0 2px"}}>{ex.exercise_name}</p>
-                  <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>
-                    {ex.category==="cardio"
-                      ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Timer size={11} />{ex.duration_min||"–"} min</span>
-                      : ex.set_weights
-                        ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
-                        : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg}kg`:""}`
-                    }
-                    <span style={{color:"rgba(255,255,255,0.3)"}}> · paliesk redaguoti</span>
-                  </p>
+                <div style={{width:30,height:30,borderRadius:"50%",flexShrink:0,marginRight:10,background:ex.category==="cardio"?"rgba(137,207,240,0.16)":"rgba(255,179,198,0.16)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {ex.category==="cardio" ? <Walk size={14} color="#89CFF0" /> : <Muscle size={14} color="#FFB3C6" />}
                 </div>
-                <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center"}}><Close size={12} /></button>
+                <div style={{flex:1, minWidth:0}}>
+                  <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 4px"}}>{ex.exercise_name}</p>
+                  <ExerciseSummary ex={ex} />
+                </div>
+                <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center",marginLeft:8}}><Close size={12} /></button>
               </div>
             ))}
           </div>

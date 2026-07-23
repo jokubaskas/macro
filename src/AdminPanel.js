@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS, daysUntilBirthday } from "./constants";
-import WorkoutPlanBuilder from "./WorkoutPlanBuilder";
+import WorkoutPlanBuilder, { ExerciseSummary } from "./WorkoutPlanBuilder";
 import BookingAdmin from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
 import ProgressCompare from "./ProgressCompare";
@@ -13,7 +13,7 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, Timer, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
 
 const BDAY_KEYFRAMES = `
@@ -534,11 +534,9 @@ function PlanDayExercises({ dayId }) {
     <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:4 }}>
       {exercises.map((ex, i) => (
         <div key={ex.id} style={{ background:"rgba(0,0,0,0.2)", borderRadius:10, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{i+1}. {ex.exercise_name}</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0, display:"flex", alignItems:"center", gap:4 }}>
-              {ex.category==="cardio" ? <><Timer size={11} />{ex.duration_min||"–"} min</> : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
-            </p>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>{i+1}. {ex.exercise_name}</p>
+            <ExerciseSummary ex={ex} />
           </div>
           <span style={{ fontSize:10, color:ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
         </div>
@@ -673,23 +671,36 @@ function ClientDetail({ client, onClose }) {
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
 
-        {/* Gyva treniruotė */}
-        <button onClick={() => setShowLiveTraining(true)} style={{ width:"100%", padding:"14px", marginBottom:12, borderRadius:16, background:"linear-gradient(135deg,#AD1457,#E91E8C)", border:"none", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <Dot color="#FF6B6B" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />
-          <Dumbbell size={16} />Gyva treniruotė
-        </button>
-
-        {/* Matavimai, progreso nuotraukos ir kliento anketa */}
-        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <button onClick={() => setShowClientInfo(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-            <Clipboard size={14} />Anketa
+        {/* Veiksmų kortelės */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+          <button onClick={() => setShowLiveTraining(true)} style={{ gridColumn:"1 / -1", padding:"16px", borderRadius:18, background:"linear-gradient(135deg,#AD1457,#E91E8C)", border:"none", color:"#fff", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:12, textAlign:"left" }}>
+            <span style={{ width:42, height:42, borderRadius:"50%", background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Dumbbell size={20} />
+            </span>
+            <span style={{ flex:1 }}>
+              <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:15, fontWeight:700 }}>
+                Gyva treniruotė
+                <Dot color="#FF6B6B" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />
+              </span>
+              <span style={{ display:"block", fontSize:11, color:"rgba(255,255,255,0.75)", marginTop:2 }}>Pradėti arba tęsti šiandienos treniruotę</span>
+            </span>
+            <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
           </button>
-          <button onClick={() => setShowMeasurements(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-            <Ruler size={14} />Matavimai
-          </button>
-          <button onClick={() => setShowProgressCompare(true)} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:14, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-            <Camera size={14} />Nuotraukos
-          </button>
+          {[
+            { key:"clientInfo", Icon:Clipboard, color:"#89CFF0", title:"Anketa", sub:"Profilis ir tikslai", onClick:()=>setShowClientInfo(true) },
+            { key:"measurements", Icon:Ruler, color:"#7FFFB0", title:"Matavimai", sub:"Svoris ir kūno rodikliai", onClick:()=>setShowMeasurements(true) },
+            { key:"photos", Icon:Camera, color:"#FFD700", title:"Nuotraukos", sub:"Progreso palyginimas", onClick:()=>setShowProgressCompare(true) },
+          ].map(t => (
+            <button key={t.key} onClick={t.onClick} style={{ padding:"14px", background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"flex-start", gap:8 }}>
+              <span style={{ width:36, height:36, borderRadius:"50%", background:`${t.color}2a`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <t.Icon size={16} color={t.color} />
+              </span>
+              <span>
+                <span style={{ display:"block", fontSize:13, fontWeight:700 }}>{t.title}</span>
+                <span style={{ display:"block", fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:1 }}>{t.sub}</span>
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* Sporto plano kortelė */}
@@ -737,12 +748,10 @@ function ClientDetail({ client, onClose }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {done ? <CheckCircle size={16} color="#7FFFB0" /> : <span style={{ display:"inline-block", width:13, height:13, borderRadius:4, border:"1.75px solid rgba(255,255,255,0.35)" }} />}
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 2px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: done ? "#7FFFB0" : "#fff", margin: "0 0 4px", textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>
                       {i+1}. {ex.exercise_name}
                     </p>
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, display:"flex", alignItems:"center", gap:4 }}>
-                      {ex.category === "cardio" ? <><Timer size={11} />{ex.duration_min||"–"} min</> : ex.set_weights ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })() : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg ? ` · ${ex.weight_kg} kg` : ""}`}
-                    </p>
+                    <ExerciseSummary ex={ex} />
                   </div>
                 </div>
                 <span style={{ fontSize: 10, color: ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>

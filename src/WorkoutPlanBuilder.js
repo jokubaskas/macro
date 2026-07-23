@@ -6,6 +6,34 @@ const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const sel = { padding:"9px 4px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:12, fontFamily:"inherit", outline:"none", flex:1, minWidth:0, width:0, WebkitAppearance:"none", textAlign:"center", boxSizing:"border-box" };
 
+// Pratimo parametrų santrauka kaip kompaktiški "chip" ženkliukai, o ne viena
+// ilga tanki teksto eilutė (pvz. "3 × 12 · S1:20kg S2:22.5kg S3:25kg") —
+// naudojama visur, kur rodomas jau pridėtas pratimas (gyva treniruotė,
+// sporto planas, šablonai), kad būtų lengviau nuskaityti vienu žvilgsniu.
+export function ExerciseSummary({ ex }) {
+  if (ex.category === "cardio") {
+    return (
+      <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:"#89CFF0", background:"rgba(137,207,240,0.12)", borderRadius:8, padding:"2px 7px" }}>
+        <Timer size={10} />{ex.duration_min || "–"} min
+      </span>
+    );
+  }
+  let weights = null;
+  if (ex.set_weights) {
+    try { weights = JSON.parse(ex.set_weights).map(Number); } catch { /* naudoti weight_kg žemiau */ }
+  }
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
+      <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.55)" }}>{ex.sets || "–"}×{ex.reps || "–"}</span>
+      {weights ? weights.map((w,i) => (
+        <span key={i} style={{ fontSize:10, fontWeight:700, color:"#FFB3C6", background:"rgba(255,179,198,0.14)", borderRadius:7, padding:"2px 6px" }}>{w}kg</span>
+      )) : ex.weight_kg ? (
+        <span style={{ fontSize:10, fontWeight:700, color:"#FFB3C6", background:"rgba(255,179,198,0.14)", borderRadius:7, padding:"2px 6px" }}>{ex.weight_kg}kg</span>
+      ) : null}
+    </div>
+  );
+}
+
 function DateSelect({ value, onChange, minDate }) {
   const today = new Date();
   const [y, m, d] = value ? value.split("-").map(Number) : [today.getFullYear(), today.getMonth()+1, today.getDate()];
@@ -542,17 +570,10 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
                       <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
                       <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
                     </div>
-                    <div style={{flex:1}}>
-                      <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:"0 0 2px"}}>{ex.exercise_name}</p>
-                      <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",gap:4}}>
-                        {ex.category==="cardio"
-                          ? <><Timer size={11} />{ex.duration_min||"–"} min</>
-                          : ex.set_weights
-                            ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
-                            : `${ex.sets||"–"} × ${ex.reps||"–"}${ex.weight_kg?` · ${ex.weight_kg}kg`:""}`
-                        }
-                        <span style={{color:"rgba(255,255,255,0.3)"}}> · paliesk redaguoti</span>
-                      </p>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",gap:5}}>
+                      <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:0}}>{ex.exercise_name}</p>
+                      <ExerciseSummary ex={ex} />
+                      <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>paliesk redaguoti</span>
                     </div>
                     <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0}}><Close size={12} /></button>
                   </div>
