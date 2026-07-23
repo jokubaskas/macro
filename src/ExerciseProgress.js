@@ -88,16 +88,22 @@ function WeightChart({ entries, prId }) {
           </button>
         );
       })}
-      {activeEntry && (
-        <div style={{
-          position:"absolute", left:`${ax}%`, top: Math.max(0, ay-54), transform:"translateX(-50%)",
-          background:"#1a0a14", border:"1px solid rgba(255,255,255,0.2)", borderRadius:10, padding:"6px 10px",
-          whiteSpace:"nowrap", pointerEvents:"none", boxShadow:"0 4px 14px rgba(0,0,0,0.45)", zIndex:2,
-        }}>
-          <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
-          <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:0 }}>{fmtDate(activeEntry.date)}</p>
-        </div>
-      )}
+      {activeEntry && (() => {
+        // Taškui esant arti krašto, pats žymeklis lieka tikslioje vietoje, bet
+        // tooltip'o pozicija apribojama, kad neišlįstų už ekrano ribų ir
+        // nepriverstų slinkti viso puslapio horizontaliai.
+        const tooltipX = Math.min(80, Math.max(20, ax));
+        return (
+          <div style={{
+            position:"absolute", left:`${tooltipX}%`, top: Math.max(0, ay-54), transform:"translateX(-50%)",
+            background:"#1a0a14", border:"1px solid rgba(255,255,255,0.2)", borderRadius:10, padding:"6px 10px",
+            whiteSpace:"nowrap", pointerEvents:"none", boxShadow:"0 4px 14px rgba(0,0,0,0.45)", zIndex:2,
+          }}>
+            <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
+            <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:0 }}>{fmtDate(activeEntry.date)}</p>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -268,7 +274,7 @@ export default function ExerciseProgress({ client, onClose }) {
   const [tab, setTab] = useState("progress"); // "progress" | "balance"
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:1200, background:`linear-gradient(160deg,#2d0a1a 0%,${PK.dark} 40%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:1200, background:`linear-gradient(160deg,#2d0a1a 0%,${PK.dark} 40%,${PK.mid} 100%)`, overflowY:"auto", overflowX:"hidden", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <style>{KEYFRAMES}</style>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><Close size={14} />Uždaryti</button>
