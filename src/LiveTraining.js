@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal } from "./WorkoutPlanBuilder";
-import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot, CheckCircle } from "./ui/icons";
+import { fetchLastPerformanceMap } from "./exerciseStats";
+import ExerciseProgress from "./ExerciseProgress";
+import { ChevronLeft, ChevronRight, Dumbbell, Timer, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
@@ -178,10 +180,12 @@ export default function LiveTraining({ client, onClose }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
   const [note, setNote] = useState("");
   const [visiblePast, setVisiblePast] = useState(8);
   const [savingNote, setSavingNote] = useState(false);
+  const [lastPerf, setLastPerf] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,6 +204,7 @@ export default function LiveTraining({ client, onClose }) {
     } else {
       setTodayExercises([]);
     }
+    fetchLastPerformanceMap(client.id, todayRec ? [todayRec.id] : []).then(setLastPerf);
     setLoading(false);
   }, [client.id, today]);
 
@@ -288,20 +293,24 @@ export default function LiveTraining({ client, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <style>{KEYFRAMES}</style>
 
-      {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} />}
+      {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} lastPerf={lastPerf} />}
       {showTemplatePicker && <TemplatePickerModal onConfirm={handleUseTemplate} onClose={() => setShowTemplatePicker(false)} />}
       {editingExercise && (
-        <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} />
+        <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} lastPerf={lastPerf} />
       )}
+      {showProgress && <ExerciseProgress client={client} onClose={() => setShowProgress(false)} />}
 
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
-        <div>
+        <div style={{ flex:1, minWidth:0 }}>
           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}>
             <Dot color="#FF4444" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />Gyva treniruotė
           </h1>
           <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name}</p>
         </div>
+        <button onClick={() => setShowProgress(true)} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
+          <TrendingUp size={14} />Progresas
+        </button>
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>

@@ -37,7 +37,7 @@ function DateSelect({ value, onChange, minDate }) {
   );
 }
 
-export function ExercisePicker({ onAdd, onClose }) {
+export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
   const [exercises, setExercises] = useState([]);
   const [filter, setFilter]       = useState("Visi");
   const [search, setSearch]       = useState("");
@@ -48,6 +48,28 @@ export function ExercisePicker({ onAdd, onClose }) {
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
+
+  // Praeitą kartą atliktas šis pratimas (jei yra) — naudojama pasirinkus
+  // pratimą, kad iš karto pasiūlytume tuos pačius skaičius kaip atskaitą.
+  const lastEx = selected ? lastPerf[selected.name] : null;
+
+  function selectExercise(ex) {
+    setSelected(ex);
+    const prev = lastPerf[ex.name];
+    if (!prev) return;
+    if (ex.category === "cardio") {
+      setForm(f => ({ ...f, duration_min: prev.duration_min ? String(prev.duration_min) : "" }));
+      return;
+    }
+    setForm(f => ({ ...f, sets: prev.sets ? String(prev.sets) : f.sets, reps: prev.reps ? String(prev.reps) : f.reps, weight_kg: prev.weight_kg ? String(prev.weight_kg) : "" }));
+    if (prev.set_weights) {
+      try {
+        const arr = JSON.parse(prev.set_weights).map(String);
+        setPerSet(true);
+        setSetWeights(arr);
+      } catch { /* naudoti bendrą svorį */ }
+    }
+  }
 
   const MUSCLES = ["Krūtinė","Nugara","Pečiai","Rankos","Kojos","Pilvas","Cardio"];
 
@@ -148,7 +170,7 @@ export function ExercisePicker({ onAdd, onClose }) {
             <button onClick={()=>setShowNew(true)} style={{width:"100%",padding:"10px",marginBottom:10,borderRadius:12,border:"2px dashed rgba(255,255,255,0.3)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti naują pratimą į duomenų bazę</button>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {filtered.map(ex=>(
-                <button key={ex.id} onClick={()=>setSelected(ex)} style={{padding:"11px 14px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <button key={ex.id} onClick={()=>selectExercise(ex)} style={{padding:"11px 14px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div><span style={{fontSize:13,fontWeight:600}}>{ex.name}</span><span style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginLeft:8}}>{ex.muscle}</span></div>
                   <span style={{fontSize:11,color:ex.category==="cardio"?"#89CFF0":"#FFB3C6",background:"rgba(255,255,255,0.1)",padding:"2px 8px",borderRadius:6}}>{ex.category==="cardio"?"Cardio":"Svoris"}</span>
                 </button>
@@ -159,10 +181,18 @@ export function ExercisePicker({ onAdd, onClose }) {
 
         {!showNew&&selected&&(
           <div>
-            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:lastEx?8:14}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{selected.name}</p>
               <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{selected.muscle}</p>
             </div>
+            {lastEx && (
+              <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+                <Timer size={13} color="#FFD700" style={{flexShrink:0}} />
+                <p style={{fontSize:11,color:"#FFD700",margin:0,lineHeight:1.4}}>
+                  Praeitą kartą ({lastEx.date?.slice(0,10)}): {lastEx.category==="cardio" ? `${lastEx.duration_min||"–"} min` : lastEx.set_weights ? (() => { try { const ws=JSON.parse(lastEx.set_weights); return `${lastEx.sets||"–"}×${lastEx.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${lastEx.sets||"–"}×${lastEx.reps||"–"}`; } })() : `${lastEx.sets||"–"}×${lastEx.reps||"–"}${lastEx.weight_kg?` · ${lastEx.weight_kg}kg`:""}`} — reikšmės jau įrašytos žemiau, koreguokite jei reikia.
+                </p>
+              </div>
+            )}
             {isCardio?(
               <div style={{marginBottom:14}}>
                 <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
@@ -214,8 +244,9 @@ export function ExercisePicker({ onAdd, onClose }) {
 }
 
 // ── Esamo pratimo parametrų redagavimas ───────────────────────────────────────
-export function ExerciseEditModal({ exercise, onSave, onClose }) {
+export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) {
   const isCardio = exercise.category === "cardio";
+  const lastEx = lastPerf[exercise.exercise_name];
 
   // Parsiname esamus set_weights jei yra
   const initSetWeights = () => {
@@ -275,10 +306,18 @@ export function ExerciseEditModal({ exercise, onSave, onClose }) {
           <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Redaguoti parametrus</p>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer"}}><Close size={14} /></button>
         </div>
-        <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+        <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:lastEx?8:14}}>
           <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{exercise.exercise_name}</p>
           <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{exercise.muscle}</p>
         </div>
+        {lastEx && (
+          <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+            <Timer size={13} color="#FFD700" style={{flexShrink:0}} />
+            <p style={{fontSize:11,color:"#FFD700",margin:0,lineHeight:1.4}}>
+              Praeitą kartą ({lastEx.date?.slice(0,10)}): {lastEx.category==="cardio" ? `${lastEx.duration_min||"–"} min` : lastEx.set_weights ? (() => { try { const ws=JSON.parse(lastEx.set_weights); return `${lastEx.sets||"–"}×${lastEx.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${lastEx.sets||"–"}×${lastEx.reps||"–"}`; } })() : `${lastEx.sets||"–"}×${lastEx.reps||"–"}${lastEx.weight_kg?` · ${lastEx.weight_kg}kg`:""}`}
+            </p>
+          </div>
+        )}
         {isCardio ? (
           <div style={{marginBottom:16}}>
             <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>

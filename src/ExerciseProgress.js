@@ -1,0 +1,294 @@
+import { useState, useEffect, useRef } from "react";
+import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, maxWeightOf } from "./exerciseStats";
+import { SearchInput } from "./ui/kit";
+import { ChevronLeft, Close, TrendingUp, Flame, Muscle, Walk, AlertTriangle } from "./ui/icons";
+
+const PK = { dark:"#6D1B3B", mid:"#AD1457" };
+const KEYFRAMES = `.tile-tap{ transition: transform 0.15s ease; } .tile-tap:active{ transform: scale(0.96); }`;
+
+function fmtDate(d) { return d ? new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" }) : "–"; }
+
+// Catmull-Rom → kubinė Bezier — glotni linija vietoj laužtės (tas pats modelis kaip ClientStats.js).
+function smoothPath(pts) {
+  if (pts.length < 2) return "";
+  if (pts.length === 2) return `M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`;
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i-1] || pts[i], p1 = pts[i], p2 = pts[i+1], p3 = pts[i+2] || p2;
+    const c1x = p1[0] + (p2[0]-p0[0])/6, c1y = p1[1] + (p2[1]-p0[1])/6;
+    const c2x = p2[0] - (p3[0]-p1[0])/6, c2y = p2[1] - (p3[1]-p1[1])/6;
+    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
+// Animuotas svorio progreso grafikas — linija + gradientinė sritis SVG'e
+// (viewBox 0-100 x, non-scaling-stroke), taškai kaip HTML overlay (kad
+// neiškraipytų viewBox tempimas), paliečiamas taškas rodo mini tooltip.
+function WeightChart({ entries, prId }) {
+  const pathRef = useRef(null);
+  const [active, setActive] = useState(entries.length - 1);
+  const H = 150, PAD_X = 3, PAD_Y = 20;
+  const n = entries.length;
+  const vals = entries.map(maxWeightOf);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max - min) || 1;
+  const pts = vals.map((v,i) => [
+    PAD_X + (n > 1 ? (i/(n-1)) * (100 - PAD_X*2) : 50),
+    PAD_Y + (H - PAD_Y*2) - ((v-min)/range) * (H - PAD_Y*2),
+  ]);
+  const linePath = smoothPath(pts);
+  const areaPath = n > 1 ? `${linePath} L${pts[n-1][0]},${H-PAD_Y} L${pts[0][0]},${H-PAD_Y} Z` : "";
+
+  useEffect(() => {
+    const el = pathRef.current;
+    if (!el || n < 2) return;
+    const len = el.getTotalLength();
+    el.style.transition = "none";
+    el.style.strokeDasharray = len;
+    el.style.strokeDashoffset = len;
+    requestAnimationFrame(() => {
+      el.style.transition = "stroke-dashoffset 1s cubic-bezier(.23,1,.32,1)";
+      el.style.strokeDashoffset = 0;
+    });
+  }, [n]);
+
+  const activeEntry = entries[active];
+  const [ax, ay] = pts[active] || [50, H/2];
+
+  return (
+    <div style={{ position:"relative", height:H }}>
+      <svg viewBox={`0 0 100 ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display:"block", position:"absolute", inset:0 }}>
+        <defs>
+          <linearGradient id="wc-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FF6EB4" stopOpacity="0.4"/>
+            <stop offset="100%" stopColor="#FF6EB4" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {n > 1 && <path d={areaPath} fill="url(#wc-area)" stroke="none" />}
+        {n > 1 && <path ref={pathRef} d={linePath} fill="none" stroke="#FF6EB4" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />}
+      </svg>
+      {pts.map(([x,y], i) => {
+        const isPr = entries[i].id === prId;
+        const isActive = i === active;
+        const size = isPr ? 13 : 9;
+        return (
+          <button key={i} onClick={() => setActive(i)} style={{
+            position:"absolute", left:`${x}%`, top:y, width:30, height:30, transform:"translate(-50%,-50%)",
+            background:"transparent", border:"none", padding:0, cursor:"pointer",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <span style={{
+              width:size, height:size, borderRadius:"50%",
+              background: isPr ? "#FFD700" : "#fff",
+              border: `2px solid ${isPr ? "#FFD700" : "#AD1457"}`,
+              boxShadow: isActive ? `0 0 0 5px ${isPr?"rgba(255,215,0,0.28)":"rgba(255,110,180,0.28)"}` : isPr ? "0 0 8px rgba(255,215,0,0.6)" : "none",
+              transition:"box-shadow 0.2s",
+            }} />
+          </button>
+        );
+      })}
+      {activeEntry && (
+        <div style={{
+          position:"absolute", left:`${ax}%`, top: Math.max(0, ay-54), transform:"translateX(-50%)",
+          background:"#1a0a14", border:"1px solid rgba(255,255,255,0.2)", borderRadius:10, padding:"6px 10px",
+          whiteSpace:"nowrap", pointerEvents:"none", boxShadow:"0 4px 14px rgba(0,0,0,0.45)", zIndex:2,
+        }}>
+          <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
+          <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:0 }}>{fmtDate(activeEntry.date)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Vieno pratimo istorija — hero skaičius, PR ženkliukas, grafikas ──────────
+function ExerciseHistoryView({ clientId }) {
+  const [names, setNames]           = useState([]);
+  const [loadingNames, setLoadingN] = useState(true);
+  const [search, setSearch]         = useState("");
+  const [selectedName, setSelName]  = useState(null);
+  const [selectedMuscle, setSelMuscle] = useState(null);
+  const [history, setHistory]       = useState(null);
+  const [loadingHist, setLoadingH]  = useState(false);
+
+  useEffect(() => {
+    fetchDistinctExerciseNames(clientId).then(list => { setNames(list); setLoadingN(false); });
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!selectedName) return;
+    setLoadingH(true);
+    fetchExerciseHistory(clientId, selectedName).then(h => { setHistory(h); setLoadingH(false); });
+  }, [clientId, selectedName]);
+
+  if (selectedName) {
+    const entries = history || [];
+    const withWeight = entries.filter(e => maxWeightOf(e) > 0);
+    const pr = withWeight.length ? withWeight.reduce((best,e) => maxWeightOf(e) > maxWeightOf(best) ? e : best) : null;
+    const first = withWeight[0];
+    const last = withWeight[withWeight.length-1];
+    const diff = first && last && first !== last ? maxWeightOf(last) - maxWeightOf(first) : 0;
+
+    return (
+      <div>
+        <button onClick={()=>{setSelName(null); setHistory(null);}} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"7px 12px", color:"#fff", fontSize:12, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5, marginBottom:14 }}>
+          <ChevronLeft size={12} />Visi pratimai
+        </button>
+
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+          {selectedMuscle === "Cardio" ? <Walk size={14} color="#89CFF0" /> : <Muscle size={14} color="#FF6EB4" />}
+          <span style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.6)" }}>{selectedName}</span>
+        </div>
+
+        {loadingHist ? (
+          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
+        ) : withWeight.length === 0 ? (
+          <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Istorijos dar nėra</p>
+        ) : (
+          <>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap", margin:"6px 0 10px" }}>
+              <span style={{ fontSize:42, fontWeight:800, color:"#fff", lineHeight:1 }}>
+                {maxWeightOf(last)}<span style={{ fontSize:17, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>kg</span>
+              </span>
+              {diff !== 0 && (
+                <span style={{ fontSize:13, fontWeight:800, color: diff>0?"#7FFFB0":"#FF8888", background: diff>0?"rgba(127,255,176,0.14)":"rgba(255,136,136,0.14)", borderRadius:20, padding:"5px 11px", marginBottom:8, display:"flex", alignItems:"center", gap:3 }}>
+                  {diff>0?"▲":"▼"}{Math.abs(diff)}kg
+                </span>
+              )}
+              {pr && (
+                <span style={{ fontSize:12, fontWeight:800, color:"#FFD700", background:"rgba(255,215,0,0.12)", border:"1px solid rgba(255,215,0,0.3)", borderRadius:20, padding:"5px 11px", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
+                  <Flame size={12} />PR {maxWeightOf(pr)}kg
+                </span>
+              )}
+            </div>
+
+            <WeightChart entries={withWeight} prId={pr?.id} />
+            <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"8px 0 0" }}>
+              {withWeight.length} įrašų · {fmtDate(first.date)} – {fmtDate(last.date)}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const filtered = search ? names.filter(n => n.name.toLowerCase().includes(search.toLowerCase())) : names;
+
+  return (
+    <div>
+      {names.length > 8 && <SearchInput value={search} onChange={setSearch} placeholder="Ieškoti pratimo..." />}
+      {loadingNames ? (
+        <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
+      ) : filtered.length === 0 ? (
+        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Gyvų treniruočių istorijos dar nėra</p>
+      ) : (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {filtered.map(n => (
+            <button key={n.name} onClick={()=>{setSelName(n.name); setSelMuscle(n.muscle);}} className="tile-tap" style={{
+              background:"linear-gradient(160deg, rgba(255,110,180,0.16), rgba(255,110,180,0.05))", border:"1px solid rgba(255,110,180,0.25)",
+              borderRadius:16, padding:"14px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+              display:"flex", flexDirection:"column", gap:10,
+            }}>
+              <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Muscle size={15} color="#FF6EB4" />}
+              </div>
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
+                <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{n.muscle}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Raumenų grupių balansas per pasirinktą laikotarpį ────────────────────────
+const BALANCE_PERIODS = [{ k:14, l:"14 d." }, { k:28, l:"28 d." }, { k:56, l:"56 d." }];
+
+function MuscleBalanceView({ clientId }) {
+  const [period, setPeriod] = useState(28);
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState({});
+
+  useEffect(() => {
+    setLoading(true);
+    fetchMuscleBalance(clientId, period).then(c => { setCounts(c); setLoading(false); });
+  }, [clientId, period]);
+
+  const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const total = entries.reduce((s,[,c])=>s+c, 0);
+  const max = entries.length ? entries[0][1] : 1;
+  const least = entries.length ? entries[entries.length-1] : null;
+  const imbalanced = least && entries.length >= 3 && least[1] < max * 0.3;
+
+  return (
+    <div>
+      <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+        {BALANCE_PERIODS.map(p => (
+          <button key={p.k} onClick={()=>setPeriod(p.k)} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:period===p.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            {p.l}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
+      ) : total === 0 ? (
+        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Šiuo laikotarpiu pratimų neįrašyta</p>
+      ) : (
+        <>
+          <div style={{ marginBottom: imbalanced ? 14 : 0 }}>
+            {entries.map(([muscle, count]) => (
+              <div key={muscle} style={{ position:"relative", height:40, borderRadius:12, background:"rgba(255,255,255,0.08)", overflow:"hidden", marginBottom:8 }}>
+                <div style={{ position:"absolute", inset:0, width:`${(count/max)*100}%`, background:"linear-gradient(90deg,#AD1457,#FF6EB4)", transition:"width 0.7s cubic-bezier(.23,1,.32,1)" }} />
+                <div style={{ position:"relative", height:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 14px" }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Muscle size={13} />{muscle}</span>
+                  <span style={{ fontSize:15, fontWeight:800, color:"#fff" }}>{count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {imbalanced && (
+            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,200,0,0.12)", border:"1px solid rgba(255,200,0,0.3)", borderRadius:20, padding:"7px 13px" }}>
+              <AlertTriangle size={12} color="#FFD700" />
+              <span style={{ fontSize:11, fontWeight:700, color:"#FFD700" }}>{least[0]} atsilieka</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ExerciseProgress({ client, onClose }) {
+  const [tab, setTab] = useState("progress"); // "progress" | "balance"
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1200, background:`linear-gradient(160deg,#2d0a1a 0%,${PK.dark} 40%,${PK.mid} 100%)`, overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      <style>{KEYFRAMES}</style>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><Close size={14} />Uždaryti</button>
+        <div>
+          <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}><TrendingUp size={15} />Progresas</h1>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{client.name} · matote tik jūs</p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
+        <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+          {[{k:"progress",l:"Pratimų progresas"},{k:"balance",l:"Raumenų balansas"}].map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{ flex:1, padding:"10px", borderRadius:12, border:"none", background:tab===t.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              {t.l}
+            </button>
+          ))}
+        </div>
+
+        {tab === "progress" ? <ExerciseHistoryView clientId={client.id} /> : <MuscleBalanceView clientId={client.id} />}
+      </div>
+    </div>
+  );
+}
