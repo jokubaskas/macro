@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
-import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, Clipboard, Timer } from "./ui/icons";
+import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, Clipboard, Timer, PlayCircle } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -76,6 +76,7 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
+  const [videoUrl, setVideoUrl]   = useState("");
 
   // Praeitą kartą atliktas šis pratimas (jei yra) — naudojama pasirinkus
   // pratimą, kad iš karto pasiūlytume tuos pačius skaičius kaip atskaitą.
@@ -83,6 +84,7 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
 
   function selectExercise(ex) {
     setSelected(ex);
+    setVideoUrl(ex.video_url || "");
     const prev = lastPerf[ex.name];
     if (!prev) return;
     if (ex.category === "cardio") {
@@ -139,6 +141,10 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
+    }
+    const trimmedVideo = videoUrl.trim();
+    if (trimmedVideo !== (selected.video_url || "")) {
+      pb.collection("exercises").update(selected.id, { video_url: trimmedVideo || null }).catch(()=>{});
     }
     onAdd({
       exercise_name: selected.name, category: selected.category, muscle: selected.muscle,
@@ -209,9 +215,18 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
 
         {!showNew&&selected&&(
           <div>
-            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:lastEx?8:14}}>
+            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{selected.name}</p>
               <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{selected.muscle}</p>
+            </div>
+            <div style={{marginBottom:lastEx?8:14}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"flex",alignItems:"center",gap:5,marginBottom:5}}><PlayCircle size={12} />Video nuoroda (nebūtina)</label>
+              <input type="url" value={videoUrl} onChange={e=>setVideoUrl(e.target.value)} placeholder="pvz. YouTube nuoroda" style={inp}/>
+              {selected.video_url && (
+                <a href={selected.video_url} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,fontSize:11,color:"#89CFF0",textDecoration:"underline"}}>
+                  <PlayCircle size={11} />Peržiūrėti dabartinį vaizdą
+                </a>
+              )}
             </div>
             {lastEx && (
               <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>

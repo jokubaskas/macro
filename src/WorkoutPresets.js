@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
-import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check } from "./ui/icons";
+import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -18,10 +18,16 @@ function ExercisePicker({ onAdd, onClose }) {
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
+  const [videoUrl, setVideoUrl]   = useState("");
 
   useEffect(() => {
     pb.collection("exercises").getFullList({ sort:"muscle,name", requestKey:null }).then(setExercises).catch(()=>{});
   }, []);
+
+  function selectExercise(ex) {
+    setSelected(ex);
+    setVideoUrl(ex.video_url || "");
+  }
 
   function handleSetsChange(val) {
     setForm(f => ({...f, sets: val}));
@@ -53,6 +59,10 @@ function ExercisePicker({ onAdd, onClose }) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
+    }
+    const trimmedVideo = videoUrl.trim();
+    if (trimmedVideo !== (selected.video_url || "")) {
+      pb.collection("exercises").update(selected.id, { video_url: trimmedVideo || null }).catch(()=>{});
     }
     onAdd({ exercise_name:selected.name, category:selected.category, muscle:selected.muscle,
       sets, reps:isCardio?null:(parseInt(form.reps)||null),
@@ -109,7 +119,7 @@ function ExercisePicker({ onAdd, onClose }) {
             <button onClick={()=>setShowNew(true)} style={{width:"100%",padding:"10px",marginBottom:10,borderRadius:12,border:"2px dashed rgba(255,255,255,0.3)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti naują pratimą į duomenų bazę</button>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {filtered.map(ex=>(
-                <button key={ex.id} onClick={()=>setSelected(ex)} style={{padding:"11px 14px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <button key={ex.id} onClick={()=>selectExercise(ex)} style={{padding:"11px 14px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div><span style={{fontSize:13,fontWeight:600}}>{ex.name}</span><span style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginLeft:8}}>{ex.muscle}</span></div>
                   <span style={{fontSize:11,color:ex.category==="cardio"?"#89CFF0":"#FFB3C6",background:"rgba(255,255,255,0.1)",padding:"2px 8px",borderRadius:6}}>{ex.category==="cardio"?"Cardio":"Svoris"}</span>
                 </button>
@@ -119,9 +129,18 @@ function ExercisePicker({ onAdd, onClose }) {
         )}
         {!showNew && selected && (
           <div>
-            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{selected.name}</p>
               <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{selected.muscle}</p>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"flex",alignItems:"center",gap:5,marginBottom:5}}><PlayCircle size={12} />Video nuoroda (nebūtina)</label>
+              <input type="url" value={videoUrl} onChange={e=>setVideoUrl(e.target.value)} placeholder="pvz. YouTube nuoroda" style={inp}/>
+              {selected.video_url && (
+                <a href={selected.video_url} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,fontSize:11,color:"#89CFF0",textDecoration:"underline"}}>
+                  <PlayCircle size={11} />Peržiūrėti dabartinį vaizdą
+                </a>
+              )}
             </div>
             {isCardio?(
               <div style={{marginBottom:14}}>

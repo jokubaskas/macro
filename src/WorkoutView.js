@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Skeleton, ProgressBar, ConfettiBurst } from "./ui/kit";
-import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, Timer } from "./ui/icons";
+import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, PlayCircle } from "./ui/icons";
+import { ExerciseSummary } from "./WorkoutPlanBuilder";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -14,7 +15,16 @@ export default function WorkoutView({ user, onClose }) {
   const [logs,        setLogs]        = useState({});
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState({});
+  const [videoByName, setVideoByName] = useState({});
   const today = todayStr();
+
+  useEffect(() => {
+    pb.collection("exercises").getFullList({ requestKey: null }).then(list => {
+      const map = {};
+      list.forEach(e => { if (e.video_url) map[e.name] = e.video_url; });
+      setVideoByName(map);
+    }).catch(() => {});
+  }, []);
 
   // Krauti aktyvų planą
   useEffect(() => {
@@ -149,25 +159,24 @@ export default function WorkoutView({ user, onClose }) {
                 {exercises.map(ex => {
                   const isDone = logs[ex.id]?.is_done;
                   const isSav  = saving[ex.id];
+                  const videoUrl = videoByName[ex.exercise_name];
                   return (
                     <div key={ex.id} style={{background:isDone?"rgba(127,255,176,0.1)":"rgba(255,255,255,0.08)",borderRadius:16,padding:"14px 16px",border:`1px solid ${isDone?"rgba(127,255,176,0.4)":"rgba(255,255,255,0.12)"}`,transition:"all 0.2s"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div style={{flex:1}}>
-                          <p style={{fontSize:14,fontWeight:700,color:isDone?"#7FFFB0":"#fff",margin:"0 0 4px",textDecoration:isDone?"line-through":"none",opacity:isDone?0.8:1}}>{ex.exercise_name}</p>
-                          <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",gap:5}}>
-                            {ex.category==="cardio"
-                              ? <><Timer size={12} />{`${ex.duration_min||"–"} min`}</>
-                              : ex.set_weights
-                                ? (() => { try { const ws=JSON.parse(ex.set_weights); return `${ex.sets||"–"} ser. × ${ex.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${ex.sets||"–"} × ${ex.reps||"–"}`; } })()
-                                : `${ex.sets||"–"} serijos × ${ex.reps||"–"} kartojimai${ex.weight_kg?` · ${ex.weight_kg} kg`:""}`
-                            }
-                          </p>
+                          <p style={{fontSize:14,fontWeight:700,color:isDone?"#7FFFB0":"#fff",margin:"0 0 6px",textDecoration:isDone?"line-through":"none",opacity:isDone?0.8:1}}>{ex.exercise_name}</p>
+                          <ExerciseSummary ex={ex} />
                         </div>
                         <button onClick={()=>!isSav&&!isDone&&markDone(ex)}
                           style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${isDone?"#7FFFB0":"rgba(255,255,255,0.3)"}`,background:isDone?"rgba(127,255,176,0.2)":"transparent",color:isDone?"#7FFFB0":"rgba(255,255,255,0.5)",fontSize:18,cursor:isDone?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s",animation:isDone?"popIn 0.4s cubic-bezier(.23,1,.32,1) both":"none"}}>
                           {isSav?"⋯":isDone?<Check size={16} />:"○"}
                         </button>
                       </div>
+                      {videoUrl && (
+                        <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:10,padding:"6px 12px",borderRadius:10,background:"rgba(137,207,240,0.14)",color:"#89CFF0",fontSize:12,fontWeight:700,textDecoration:"none"}}>
+                          <PlayCircle size={13} />Žiūrėti kaip atlikti
+                        </a>
+                      )}
                     </div>
                   );
                 })}

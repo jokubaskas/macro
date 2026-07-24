@@ -416,6 +416,13 @@ export function Dot({ size = "0.6em", color = "currentColor", style }) {
   return <span style={{ display:"inline-block", width:size, height:size, borderRadius:"50%", background:color, flexShrink:0, ...style }} />;
 }
 
+export function PlayCircle(props) {
+  return <IconBase {...props}>
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M10 8.5l6 3.5-6 3.5v-7Z"/>
+  </IconBase>;
+}
+
 export function Eye(props) {
   return <IconBase {...props}>
     <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>
