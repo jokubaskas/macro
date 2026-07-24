@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
-import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, ChevronRight, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -504,7 +504,7 @@ function RecurringSlotsSettings({ onClose }) {
 // ── Treniruočių kalendorius (admin) ───────────────────────────────────────────
 // Rodo mėnesio tinklelį — dienos su patvirtintomis treniruotėmis pažymėtos,
 // paspaudus dieną matoma visų tos dienos treniruočių (klientų) apžvalga.
-function TrainerCalendar({ bookings, clients, onClose }) {
+function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
   const [calMonth, setCalMonth] = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
   const [selectedDate, setSelectedDate] = useState(null);
   const today = todayStr();
@@ -577,7 +577,14 @@ function TrainerCalendar({ bookings, clients, onClose }) {
               dayBookings.map(b => (
                 <div key={b.id} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
-                    <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{clients[b.client_id]?.name||"Nežinomas"}</p>
+                    {clients[b.client_id] && onOpenClient ? (
+                      <button onClick={()=>onOpenClient(clients[b.client_id])} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{clients[b.client_id].name}</span>
+                        <ChevronRight size={10} color="#89CFF0" />
+                      </button>
+                    ) : (
+                      <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{clients[b.client_id]?.name||"Nežinomas"}</p>
+                    )}
                     {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0,fontStyle:"italic"}}>"{b.notes}"</p>}
                   </div>
                   <span style={{fontSize:12,fontWeight:700,color:"#7FFFB0",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Timer size={12} />{b.start_time}–{b.end_time}</span>
@@ -592,7 +599,7 @@ function TrainerCalendar({ bookings, clients, onClose }) {
 }
 
 // ── Rezervacijų sąrašas (admin) ───────────────────────────────────────────────
-export default function BookingAdmin({ onClose }) {
+export default function BookingAdmin({ onClose, onOpenClient }) {
   const [view, setView]           = useState("list"); // list | schedule | recurring | calendar
   const [bookings, setBookings]   = useState([]);
   const [clients, setClients]     = useState({});
@@ -649,7 +656,7 @@ export default function BookingAdmin({ onClose }) {
 
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
   if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
-  if (view === "calendar") return <TrainerCalendar bookings={bookings} clients={clients} onClose={()=>setView("list")} />;
+  if (view === "calendar") return <TrainerCalendar bookings={bookings} clients={clients} onClose={()=>setView("list")} onOpenClient={onOpenClient} />;
 
   const today = todayStr();
   const statusFiltered = bookings.filter(b => filter==="all" || b.status===filter);
@@ -708,7 +715,14 @@ export default function BookingAdmin({ onClose }) {
             <div key={b.id} style={{background:STATUS_COLOR[b.status]||"rgba(255,255,255,0.08)",borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid rgba(255,255,255,0.12)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div>
-                  <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{client?.name||"Nežinomas"}</p>
+                  {client && onOpenClient ? (
+                    <button onClick={()=>onOpenClient(client)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
+                      <span style={{fontSize:14,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{client.name}</span>
+                      <ChevronRight size={11} color="#89CFF0" />
+                    </button>
+                  ) : (
+                    <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{client?.name||"Nežinomas"}</p>
+                  )}
                   <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:0,display:"flex",alignItems:"center",gap:5}}>
                     <Calendar size={11} />{b.date} · <Timer size={11} />{b.start_time}–{b.end_time}
                   </p>

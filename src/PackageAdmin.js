@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { pb } from "./pb";
 import { computeBaseValidUntil, effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
-import { ChevronLeft, Ticket, Close, Check, Calendar, AlertTriangle } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Ticket, Close, Check, Calendar, AlertTriangle } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 const PACKAGES = {
@@ -10,7 +10,7 @@ const PACKAGES = {
   "16": { label:"16 treniruočių", total:16 },
 };
 
-export default function PackageAdmin({ onClose }) {
+export default function PackageAdmin({ onClose, onOpenClient }) {
   const [pending,  setPending]  = useState([]);
   const [approved, setApproved] = useState([]);
   const [clients,  setClients]  = useState({});
@@ -114,7 +114,14 @@ export default function PackageAdmin({ onClose }) {
             <div key={pkg.id} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px", marginBottom:10 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
                 <div>
-                  <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
+                  {client && onOpenClient ? (
+                    <button onClick={()=>onOpenClient(client)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
+                      <span style={{fontSize:14,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{client.name}</span>
+                      <ChevronRight size={11} color="#89CFF0" />
+                    </button>
+                  ) : (
+                    <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
+                  )}
                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0 }}>{pkgInfo?.label}</p>
                 </div>
               </div>
@@ -139,7 +146,14 @@ export default function PackageAdmin({ onClose }) {
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
                 <div>
-                  <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
+                  {client && onOpenClient ? (
+                    <button onClick={()=>onOpenClient(client)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
+                      <span style={{fontSize:14,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{client.name}</span>
+                      <ChevronRight size={11} color="#89CFF0" />
+                    </button>
+                  ) : (
+                    <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{client?.name || "–"}</p>
+                  )}
                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0 }}>{item.count} {item.count===1?"paketas":"paketai"}</p>
                 </div>
                 <div style={{ textAlign:"right" }}>

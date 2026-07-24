@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { resolveMacroTargets } from "./macroCalc";
-import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, BarChart, Users, Glass, Flame } from "./ui/icons";
+import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, ChevronRight, BarChart, Users, Glass, Flame } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -77,7 +77,7 @@ function StatCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
   );
 }
 
-function ClientRow({ client, stats }) {
+function ClientRow({ client, stats, onOpenClient }) {
   const pct = stats.checkinDays ? Math.round((stats.checkinDays / stats.totalDays) * 100) : 0;
   const barColor = pct >= 70 ? "#7FFFB0" : pct >= 40 ? "#FFD700" : "#FF8888";
   const sleepColor = stats.avgSleep == null ? "rgba(255,255,255,0.5)"
@@ -94,7 +94,14 @@ function ClientRow({ client, stats }) {
   return (
     <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-        <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{client.name}</span>
+        {onOpenClient ? (
+          <button onClick={()=>onOpenClient(client)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{client.name}</span>
+            <ChevronRight size={10} color="#89CFF0" />
+          </button>
+        ) : (
+          <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{client.name}</span>
+        )}
         <span style={{ fontSize:11, fontWeight:700, color:barColor }}>{pct}%</span>
       </div>
       <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5, marginBottom:8 }}>
@@ -126,7 +133,7 @@ function ClientRow({ client, stats }) {
   );
 }
 
-export default function TrainerStats({ onClose }) {
+export default function TrainerStats({ onClose, onOpenClient }) {
   const [period, setPeriod]     = useState(7);
   const [loading, setLoading]   = useState(true);
   const [clients, setClients]   = useState([]);
@@ -295,7 +302,7 @@ export default function TrainerStats({ onClose }) {
                 ) : (
                   <>
                     {filteredClients.slice(0, visibleClients).map(c => (
-                      <ClientRow key={c.id} client={c} stats={clientStats[c.id] || { totalDays:period, checkinDays:0 }} />
+                      <ClientRow key={c.id} client={c} stats={clientStats[c.id] || { totalDays:period, checkinDays:0 }} onOpenClient={onOpenClient} />
                     ))}
                     <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
                   </>

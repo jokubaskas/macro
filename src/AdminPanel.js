@@ -13,7 +13,7 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
-import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad } from "./ui/icons";
+import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad, Timer } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
 
 const BDAY_KEYFRAMES = `
@@ -842,6 +842,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [adminBadges, setAdminBadges]   = useState({ bookings:0, packages:0 });
   const [pkgSummary,  setPkgSummary]    = useState({});
   const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
+  const [todaySessions, setTodaySessions] = useState([]);
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
   const [refreshing, setRefreshing] = useState(false);
@@ -900,8 +901,9 @@ export default function AdminPanel({ user, onLogout }) {
     // Šiandienos rezervacijos
     const today = todayStr();
     pb.collection("bookings").getFullList({ filter:`date="${today}"`, requestKey:null }).catch(()=>[]).then(bks => {
-      const todayBookings = bks.filter(b => b.status === "approved").length;
-      setDashExtra(d => ({ ...d, todayBookings }));
+      const approvedToday = bks.filter(b => b.status === "approved").sort((a,b) => (a.start_time||"").localeCompare(b.start_time||""));
+      setDashExtra(d => ({ ...d, todayBookings: approvedToday.length }));
+      setTodaySessions(approvedToday);
     });
   }, []);
 
@@ -946,6 +948,42 @@ export default function AdminPanel({ user, onLogout }) {
 
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
           <PushPermissionPrompt userId={user.id} />
+
+          {(todaySessions.length > 0 || adminBadges.bookings > 0 || adminBadges.packages > 0) && (
+            <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 18, padding: "14px 16px", marginBottom: 16, border: "1px solid rgba(255,255,255,0.12)" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 10px" }}>Šiandien</p>
+              {todaySessions.length === 0 ? (
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 10px" }}>Šiandien treniruočių nėra</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: (adminBadges.bookings > 0 || adminBadges.packages > 0) ? 10 : 0 }}>
+                  {todaySessions.map(b => {
+                    const c = clients.find(cl => cl.id === b.client_id);
+                    return (
+                      <button key={b.id} onClick={() => c && setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#7FFFB0", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><Timer size={11} />{b.start_time}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c?.name || "Klientas"}</span>
+                        {c && <ChevronRight size={13} color="rgba(255,255,255,0.4)" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {(adminBadges.bookings > 0 || adminBadges.packages > 0) && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  {adminBadges.bookings > 0 && (
+                    <button onClick={() => openAdminTab("bookings")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.08)", color: "#FFD700", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                      <AlertTriangle size={12} />{adminBadges.bookings} rezervacij{adminBadges.bookings === 1 ? "a" : "os"} laukia
+                    </button>
+                  )}
+                  {adminBadges.packages > 0 && (
+                    <button onClick={() => openAdminTab("packages")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.08)", color: "#FFD700", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                      <AlertTriangle size={12} />{adminBadges.packages} paket{adminBadges.packages === 1 ? "as" : "ai"} laukia
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
@@ -1046,10 +1084,10 @@ export default function AdminPanel({ user, onLogout }) {
       </div>
 
       {/* Overlay langai */}
-      {showBookings && <BookingAdmin onClose={() => setShowBookings(false)} />}
-      {showStats    && <TrainerStats onClose={() => setShowStats(false)} />}
+      {showBookings && <BookingAdmin onClose={() => setShowBookings(false)} onOpenClient={setOpenClient} />}
+      {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
       {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
-      {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} />}
+      {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
     </div>
   );
 }
