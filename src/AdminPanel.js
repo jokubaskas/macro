@@ -644,7 +644,7 @@ function ClientDetail({ client, onClose }) {
   const doneCount = planExercises.filter(ex => workoutLogs[ex.id]?.is_done).length;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showPlanBuilder && (
         <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); reloadPlans(); }} />
       )}
@@ -909,8 +909,6 @@ export default function AdminPanel({ user, onLogout }) {
 
   useEffect(() => { loadClients(); }, [loadClients]);
 
-  if (openClient) return <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />;
-
   if (view === "new") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "max(env(safe-area-inset-top), 16px) 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -1088,6 +1086,11 @@ export default function AdminPanel({ user, onLogout }) {
       {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
       {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
       {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
+
+      {/* Kliento profilis — virš kitų overlay langų (700 > 500), kad atidarius klientą
+          iš Rezervacijų/Paketų/Statistikos, uždarius jį grįžtume į TĄ PATĮ ekraną su
+          išsaugotais filtrais/paieška, o ne į iš naujo užkrautą pradinę būseną. */}
+      {openClient && <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />}
     </div>
   );
 }
