@@ -644,7 +644,7 @@ function ClientDetail({ client, onClose }) {
   const doneCount = planExercises.filter(ex => workoutLogs[ex.id]?.is_done).length;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1150, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showPlanBuilder && (
         <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); reloadPlans(); }} />
       )}
