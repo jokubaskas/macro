@@ -39,7 +39,7 @@ export default function ResetPassword({ token }) {
     outline:"none", fontFamily:"inherit", WebkitAppearance:"none",
   };
   const lbl = { display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:6 };
-  const eyeBtn = { position:"absolute", right:4, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"rgba(255,255,255,0.5)", cursor:"pointer", padding:8, display:"flex" };
+  const eyeBtn = { position:"absolute", right:4, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#B47AFF", cursor:"pointer", padding:8, display:"flex" };
 
   return (
     <div style={{
