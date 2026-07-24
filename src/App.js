@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import Login from "./Login";
+import ResetPassword from "./ResetPassword";
 import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
 import Onboarding from "./Onboarding";
@@ -12,6 +13,7 @@ export default function App() {
   const [profile,      setProfile] = useState(null);
   const [loading,      setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const resetToken = new URLSearchParams(window.location.search).get("token");
 
   useEffect(() => {
     if (pb.authStore.isValid) {
@@ -39,6 +41,8 @@ export default function App() {
   function handleDateChange(v) {
     setSelectedDate(v === "today" || !v ? new Date().toISOString().split("T")[0] : v);
   }
+
+  if (resetToken) return <ResetPassword token={resetToken} />;
 
   if (loading) return <LoadingScreen background="#FFF0F5" textColor="#F48FB1" />;
 

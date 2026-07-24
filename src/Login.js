@@ -1,12 +1,15 @@
 import { useState, useRef } from "react";
 import { pb } from "./pb";
 import { PK } from "./constants";
+import { Eye, EyeOff } from "./ui/icons";
 
 export default function Login() {
-  const [mode,      setMode]      = useState("login");
+  const [mode,      setMode]      = useState("login"); // "login" | "register" | "forgot"
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState("");
   const [success,   setSuccess]   = useState("");
+  const [showPw,    setShowPw]    = useState(false);
+  const [showPw2,   setShowPw2]   = useState(false);
 
   // Laukai laikomi "nekontroliuojami" (native DOM, ne React value/onChange),
   // kad kiekvienas simbolis nekeltų React re-render — tai galėjo trukdyti
@@ -61,6 +64,20 @@ export default function Login() {
     setLoading(false);
   }
 
+  async function handleForgotPassword(e) {
+    e.preventDefault();
+    setLoading(true); setError(""); setSuccess("");
+    const email = emailRef.current.value;
+    if (!email.trim()) { setError("Įveskite el. paštą."); setLoading(false); return; }
+    try {
+      await pb.collection("users").requestPasswordReset(email.trim());
+      setSuccess("Jei toks el. paštas registruotas, atsiuntėme nuorodą slaptažodžiui atstatyti — patikrinkite savo paštą.");
+    } catch (err) {
+      setError(err.response?.message || "Nepavyko išsiųsti. Bandykite dar kartą vėliau.");
+    }
+    setLoading(false);
+  }
+
   const inp = {
     width:"100%", padding:"13px 14px",
     border:"1.5px solid rgba(255,255,255,0.2)", borderRadius:14,
@@ -69,6 +86,7 @@ export default function Login() {
     transition:"border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease",
   };
   const lbl = { display:"block", fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(255,255,255,0.75)", marginBottom:6 };
+  const eyeBtn = { position:"absolute", right:4, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"rgba(255,255,255,0.5)", cursor:"pointer", padding:8, display:"flex" };
 
   return (
     <div style={{
@@ -87,12 +105,12 @@ export default function Login() {
         <img src="/logo.png" alt="Coach Vilma" style={{ width:90, height:90, objectFit:"contain", borderRadius:18, marginBottom:14 }} />
         <h1 style={{ fontSize:22, fontWeight:700, color:"#fff", marginBottom:4 }}>Coach Vilma</h1>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)", transition:"opacity 0.2s ease" }} key={mode + "-sub"}>
-          {mode === "login" ? "Prisijunkite prie savo paskyros" : "Sukurkite naują paskyrą"}
+          {mode === "login" ? "Prisijunkite prie savo paskyros" : mode === "register" ? "Sukurkite naują paskyrą" : "Atstatykite slaptažodį"}
         </p>
       </div>
 
       <div style={{ width:"100%", maxWidth:400, background:"rgba(255,255,255,0.06)", borderRadius:24, padding:"28px 24px", border:"1px solid rgba(255,255,255,0.12)", animation:"fadeInUp 0.5s ease-out 0.1s both" }}>
-        <form onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        <form onSubmit={mode === "login" ? handleLogin : mode === "register" ? handleRegister : handleForgotPassword} style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {mode === "register" && (
             <div className="login-field" style={{ animationDelay:"0.03s" }}>
               <label style={lbl} htmlFor="login-name">Vardas Pavardė</label>
@@ -103,14 +121,32 @@ export default function Login() {
             <label style={lbl} htmlFor="login-email">El. paštas</label>
             <input id="login-email" ref={emailRef} className="login-inp" style={inp} type="text" inputMode="email" name="username" autoComplete="username" defaultValue="" placeholder="el.pastas@gmail.com" />
           </div>
-          <div className="login-field" style={{ animationDelay:"0.1s" }}>
-            <label style={lbl} htmlFor="login-password">Slaptažodis</label>
-            <input id="login-password" ref={passwordRef} className="login-inp" style={inp} type="password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} defaultValue="" placeholder="min. 6 simboliai" />
-          </div>
+          {mode !== "forgot" && (
+            <div className="login-field" style={{ animationDelay:"0.1s" }}>
+              <label style={lbl} htmlFor="login-password">Slaptažodis</label>
+              <div style={{ position:"relative" }}>
+                <input id="login-password" ref={passwordRef} className="login-inp" style={{...inp, paddingRight:44}} type={showPw ? "text" : "password"} name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} defaultValue="" placeholder="min. 6 simboliai" />
+                <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeBtn} aria-label={showPw ? "Slėpti slaptažodį" : "Rodyti slaptažodį"}>
+                  {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            </div>
+          )}
+          {mode === "login" && (
+            <button type="button" onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
+              style={{ alignSelf:"flex-end", marginTop:-10, background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer", fontFamily:"inherit", textDecoration:"underline" }}>
+              Pamiršote slaptažodį?
+            </button>
+          )}
           {mode === "register" && (
             <div className="login-field" style={{ animationDelay:"0.13s" }}>
               <label style={lbl} htmlFor="login-password2">Pakartokite slaptažodį</label>
-              <input id="login-password2" ref={password2Ref} className="login-inp" style={inp} type="password" name="password2" autoComplete="new-password" defaultValue="" placeholder="pakartokite slaptažodį" />
+              <div style={{ position:"relative" }}>
+                <input id="login-password2" ref={password2Ref} className="login-inp" style={{...inp, paddingRight:44}} type={showPw2 ? "text" : "password"} name="password2" autoComplete="new-password" defaultValue="" placeholder="pakartokite slaptažodį" />
+                <button type="button" onClick={()=>setShowPw2(v=>!v)} style={eyeBtn} aria-label={showPw2 ? "Slėpti slaptažodį" : "Rodyti slaptažodį"}>
+                  {showPw2 ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -124,15 +160,22 @@ export default function Login() {
             transition:"opacity 0.2s ease",
           }}>
             {loading && <span style={{ width:16, height:16, borderRadius:"50%", border:"2.5px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", animation:"loginSpin 0.7s linear infinite" }} />}
-            {loading ? "" : mode === "login" ? "Prisijungti" : "Registruotis"}
+            {loading ? "" : mode === "login" ? "Prisijungti" : mode === "register" ? "Registruotis" : "Siųsti nuorodą"}
           </button>
         </form>
 
         <div style={{ textAlign:"center", marginTop:20 }}>
-          <button onClick={() => { setMode(m => m === "login" ? "register" : "login"); setError(""); setSuccess(""); }}
-            style={{ background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-            {mode === "login" ? "Neturite paskyros? Registruokitės" : "Jau turite paskyrą? Prisijunkite"}
-          </button>
+          {mode === "forgot" ? (
+            <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+              style={{ background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+              Atgal į prisijungimą
+            </button>
+          ) : (
+            <button onClick={() => { setMode(m => m === "login" ? "register" : "login"); setError(""); setSuccess(""); }}
+              style={{ background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+              {mode === "login" ? "Neturite paskyros? Registruokitės" : "Jau turite paskyrą? Prisijunkite"}
+            </button>
+          )}
         </div>
       </div>
     </div>
