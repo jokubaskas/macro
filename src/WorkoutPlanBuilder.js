@@ -229,11 +229,12 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
               )}
             </div>
             {lastEx && (
-              <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
-                <Timer size={13} color="#FFD700" style={{flexShrink:0}} />
-                <p style={{fontSize:11,color:"#FFD700",margin:0,lineHeight:1.4}}>
-                  Praeitą kartą ({lastEx.date?.slice(0,10)}): {lastEx.category==="cardio" ? `${lastEx.duration_min||"–"} min` : lastEx.set_weights ? (() => { try { const ws=JSON.parse(lastEx.set_weights); return `${lastEx.sets||"–"}×${lastEx.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${lastEx.sets||"–"}×${lastEx.reps||"–"}`; } })() : `${lastEx.sets||"–"}×${lastEx.reps||"–"}${lastEx.weight_kg?` · ${lastEx.weight_kg}kg`:""}`} — reikšmės jau įrašytos žemiau, koreguokite jei reikia.
+              <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+                <p style={{fontSize:11,color:"#FFD700",margin:"0 0 7px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                  <Timer size={12} />Praeitą kartą ({lastEx.date?.slice(0,10)})
                 </p>
+                <ExerciseSummary ex={lastEx} />
+                <p style={{fontSize:10,color:"rgba(255,215,0,0.6)",margin:"7px 0 0"}}>Reikšmės jau įrašytos žemiau, koreguokite jei reikia.</p>
               </div>
             )}
             {isCardio?(
@@ -354,11 +355,11 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
           <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{exercise.muscle}</p>
         </div>
         {lastEx && (
-          <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
-            <Timer size={13} color="#FFD700" style={{flexShrink:0}} />
-            <p style={{fontSize:11,color:"#FFD700",margin:0,lineHeight:1.4}}>
-              Praeitą kartą ({lastEx.date?.slice(0,10)}): {lastEx.category==="cardio" ? `${lastEx.duration_min||"–"} min` : lastEx.set_weights ? (() => { try { const ws=JSON.parse(lastEx.set_weights); return `${lastEx.sets||"–"}×${lastEx.reps||"–"} · ${ws.map((w,i)=>`S${i+1}:${w}kg`).join(" ")}`; } catch { return `${lastEx.sets||"–"}×${lastEx.reps||"–"}`; } })() : `${lastEx.sets||"–"}×${lastEx.reps||"–"}${lastEx.weight_kg?` · ${lastEx.weight_kg}kg`:""}`}
+          <div style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+            <p style={{fontSize:11,color:"#FFD700",margin:"0 0 7px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+              <Timer size={12} />Praeitą kartą ({lastEx.date?.slice(0,10)})
             </p>
+            <ExerciseSummary ex={lastEx} />
           </div>
         )}
         {isCardio ? (

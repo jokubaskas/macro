@@ -843,6 +843,12 @@ export default function AdminPanel({ user, onLogout }) {
   const [pkgSummary,  setPkgSummary]    = useState({});
   const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
   const [todaySessions, setTodaySessions] = useState([]);
+  const [nowTime, setNowTime] = useState(() => new Date().toTimeString().slice(0,5));
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTime(new Date().toTimeString().slice(0,5)), 60000);
+    return () => clearInterval(t);
+  }, []);
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
   const [refreshing, setRefreshing] = useState(false);
@@ -947,19 +953,32 @@ export default function AdminPanel({ user, onLogout }) {
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
           <PushPermissionPrompt userId={user.id} />
 
-          {(todaySessions.length > 0 || adminBadges.bookings > 0 || adminBadges.packages > 0) && (
+          {(() => {
+            const upcoming = todaySessions.filter(b => (b.end_time || b.start_time) >= nowTime);
+            const showCard = upcoming.length > 0 || adminBadges.bookings > 0 || adminBadges.packages > 0;
+            if (!showCard) return null;
+            return (
             <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 18, padding: "14px 16px", marginBottom: 16, border: "1px solid rgba(255,255,255,0.12)" }}>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 10px" }}>Šiandien</p>
-              {todaySessions.length === 0 ? (
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 10px" }}>Šiandien treniruočių nėra</p>
+              {upcoming.length === 0 ? (
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 10px" }}>
+                  {todaySessions.length > 0 ? "Šiandienos treniruotės baigtos" : "Šiandien treniruočių nėra"}
+                </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: (adminBadges.bookings > 0 || adminBadges.packages > 0) ? 10 : 0 }}>
-                  {todaySessions.map(b => {
+                  {upcoming.map(b => {
                     const c = clients.find(cl => cl.id === b.client_id);
+                    const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
                     return (
-                      <button key={b.id} onClick={() => c && setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#7FFFB0", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><Timer size={11} />{b.start_time}</span>
+                      <button key={b.id} onClick={() => c && setOpenClient(c)} style={{
+                        display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
+                        background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
+                        border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
+                      }}>
+                        {isOngoing && <Dot color="#7FFFB0" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite", flexShrink:0 }} />}
+                        <span style={{ fontSize: 11, fontWeight: 700, color: isOngoing ? "#7FFFB0" : "rgba(255,255,255,0.5)", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><Timer size={11} />{b.start_time}</span>
                         <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c?.name || "Klientas"}</span>
+                        {isOngoing && <span style={{ fontSize:9, fontWeight:800, color:"#7FFFB0", background:"rgba(127,255,176,0.18)", borderRadius:20, padding:"2px 7px", letterSpacing:"0.04em", flexShrink:0 }}>VYKSTA</span>}
                         {c && <ChevronRight size={13} color="rgba(255,255,255,0.4)" />}
                       </button>
                     );
@@ -981,7 +1000,8 @@ export default function AdminPanel({ user, onLogout }) {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
