@@ -12,7 +12,7 @@ import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Moon, Droplet, Camera, TrendingUp, Cake, Sparkle, Check, Refresh, Close } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Camera, TrendingUp, Cake, Sparkle, Refresh, Close } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
@@ -20,8 +20,41 @@ function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
 function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
 
-// ── Savaitės apžvalgos juosta ─────────────────────────────────────────────────
-function WeeklyRecap({ userId }) {
+// ── Savaitės apžvalgos kortelė ────────────────────────────────────────────────
+function DayDot({ done, isToday }) {
+  return (
+    <span style={{
+      display:"inline-block", width: isToday ? 11 : 9, height: isToday ? 11 : 9, borderRadius:"50%",
+      background: done ? "#7FFFB0" : "rgba(255,255,255,0.15)",
+      border: isToday ? "1.5px solid #fff" : "none",
+      boxShadow: done ? "0 0 7px rgba(127,255,176,0.65)" : "none",
+      transition:"all 0.2s",
+    }} />
+  );
+}
+
+function MiniRing({ pct, color, label, size = 44 }) {
+  const r = (size - 6) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
+  const dash = (Math.min(100, Math.max(0, pct || 0)) / 100) * C;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+      <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:"rotate(-90deg)" }}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="4.5" />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="4.5" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={C - dash}
+            style={{ transition:"stroke-dashoffset 0.7s cubic-bezier(.23,1,.32,1)" }} />
+        </svg>
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color }}>
+          {Math.round(pct)}%
+        </div>
+      </div>
+      <span style={{ fontSize:9, color:"rgba(255,255,255,0.5)", fontWeight:600 }}>{label}</span>
+    </div>
+  );
+}
+
+function WeeklyRecap({ userId, waterGoal }) {
   const [data, setData] = useState(null); // null = kraunama/nėra ką rodyti, false = nėra duomenų
 
   useEffect(() => {
@@ -39,7 +72,7 @@ function WeeklyRecap({ userId }) {
       ]);
       if (cancelled) return;
 
-      const thisWeekCheckins = checkins.filter(c => inRange(c.date, weekStart, today)).length;
+      const doneDates = new Set(checkins.map(c => c.date));
       const thisWeekWater = waters.filter(w => inRange(w.date, weekStart, today));
       const prevWeekWater = waters.filter(w => inRange(w.date, prevStart, prevEnd));
       const thisWeekSleep = sleeps.filter(s => inRange(s.date, weekStart, today) && s.hours_slept).map(s => s.hours_slept);
@@ -57,8 +90,11 @@ function WeeklyRecap({ userId }) {
         else { const diff = avgSleepThis - avgSleepPrev; sleepTrend = Math.abs(diff) < 0.4 ? "stable" : diff > 0 ? "up" : "down"; }
       }
 
-      const hasData = thisWeekCheckins > 0 || thisWeekWater.length > 0 || thisWeekSleep.length > 0;
-      setData(hasData ? { checkins: thisWeekCheckins, waterChangePct, avgWaterThis, sleepTrend } : false);
+      const last7 = Array.from({ length:7 }, (_,i) => daysAgoStr(6-i));
+      const checkinCount = last7.filter(d => doneDates.has(d)).length;
+
+      const hasData = checkinCount > 0 || thisWeekWater.length > 0 || thisWeekSleep.length > 0;
+      setData(hasData ? { last7, doneDates, checkinCount, waterChangePct, avgWaterThis, avgSleepThis, sleepTrend } : false);
     }
     load();
     return () => { cancelled = true; };
@@ -66,29 +102,38 @@ function WeeklyRecap({ userId }) {
 
   if (!data) return null;
 
-  const parts = [];
-  if (data.waterChangePct != null) {
-    parts.push({ Icon:Droplet, text:`vanduo ${data.waterChangePct>0?"+":""}${data.waterChangePct}%`, color: data.waterChangePct>=0?"#7FFFB0":"#FF8888" });
-  } else if (data.avgWaterThis != null) {
-    parts.push({ Icon:Droplet, text:`vanduo ${(data.avgWaterThis/1000).toFixed(1)}L/d.`, color:"#6EC6FF" });
-  }
-  if (data.sleepTrend) {
-    const label = data.sleepTrend==="stable" ? "miegas stabilus" : data.sleepTrend==="up" ? "miegas gerėja" : data.sleepTrend==="down" ? "miegas prastėja" : "miegas sekamas";
-    parts.push({ Icon:Moon, text:label, color: data.sleepTrend==="up"?"#7FFFB0":data.sleepTrend==="down"?"#FF8888":"#B39DFF" });
-  }
-  parts.push({ Icon:Check, text:`${data.checkins}/7 check-in`, color: data.checkins>=5?"#7FFFB0":"rgba(255,255,255,0.75)" });
+  const DOW = ["P","A","T","K","P","Š","S"];
+  const today = todayStr();
+  const checkinPct = Math.round(data.checkinCount / 7 * 100);
+  const checkinColor = checkinPct >= 70 ? "#7FFFB0" : checkinPct >= 40 ? "#FFD700" : "#FF8888";
+  const waterPct = data.avgWaterThis != null ? Math.round(Math.min(100, data.avgWaterThis / (waterGoal || 2000) * 100)) : null;
+  const waterColor = data.waterChangePct != null ? (data.waterChangePct >= 0 ? "#7FFFB0" : "#FF8888") : "#6EC6FF";
+  const sleepPct = data.avgSleepThis != null ? Math.round(Math.min(100, data.avgSleepThis / 8 * 100)) : null;
+  const sleepColor = data.sleepTrend === "up" ? "#7FFFB0" : data.sleepTrend === "down" ? "#FF8888" : "#B39DFF";
 
   return (
     <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
-      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 10px", display:"flex", alignItems:"center", gap:6 }}>
+      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 12px", display:"flex", alignItems:"center", gap:6 }}>
         <Sparkle size={12} />Savaitės apžvalga
       </p>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-        {parts.map((p, i) => (
-          <span key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:700, color:p.color, background:"rgba(255,255,255,0.06)", borderRadius:99, padding:"6px 12px" }}>
-            <p.Icon size={12} />{p.text}
-          </span>
+
+      {/* 7 dienų check-in juostelė */}
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:16, padding:"0 4px" }}>
+        {data.last7.map(d => (
+          <div key={d} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+            <span style={{ fontSize:9, color: d===today ? "#fff" : "rgba(255,255,255,0.35)", fontWeight: d===today ? 700 : 400 }}>
+              {DOW[(new Date(d+"T12:00:00").getDay()+6)%7]}
+            </span>
+            <DayDot done={data.doneDates.has(d)} isToday={d===today} />
+          </div>
         ))}
+      </div>
+
+      {/* Mini žiedai */}
+      <div style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
+        <MiniRing pct={checkinPct} color={checkinColor} label="Check-in" />
+        {waterPct != null && <MiniRing pct={waterPct} color={waterColor} label="Vanduo" />}
+        {sleepPct != null && <MiniRing pct={sleepPct} color={sleepColor} label="Miegas" />}
       </div>
     </div>
   );
@@ -381,7 +426,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         )}
 
         {/* Savaitės apžvalga */}
-        {isToday && profile?.track_progress && <WeeklyRecap userId={user.id} />}
+        {isToday && profile?.track_progress && <WeeklyRecap userId={user.id} waterGoal={waterGoal} />}
 
         {/* Push pranešimai */}
         <PushPermissionPrompt userId={user.id} />
