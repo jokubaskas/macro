@@ -91,7 +91,7 @@ function AdminCancelButton({ booking, clientName, onCancelled }) {
   );
 }
 
-function downloadIcal(booking, clientName) {
+export function downloadIcal(booking, clientName) {
   const dt = booking.date.replace(/-/g,"");
   const startDt = dt + "T" + booking.start_time.replace(":","") + "00";
   const endDt   = dt + "T" + booking.end_time.replace(":","") + "00";

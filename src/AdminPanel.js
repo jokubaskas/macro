@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS, daysUntilBirthday } from "./constants";
 import WorkoutPlanBuilder, { ExerciseSummary } from "./WorkoutPlanBuilder";
-import BookingAdmin from "./BookingAdmin";
+import BookingAdmin, { downloadIcal } from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
 import ProgressCompare from "./ProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
@@ -843,6 +843,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [pkgSummary,  setPkgSummary]    = useState({});
   const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
   const [todaySessions, setTodaySessions] = useState([]);
+  const [notInCalendar, setNotInCalendar] = useState([]);
   const [nowTime, setNowTime] = useState(() => new Date().toTimeString().slice(0,5));
 
   useEffect(() => {
@@ -864,6 +865,13 @@ export default function AdminPanel({ user, onLogout }) {
     setShowStats(tab === "stats");
     setShowPresets(tab === "presets");
     setShowPackages(tab === "packages");
+  }
+
+  async function handleAddToCalendar(booking) {
+    const clientName = clients.find(c => c.id === booking.client_id)?.name || "Klientas";
+    downloadIcal(booking, clientName);
+    await pb.collection("bookings").update(booking.id, { added_to_calendar: true }).catch(() => {});
+    setNotInCalendar(prev => prev.filter(b => b.id !== booking.id));
   }
 
   const activeAdminTab = showBookings ? "bookings"
@@ -911,6 +919,9 @@ export default function AdminPanel({ user, onLogout }) {
       setDashExtra(d => ({ ...d, todayBookings: approvedToday.length }));
       setTodaySessions(approvedToday);
     });
+    // Patvirtintos rezervacijos, dar nepridėtos į trenerės asmeninį kalendorių —
+    // kad nė viena nepasimestų, o ne reikėtų kaskart pačiai eiti tikrinti sąrašo.
+    pb.collection("bookings").getFullList({ filter:'status="approved" && added_to_calendar=false', sort:"date,start_time", requestKey:null }).catch(()=>[]).then(setNotInCalendar);
   }, []);
 
   useEffect(() => { loadClients(); }, [loadClients]);
@@ -1003,6 +1014,35 @@ export default function AdminPanel({ user, onLogout }) {
             );
           })()}
 
+          {notInCalendar.length > 0 && (
+            <div style={{ background: "rgba(110,198,255,0.08)", border: "1px solid rgba(110,198,255,0.25)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6EC6FF", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                <Calendar size={11} />Nepridėta į kalendorių ({notInCalendar.length})
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {notInCalendar.slice(0, 5).map(b => {
+                  const c = clients.find(cl => cl.id === b.client_id);
+                  return (
+                    <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "8px 10px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", margin: "0 0 1px" }}>{c?.name || "Klientas"}</p>
+                        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", margin: 0 }}>{b.date?.slice(0,10)} · {b.start_time}–{b.end_time}</p>
+                      </div>
+                      <button onClick={() => handleAddToCalendar(b)} style={{ flexShrink: 0, background: "#2F8FE0", border: "none", borderRadius: 9, padding: "7px 11px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                        <Calendar size={11} />Pridėti
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {notInCalendar.length > 5 && (
+                <button onClick={() => openAdminTab("bookings")} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: 10, border: "none", background: "transparent", color: "#6EC6FF", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  +{notInCalendar.length - 5} daugiau → Rezervacijos
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
               value={clients.length} label="Klientai iš viso" />
@@ -1067,7 +1107,7 @@ export default function AdminPanel({ user, onLogout }) {
       }}>
         {[
           { id:"clients",  Icon:Users,     label:"Klientai",    badge:0,                    onClick: ()=>openAdminTab("clients") },
-          { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings, onClick: ()=>openAdminTab("bookings") },
+          { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings + notInCalendar.length, onClick: ()=>openAdminTab("bookings") },
           { id:"packages", Icon:Ticket,    label:"Paketai",      badge:adminBadges.packages, onClick: ()=>openAdminTab("packages") },
           { id:"stats",    Icon:BarChart,  label:"Statistika",   badge:0,                    onClick: ()=>openAdminTab("stats") },
           { id:"presets",  Icon:Clipboard, label:"Šablonai",     badge:0,                    onClick: ()=>openAdminTab("presets") },
