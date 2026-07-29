@@ -880,17 +880,32 @@ export default function AdminPanel({ user, onLogout }) {
     : showPackages ? "packages"
     : "clients";
 
-  const loadClients = useCallback(async () => {
-    const data = await pb.collection("users").getFullList({ filter: 'role="client"', sort: "-created", requestKey: null });
-    setClients(data || []);
-    setLoading(false);
-    // Badge'ai
+  // Rezervacijų signalai (šiandienos sesijos, laukiančios, nepridėtos į kalendorių) —
+  // atskira funkcija, kad tą patį atnaujinimą galėtume paleisti tiek pradiniame
+  // užkrovime, tiek realtime prenumeratoje (žr. žemiau) — kai du treneriai/adminai
+  // dirba iš skirtingų paskyrų, vieno veiksmas (pvz. pažymėjimas "pridėta į
+  // kalendorių") turi iškart atsispindėti kito ekrane, ne tik po rankinio "Atnaujinti".
+  const refreshBookingSignals = useCallback(() => {
     Promise.all([
       pb.collection("bookings").getFullList({ filter:'status="pending"', requestKey:null }).catch(()=>[]),
       pb.collection("training_packages").getFullList({ filter:'status="pending"', requestKey:null }).catch(()=>[]),
     ]).then(([bks, pkgs]) => {
       setAdminBadges({ bookings: bks.length, packages: pkgs.length });
     });
+    const today = todayStr();
+    pb.collection("bookings").getFullList({ filter:`date="${today}"`, requestKey:null }).catch(()=>[]).then(bks => {
+      const approvedToday = bks.filter(b => b.status === "approved").sort((a,b) => (a.start_time||"").localeCompare(b.start_time||""));
+      setDashExtra(d => ({ ...d, todayBookings: approvedToday.length }));
+      setTodaySessions(approvedToday);
+    });
+    pb.collection("bookings").getFullList({ filter:'status="approved" && added_to_calendar=false', sort:"date,start_time", requestKey:null }).catch(()=>[]).then(setNotInCalendar);
+  }, []);
+
+  const loadClients = useCallback(async () => {
+    const data = await pb.collection("users").getFullList({ filter: 'role="client"', sort: "-created", requestKey: null });
+    setClients(data || []);
+    setLoading(false);
+    refreshBookingSignals();
     // Kiekvieno kliento paskutinė paketo užklausa + aktyvus paketas
     pb.collection("training_packages").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]).then(pkgs => {
       const summary = {};
@@ -912,19 +927,18 @@ export default function AdminPanel({ user, onLogout }) {
       const weekPackages = pkgs.filter(p => p.status === "approved" && (p.created || "") >= weekAgo).length;
       setDashExtra(d => ({ ...d, weekPackages }));
     });
-    // Šiandienos rezervacijos
-    const today = todayStr();
-    pb.collection("bookings").getFullList({ filter:`date="${today}"`, requestKey:null }).catch(()=>[]).then(bks => {
-      const approvedToday = bks.filter(b => b.status === "approved").sort((a,b) => (a.start_time||"").localeCompare(b.start_time||""));
-      setDashExtra(d => ({ ...d, todayBookings: approvedToday.length }));
-      setTodaySessions(approvedToday);
-    });
-    // Patvirtintos rezervacijos, dar nepridėtos į trenerės asmeninį kalendorių —
-    // kad nė viena nepasimestų, o ne reikėtų kaskart pačiai eiti tikrinti sąrašo.
-    pb.collection("bookings").getFullList({ filter:'status="approved" && added_to_calendar=false', sort:"date,start_time", requestKey:null }).catch(()=>[]).then(setNotInCalendar);
-  }, []);
+  }, [refreshBookingSignals]);
 
   useEffect(() => { loadClients(); }, [loadClients]);
+
+  // Realtime — kai KITAS adminas (kita paskyra) pakeičia rezervaciją (patvirtina,
+  // pažymi pridėta į kalendorių ir pan.), šis langas atsinaujina iškart, o ne tik
+  // paspaudus "Atnaujinti".
+  useEffect(() => {
+    let unsub;
+    pb.collection("bookings").subscribe("*", () => refreshBookingSignals()).then(fn => { unsub = fn; }).catch(() => {});
+    return () => { unsub?.(); };
+  }, [refreshBookingSignals]);
 
   if (view === "new") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 48 }}>
