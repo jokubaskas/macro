@@ -982,6 +982,40 @@ export default function AdminPanel({ user, onLogout }) {
           <PushPermissionPrompt userId={user.id} />
 
           {(() => {
+            const todayBdays = clients.filter(c => daysUntilBirthday(c.dob) === 0);
+            const weekBdays = clients
+              .map(c => ({ c, d: daysUntilBirthday(c.dob) }))
+              .filter(x => x.d != null && x.d >= 1 && x.d <= 7)
+              .sort((a, b) => a.d - b.d);
+            if (!todayBdays.length && !weekBdays.length) return null;
+            return (
+              <div style={{ background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,110,180,0.08))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFD700", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Cake size={12} />Gimtadieniai
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {todayBdays.map(c => (
+                    <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
+                      <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
+                      <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+                    </button>
+                  ))}
+                  {weekBdays.map(({ c, d }) => (
+                    <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+                      <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
+                      <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {(() => {
             const upcoming = todaySessions.filter(b => (b.end_time || b.start_time) >= nowTime);
             const showCard = upcoming.length > 0 || adminBadges.bookings > 0 || adminBadges.packages > 0;
             if (!showCard) return null;
