@@ -137,7 +137,7 @@ function TimeSelect({ value, onChange }) {
 }
 
 // ── Konkrečių laikų / laikotarpių (atostogų) blokavimas ─────────────────────
-const ONLINE_COACHING_TEMPLATE = "Šiuo metu atostogauju ir gyvai treniruočių nevedu, bet galite kreiptis dėl online coaching — parašykite man.";
+const ONLINE_COACHING_TEMPLATE = "Šiuo metu atostogauju ir gyvai treniruočių nevedu, bet galite kreiptis dėl nuotolinio asmeninio trenerio — parašykite man.";
 
 function ScheduleExceptions() {
   const [exceptions, setExceptions] = useState([]);
@@ -262,10 +262,10 @@ function ScheduleExceptions() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
               <label style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>Žinutė klientams (nebūtina, matys jie)</label>
               <button onClick={()=>setForm(f=>({...f,client_message:ONLINE_COACHING_TEMPLATE}))} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"3px 8px",color:"rgba(255,255,255,0.7)",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                <Laptop size={10} />+ online coaching
+                <Laptop size={10} />+ nuotolinis treneris
               </button>
             </div>
-            <textarea value={form.client_message} onChange={e=>setForm(f=>({...f,client_message:e.target.value}))} placeholder="pvz. Atostogauju, bet galite kreiptis dėl online coaching..." rows={3}
+            <textarea value={form.client_message} onChange={e=>setForm(f=>({...f,client_message:e.target.value}))} placeholder="pvz. Atostogauju, bet galite kreiptis dėl nuotolinio asmeninio trenerio..." rows={3}
               style={{...inp,width:"100%",resize:"none"}}/>
           </div>
 

@@ -68,7 +68,7 @@ const PACKAGES = [
 ];
 
 const NUTRITION = { price:"79€", Icon:Salad, label:"Mitybos planas", tagline:"Nebereikės kasdien sukti galvos, ką valgyti siekiant savo tikslo." };
-const ONLINE   = { price:"69€/mėn.", Icon:Laptop, label:"Online coaching", tagline:"Turėti trenerę šalia, net sportuojant savarankiškai." };
+const ONLINE   = { price:"69€/mėn.", Icon:Laptop, label:"Nuotolinis asmeninis treneris", tagline:"Turėti trenerę šalia, net sportuojant savarankiškai." };
 
 const FAQ = [
   { Icon:MapPin, q:"Kur vyksta treniruotės?", a:"Gym+ Dariaus ir Girėno g. 2 (Pelėsos g., TAXIPARKAS), Vilniuje. Būtina galiojanti Gym+ narystė." },
@@ -76,7 +76,7 @@ const FAQ = [
   { Icon:Users, q:"Ar galima sportuoti dviese?", a:"Taip! Perkant tą patį paketą kartu su draugu ar šeimos nariu, abu gaunate po 5€ nuolaidą kiekvienai treniruotei." },
   { Icon:Clipboard, q:"Kokios papildomos paslaugos?", a:"Individualus sporto planas – 150€. Individuali konsultacija (iki 50 min., nuotoliu) – 35€." },
   { Icon:Salad, q:"Kas įeina į mitybos planą?", a:"12 subalansuotų receptų (3 dienos × 4 patiekalai), aiškios porcijos, paprasti ingredientai, individualios rekomendacijos. Gausite per 7 darbo dienas po apmokėjimo." },
-  { Icon:Laptop, q:"Kaip vyksta online coaching?", a:"Sportuojate savarankiškai su individualia programa programėlėje. Kas savaitę – progreso analizė, plano korekcija ir asmeninis grįžtamasis ryšys. Klausimai – Instagram'e." },
+  { Icon:Laptop, q:"Kaip vyksta nuotolinis asmeninis treniravimas?", a:"Sportuojate savarankiškai su individualia programa programėlėje. Kas savaitę – progreso analizė, plano korekcija ir asmeninis grįžtamasis ryšys. Klausimai – Instagram'e." },
   { Icon:Calendar, q:"Kaip užsiregistruoti?", a:"Išsiųskite užklausą programėlėje ir atlikite apmokėjimą. Patvirtinus – galėsite rezervuoti treniruočių laikus." },
   { Icon:Close, q:"Ar galima atšaukti treniruotę?", a:"Taip, bet ne vėliau kaip prieš 24 val. Vėliau atšauktos treniruotės laikomos įvykusiomis." },
   { Icon:Calendar, q:"Kiek galioja paketai?", a:"1 treniruotė – 1 mėn. · 8 treniruotės – 3 mėn. · 16 treniruočių – 4 mėn." },
@@ -232,7 +232,7 @@ export default function TrainingPackages({ user, onClose }) {
           <div key={p.id} style={{ background:"rgba(255,200,0,0.08)", border:"1px solid rgba(255,200,0,0.25)", borderRadius:14, padding:"12px 16px", marginBottom:10 }}>
             <div style={{ marginBottom:12 }}>
               <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:"0 0 2px" }}>{PACKAGES.find(pk=>pk.type===p.package_type)?.label}</p>
-              <p style={{ fontSize:11, color:"#FFD700", margin:0, display:"flex", alignItems:"center", gap:4 }}><Timer size={11} />Laukia patvirtinimo — atlikite apmokėjimą</p>
+              <p style={{ fontSize:11, color:"#FFD700", margin:0, display:"flex", alignItems:"center", gap:4 }}><Timer size={11} />Paketas bus patvirtintas atlikus apmokėjimą</p>
             </div>
             <PaymentInfo />
           </div>
@@ -265,9 +265,9 @@ export default function TrainingPackages({ user, onClose }) {
         {/* Mitybos ir Online */}
         {[NUTRITION, ONLINE].map((s,i) => (
           <div key={i} style={{ background:"rgba(255,255,255,0.08)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:18, padding:"16px", marginBottom:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-              <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><s.Icon size={15} />{s.label}</p>
-              <span style={{ fontSize:18, fontWeight:800, color:"#FF6EB4" }}>{s.price}</span>
+            <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"space-between", alignItems:"center", gap:"4px 10px", marginBottom:6 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6, flex:"1 1 auto", minWidth:0 }}><s.Icon size={15} style={{flexShrink:0}} />{s.label}</p>
+              <span style={{ fontSize:18, fontWeight:800, color:"#FF6EB4", flexShrink:0 }}>{s.price}</span>
             </div>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.7)", margin:"0 0 8px", lineHeight:1.5, display:"flex", alignItems:"center", gap:6 }}><ChevronRight size={13} />{s.tagline}</p>
             <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Daugiau info – žiūrėk DUK žemiau</p>
