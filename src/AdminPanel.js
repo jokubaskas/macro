@@ -844,6 +844,7 @@ export default function AdminPanel({ user, onLogout }) {
   const [dashExtra,   setDashExtra]     = useState({ todayBookings:0, weekPackages:0 });
   const [todaySessions, setTodaySessions] = useState([]);
   const [notInCalendar, setNotInCalendar] = useState([]);
+  const [calendarError, setCalendarError] = useState("");
   const [nowTime, setNowTime] = useState(() => new Date().toTimeString().slice(0,5));
 
   useEffect(() => {
@@ -868,10 +869,12 @@ export default function AdminPanel({ user, onLogout }) {
   }
 
   async function handleAddToCalendar(booking) {
+    setCalendarError("");
     const clientName = clients.find(c => c.id === booking.client_id)?.name || "Klientas";
     downloadIcal(booking, clientName);
-    await pb.collection("bookings").update(booking.id, { added_to_calendar: true }).catch(() => {});
-    setNotInCalendar(prev => prev.filter(b => b.id !== booking.id));
+    const ok = await pb.collection("bookings").update(booking.id, { added_to_calendar: true }).then(() => true).catch(() => false);
+    if (ok) setNotInCalendar(prev => prev.filter(b => b.id !== booking.id));
+    else setCalendarError("Failas atsisiuntė, bet pažymėti kaip pridėtą nepavyko — bandykite dar kartą.");
   }
 
   const activeAdminTab = showBookings ? "bookings"
@@ -1027,6 +1030,13 @@ export default function AdminPanel({ user, onLogout }) {
             </div>
             );
           })()}
+
+          {calendarError && (
+            <div style={{ background:"rgba(255,100,100,0.12)", border:"1px solid rgba(255,100,100,0.3)", borderRadius:12, padding:"10px 12px", marginBottom:12, display:"flex", alignItems:"flex-start", gap:8 }}>
+              <AlertTriangle size={14} color="#FF8888" style={{flexShrink:0,marginTop:1}} />
+              <p style={{fontSize:12,color:"#FFB3B3",margin:0}}>{calendarError}</p>
+            </div>
+          )}
 
           {notInCalendar.length > 0 && (
             <div style={{ background: "rgba(110,198,255,0.08)", border: "1px solid rgba(110,198,255,0.25)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>

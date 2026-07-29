@@ -608,6 +608,7 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   const [search, setSearch]       = useState("");
   const [visibleCount, setVisibleCount] = useState(8);
   const [showPast, setShowPast]   = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -627,25 +628,39 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
 
   // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
   // kalendorių — nebereikia atskiro veiksmo ir vėliau nebeaišku, ar jau pridėta.
+  // Lokali būsena atnaujinama TIK jei PocketBase įrašymas tikrai pavyko — anksčiau
+  // buvo atnaujinama visada, todėl tylus serverio klaidos atvejis atrodydavo kaip
+  // sėkmė ekrane, o duomenų bazėje reikšmė likdavo nepakeista.
   async function handleApprove(booking, clientName) {
-    await pb.collection("bookings").update(booking.id, { status:"approved", added_to_calendar:true }).catch(()=>{});
-    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"approved",added_to_calendar:true} : b));
-    downloadIcal(booking, clientName);
+    setActionError("");
+    const ok = await pb.collection("bookings").update(booking.id, { status:"approved", added_to_calendar:true }).then(()=>true).catch(()=>false);
+    if (ok) {
+      setBookings(prev => prev.map(b => b.id===booking.id ? {...b,status:"approved",added_to_calendar:true} : b));
+      downloadIcal(booking, clientName);
+    } else {
+      setActionError("Nepavyko patvirtinti rezervacijos — patikrinkite interneto ryšį arba PocketBase teises ir bandykite dar kartą.");
+    }
   }
 
   async function handleAddToCalendar(booking, clientName) {
+    setActionError("");
     downloadIcal(booking, clientName);
-    await pb.collection("bookings").update(booking.id, { added_to_calendar:true }).catch(()=>{});
-    setBookings(prev => prev.map(b => b.id===booking.id ? {...b,added_to_calendar:true} : b));
+    const ok = await pb.collection("bookings").update(booking.id, { added_to_calendar:true }).then(()=>true).catch(()=>false);
+    if (ok) setBookings(prev => prev.map(b => b.id===booking.id ? {...b,added_to_calendar:true} : b));
+    else setActionError("Failas atsisiuntė, bet pažymėti kaip pridėtą nepavyko — bandykite dar kartą, kitaip vėl matysite šią rezervaciją kaip nepridėtą.");
   }
 
   // Vienkartinis sutvarkymas senoms rezervacijoms, kurios jau realiai buvo
   // rankiniu būdu įtrauktos į kalendorių prieš atsirandant šiam žymėjimui —
   // pažymi visas kaip pridėtas, be pakartotinio atsisiuntimo.
   async function handleMarkAllAdded() {
+    setActionError("");
     const toMark = bookings.filter(b => b.status==="approved" && !b.added_to_calendar);
-    await Promise.all(toMark.map(b => pb.collection("bookings").update(b.id, { added_to_calendar:true }).catch(()=>{})));
-    setBookings(prev => prev.map(b => (b.status==="approved" && !b.added_to_calendar) ? {...b,added_to_calendar:true} : b));
+    const results = await Promise.all(toMark.map(b => pb.collection("bookings").update(b.id, { added_to_calendar:true }).then(()=>b.id).catch(()=>null)));
+    const okIds = new Set(results.filter(Boolean));
+    setBookings(prev => prev.map(b => okIds.has(b.id) ? {...b,added_to_calendar:true} : b));
+    const failedCount = toMark.length - okIds.size;
+    if (failedCount > 0) setActionError(`${failedCount} rezervacijos(-ų) nepavyko pažymėti kaip pridėtos — bandykite dar kartą.`);
   }
 
   async function handleDelete(id) {
@@ -676,6 +691,13 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
+        {actionError && (
+          <div style={{background:"rgba(255,100,100,0.12)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:12,padding:"10px 12px",marginBottom:12,display:"flex",alignItems:"flex-start",gap:8}}>
+            <AlertTriangle size={14} color="#FF8888" style={{flexShrink:0,marginTop:1}} />
+            <p style={{fontSize:12,color:"#FFB3B3",margin:0,flex:1}}>{actionError}</p>
+            <button onClick={()=>setActionError("")} style={{background:"none",border:"none",color:"#FFB3B3",cursor:"pointer",padding:0,flexShrink:0}}><Close size={12} /></button>
+          </div>
+        )}
         {/* Filtrai */}
         <div style={{display:"flex",gap:6,marginBottom:16}}>
           {[{k:"pending",l:"Laukia"},{k:"approved",l:"Patvirtintos"},{k:"rejected",l:"Atmestos"},{k:"cancelled",l:"Atšauktos"},{k:"all",l:"Visos"}].map(f=>(
