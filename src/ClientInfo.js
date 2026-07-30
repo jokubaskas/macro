@@ -3,7 +3,9 @@ import { pb } from "./pb";
 import { GOALS, ACTIVITY } from "./constants";
 import { resolveMacroTargets, daysAgoStr } from "./macroCalc";
 import { STEPS_OPTS, WELLBEING_OPTS } from "./Onboarding";
-import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle, Flame, Muscle, Droplet } from "./ui/icons";
+import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle, Flame, Muscle, Droplet, Check } from "./ui/icons";
+
+const GOAL_ICON = { lose: Flame, maintain: Scale, gain: Muscle };
 
 const TRAINING_FREQ_OPTS = [
   { v: 1, label: "1" },
@@ -143,14 +145,39 @@ function MacroGoalsCard({ client }) {
   );
 }
 
-function InfoRow({ label, value, Icon }) {
-  if (value == null || value === "") return null;
+// Kompaktiška statistikos kortelė (skaičius/trumpas žodis + ikona) — naudojama
+// pagrindiniams asmens duomenims vietoj sukrautų label:value eilučių.
+function StatTile({ Icon, value, label }) {
   return (
-    <div style={{ marginBottom:14 }}>
-      <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 3px", display:"flex", alignItems:"center", gap:5 }}>
+    <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
+      <Icon size={15} color="rgba(255,255,255,0.6)" style={{ marginBottom:4 }} />
+      <p style={{ fontSize:14, fontWeight:800, color:"#fff", margin:"0 0 1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{value}</p>
+      <p style={{ fontSize:9, color:"rgba(255,255,255,0.45)", margin:0, textTransform:"uppercase", letterSpacing:"0.04em" }}>{label}</p>
+    </div>
+  );
+}
+
+// Maža spalvota pilulė vienai kategoriškai reikšmei (tikslas, aktyvumo lygis ir pan.).
+function Chip({ Icon, label, color = "#89CFF0" }) {
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:12, fontWeight:700, color, background:`${color}1f`, borderRadius:20, padding:"6px 12px" }}>
+      {Icon && <Icon size={12} />}{label}
+    </span>
+  );
+}
+
+// Laisvo teksto atsakymas (motyvacija, mitybos aprašymas ir pan.) kaip citatos
+// stiliaus kortelė — lengviau atskirti nuo struktūrizuotų laukų nei plain tekstas.
+function QuoteBlock({ label, value, Icon }) {
+  if (!value) return null;
+  return (
+    <div style={{ marginBottom:10 }}>
+      <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 5px", display:"flex", alignItems:"center", gap:5 }}>
         {Icon && <Icon size={11} />}{label}
       </p>
-      <p style={{ fontSize:14, color:"#fff", margin:0, lineHeight:1.5 }}>{value}</p>
+      <p style={{ fontSize:13, color:"rgba(255,255,255,0.85)", margin:0, lineHeight:1.55, fontStyle:"italic", background:"rgba(255,255,255,0.05)", borderLeft:"3px solid rgba(255,255,255,0.2)", borderRadius:"0 10px 10px 0", padding:"8px 12px" }}>
+        „{value}"
+      </p>
     </div>
   );
 }
@@ -164,28 +191,33 @@ function Section({ title, children, accent }) {
   );
 }
 
-function yn(v) { return v === true ? "Taip" : v === false ? "Ne" : null; }
-
 export default function ClientInfo({ client, onClose }) {
   const genderLabel = client.gender === "f" ? "Moteris" : client.gender === "m" ? "Vyras" : null;
+  const age = client.dob ? Math.floor((new Date() - new Date(client.dob)) / (365.25*24*60*60*1000)) : null;
   const dobLabel = client.dob ? new Date(client.dob).toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" }) : null;
   const goalLabel = GOALS.find(g => g.id === client.goal)?.label || null;
+  const GoalIcon = GOAL_ICON[client.goal] || Target;
   const actOpt = ACTIVITY.find(a => a.id === client.act);
   const stepsOpt = STEPS_OPTS.find(s => s.id === client.steps_per_day);
   const wellbeingOpt = WELLBEING_OPTS[client.wellbeing] || null;
 
   const hasLifestyle = client.sleep_stress || actOpt || stepsOpt;
   const hasNutrition = client.diet_desc || client.hardest_part || client.expectations || wellbeingOpt;
-  const hasHealth = [
-    client.health_pain_yn, client.health_injury_yn, client.health_bp_yn,
-    client.health_migraine, client.health_allergies, client.health_varicose, client.health_hernia,
-    client.health_autoimmune, client.health_torn_ligaments, client.health_pregnant,
-  ].some(v => v != null);
-  const hasHealthConcern = [
-    client.health_pain_yn, client.health_injury_yn, client.health_bp_yn,
-    client.health_migraine, client.health_allergies, client.health_varicose, client.health_hernia,
-    client.health_autoimmune, client.health_torn_ligaments, client.health_pregnant,
-  ].some(v => v === true);
+
+  const healthItems = [
+    { key:"pain",       label:"Skausmai (6 mėn.)",         status:client.health_pain_yn,       detail:client.health_recent_pain },
+    { key:"injury",     label:"Šviežios traumos",           status:client.health_injury_yn,     detail:client.health_recent_injury },
+    { key:"bp",         label:"Aukštas kraujospūdis",       status:client.health_bp_yn,         detail:client.health_high_bp },
+    { key:"migraine",   label:"Migrena",                    status:client.health_migraine },
+    { key:"allergies",  label:"Alergijos",                  status:client.health_allergies,     detail:client.health_allergies_detail },
+    { key:"varicose",   label:"Varikozė",                   status:client.health_varicose },
+    { key:"hernia",     label:"Išvarža",                     status:client.health_hernia },
+    { key:"autoimmune", label:"Autoimuninės ligos",         status:client.health_autoimmune,    detail:client.health_autoimmune_detail },
+    { key:"ligaments",  label:"Plyšę / patempti raiščiai",  status:client.health_torn_ligaments },
+    { key:"pregnant",   label:"Nėštumas",                    status:client.health_pregnant },
+  ];
+  const answeredHealth = healthItems.filter(h => h.status != null);
+  const healthConcerns = answeredHealth.filter(h => h.status === true);
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -211,27 +243,32 @@ export default function ClientInfo({ client, onClose }) {
         )}
 
         <Section title="Asmeniniai duomenys">
-          <InfoRow label="Gimimo data" value={dobLabel} Icon={Calendar} />
-          <InfoRow label="Lytis" value={genderLabel} Icon={User} />
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr" }}>
-            <InfoRow label="Ūgis" value={client.height ? `${client.height} cm` : null} Icon={Ruler} />
-            <InfoRow label="Svoris" value={client.weight ? `${client.weight} kg` : null} Icon={Scale} />
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom: dobLabel ? 8 : 0 }}>
+            <StatTile Icon={Calendar} value={age != null ? `${age} m.` : "–"} label="Amžius" />
+            <StatTile Icon={User} value={genderLabel || "–"} label="Lytis" />
+            <StatTile Icon={Ruler} value={client.height ? `${client.height} cm` : "–"} label="Ūgis" />
+            <StatTile Icon={Scale} value={client.weight ? `${client.weight} kg` : "–"} label="Svoris" />
           </div>
+          {dobLabel && <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", margin:0 }}>Gimimo data: {dobLabel}</p>}
         </Section>
 
         {(goalLabel || client.motivation) && (
           <Section title="Tikslas ir motyvacija">
-            <InfoRow label="Tikslas" value={goalLabel} Icon={Target} />
-            <InfoRow label="Tikslinis svoris" value={client.goal_weight ? `${client.goal_weight} kg` : null} Icon={Scale} />
-            <InfoRow label="Kodėl tai svarbu" value={client.motivation} Icon={Edit} />
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom: client.motivation ? 12 : 0 }}>
+              {goalLabel && <Chip Icon={GoalIcon} label={goalLabel} color="#FF6EB4" />}
+              {client.goal_weight && <Chip Icon={Scale} label={`Tikslas: ${client.goal_weight} kg`} color="#89CFF0" />}
+            </div>
+            <QuoteBlock label="Kodėl tai svarbu" value={client.motivation} Icon={Edit} />
           </Section>
         )}
 
         {hasLifestyle && (
           <Section title="Gyvensena">
-            <InfoRow label="Miegas / stresas" value={client.sleep_stress} Icon={Moon} />
-            <InfoRow label="Aktyvumo lygis (anketa)" value={actOpt ? `${actOpt.label}${actOpt.desc ? ` — ${actOpt.desc}` : ""}` : null} Icon={Footprints} />
-            <InfoRow label="Žingsnių tikslas" value={stepsOpt?.label} Icon={Footprints} />
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom: client.sleep_stress ? 12 : 0 }}>
+              {actOpt && <Chip Icon={Footprints} label={actOpt.label} color="#7FFFB0" />}
+              {stepsOpt && <Chip Icon={Footprints} label={stepsOpt.label} color="#FFD700" />}
+            </div>
+            <QuoteBlock label="Miegas / stresas" value={client.sleep_stress} Icon={Moon} />
           </Section>
         )}
 
@@ -241,26 +278,34 @@ export default function ClientInfo({ client, onClose }) {
           <MacroGoalsCard client={client} />
         </Section>
 
-        {hasHealth && (
-          <Section title={hasHealthConcern ? "Sveikata — atkreipti dėmesį" : "Sveikata"} accent={hasHealthConcern ? "#FF8888" : undefined}>
-            <InfoRow label="Skausmai (paskutiniai 6 mėn.)" value={client.health_pain_yn === true ? (client.health_recent_pain || "Taip") : yn(client.health_pain_yn)} Icon={AlertTriangle} />
-            <InfoRow label="Šviežios traumos" value={client.health_injury_yn === true ? (client.health_recent_injury || "Taip") : yn(client.health_injury_yn)} Icon={AlertTriangle} />
-            <InfoRow label="Aukštas kraujospūdis" value={client.health_bp_yn === true ? (client.health_high_bp || "Taip") : yn(client.health_bp_yn)} Icon={Heart} />
-            <InfoRow label="Migrena" value={yn(client.health_migraine)} Icon={AlertTriangle} />
-            <InfoRow label="Alergijos" value={client.health_allergies === true ? (client.health_allergies_detail || "Taip") : yn(client.health_allergies)} Icon={AlertTriangle} />
-            <InfoRow label="Varikozė" value={yn(client.health_varicose)} Icon={AlertTriangle} />
-            <InfoRow label="Išvarža" value={yn(client.health_hernia)} Icon={AlertTriangle} />
-            <InfoRow label="Autoimuninės ligos" value={client.health_autoimmune === true ? (client.health_autoimmune_detail || "Taip") : yn(client.health_autoimmune)} Icon={AlertTriangle} />
-            <InfoRow label="Plyšę / patempti raiščiai" value={yn(client.health_torn_ligaments)} Icon={AlertTriangle} />
-            <InfoRow label="Nėštumas" value={yn(client.health_pregnant)} Icon={AlertTriangle} />
+        {answeredHealth.length > 0 && (
+          <Section title={healthConcerns.length ? "Sveikata — atkreipti dėmesį" : "Sveikata"} accent={healthConcerns.length ? "#FF8888" : "#7FFFB0"}>
+            {healthConcerns.length > 0 ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom: answeredHealth.length > healthConcerns.length ? 10 : 0 }}>
+                {healthConcerns.map(h => (
+                  <div key={h.key} style={{ display:"flex", alignItems:"flex-start", gap:8, background:"rgba(255,136,136,0.1)", border:"1px solid rgba(255,136,136,0.3)", borderRadius:12, padding:"9px 12px" }}>
+                    <AlertTriangle size={13} color="#FF8888" style={{ flexShrink:0, marginTop:1 }} />
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>{h.label}</p>
+                      {h.detail && <p style={{ fontSize:11, color:"rgba(255,255,255,0.6)", margin:"2px 0 0", lineHeight:1.4 }}>{h.detail}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize:12, color:"#7FFFB0", margin:0, display:"flex", alignItems:"center", gap:6 }}><Check size={13} />Visi sveikatos klausimai — be pastabų.</p>
+            )}
+            {healthConcerns.length > 0 && answeredHealth.length > healthConcerns.length && (
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Likusiais {answeredHealth.length - healthConcerns.length} klausimais pastabų nėra.</p>
+            )}
           </Section>
         )}
 
         {hasNutrition && (
           <Section title="Mityba ir iššūkiai">
-            <InfoRow label="Mitybos aprašymas" value={client.diet_desc} Icon={Salad} />
-            <InfoRow label="Sunkiausia dalis" value={client.hardest_part} Icon={Edit} />
-            <InfoRow label="Lūkesčiai treneriui" value={client.expectations} Icon={Edit} />
+            <QuoteBlock label="Mitybos aprašymas" value={client.diet_desc} Icon={Salad} />
+            <QuoteBlock label="Sunkiausia dalis" value={client.hardest_part} Icon={Edit} />
+            <QuoteBlock label="Lūkesčiai treneriui" value={client.expectations} Icon={Edit} />
             {wellbeingOpt && (
               <div style={{ marginBottom:0 }}>
                 <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 3px", display:"flex", alignItems:"center", gap:5 }}>
