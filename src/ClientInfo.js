@@ -155,14 +155,16 @@ function InfoRow({ label, value, Icon }) {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, children, accent }) {
   return (
     <div style={{ marginBottom:16 }}>
-      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>{title}</p>
-      <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px" }}>{children}</div>
+      <p style={{ fontSize:11, fontWeight:700, color: accent || "rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>{title}</p>
+      <div style={{ background: accent ? `${accent}14` : "rgba(255,255,255,0.08)", border: accent ? `1px solid ${accent}4d` : "none", borderRadius:16, padding:"14px 16px" }}>{children}</div>
     </div>
   );
 }
+
+function yn(v) { return v === true ? "Taip" : v === false ? "Ne" : null; }
 
 export default function ClientInfo({ client, onClose }) {
   const genderLabel = client.gender === "f" ? "Moteris" : client.gender === "m" ? "Vyras" : null;
@@ -174,6 +176,16 @@ export default function ClientInfo({ client, onClose }) {
 
   const hasLifestyle = client.sleep_stress || actOpt || stepsOpt;
   const hasNutrition = client.diet_desc || client.hardest_part || client.expectations || wellbeingOpt;
+  const hasHealth = [
+    client.health_pain_yn, client.health_injury_yn, client.health_bp_yn,
+    client.health_migraine, client.health_allergies, client.health_varicose, client.health_hernia,
+    client.health_autoimmune, client.health_torn_ligaments, client.health_pregnant,
+  ].some(v => v != null);
+  const hasHealthConcern = [
+    client.health_pain_yn, client.health_injury_yn, client.health_bp_yn,
+    client.health_migraine, client.health_allergies, client.health_varicose, client.health_hernia,
+    client.health_autoimmune, client.health_torn_ligaments, client.health_pregnant,
+  ].some(v => v === true);
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -228,6 +240,21 @@ export default function ClientInfo({ client, onClose }) {
           <div style={{ height:1, background:"rgba(255,255,255,0.1)", margin:"4px 0 14px" }} />
           <MacroGoalsCard client={client} />
         </Section>
+
+        {hasHealth && (
+          <Section title={hasHealthConcern ? "Sveikata — atkreipti dėmesį" : "Sveikata"} accent={hasHealthConcern ? "#FF8888" : undefined}>
+            <InfoRow label="Skausmai (paskutiniai 6 mėn.)" value={client.health_pain_yn === true ? (client.health_recent_pain || "Taip") : yn(client.health_pain_yn)} Icon={AlertTriangle} />
+            <InfoRow label="Šviežios traumos" value={client.health_injury_yn === true ? (client.health_recent_injury || "Taip") : yn(client.health_injury_yn)} Icon={AlertTriangle} />
+            <InfoRow label="Aukštas kraujospūdis" value={client.health_bp_yn === true ? (client.health_high_bp || "Taip") : yn(client.health_bp_yn)} Icon={Heart} />
+            <InfoRow label="Migrena" value={yn(client.health_migraine)} Icon={AlertTriangle} />
+            <InfoRow label="Alergijos" value={client.health_allergies === true ? (client.health_allergies_detail || "Taip") : yn(client.health_allergies)} Icon={AlertTriangle} />
+            <InfoRow label="Varikozė" value={yn(client.health_varicose)} Icon={AlertTriangle} />
+            <InfoRow label="Išvarža" value={yn(client.health_hernia)} Icon={AlertTriangle} />
+            <InfoRow label="Autoimuninės ligos" value={client.health_autoimmune === true ? (client.health_autoimmune_detail || "Taip") : yn(client.health_autoimmune)} Icon={AlertTriangle} />
+            <InfoRow label="Plyšę / patempti raiščiai" value={yn(client.health_torn_ligaments)} Icon={AlertTriangle} />
+            <InfoRow label="Nėštumas" value={yn(client.health_pregnant)} Icon={AlertTriangle} />
+          </Section>
+        )}
 
         {hasNutrition && (
           <Section title="Mityba ir iššūkiai">

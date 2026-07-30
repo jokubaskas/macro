@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { pb, pbFirst, pbUpsert } from "./pb";
 import { PK } from "./constants";
-import { Flame, Scale, Muscle, User, Target, Leaf, Salad, Check, Camera, Walk, ChevronLeft, ChevronRight, Frown, Meh, Smile, Sparkle } from "./ui/icons";
+import { Flame, Scale, Muscle, User, Target, Leaf, Salad, Check, ChevronLeft, ChevronRight, Frown, Meh, Smile, Sparkle, Heart } from "./ui/icons";
 
 // ── Veiklos lygiai (sutampa su constants.js ACTIVITY) ────────────────────────
 const ACTIVITY_OPTS = [
@@ -74,6 +74,29 @@ function TextArea({ value, onChange, placeholder, rows=3 }) {
     style={{ ...inp(f), resize:"vertical", lineHeight:1.5 }} />;
 }
 
+function YesNoField({ label, value, onChange }) {
+  const isYes = value === true;
+  return (
+    <div style={{ marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center", gap:12 }}>
+      <p style={{ fontSize:13, color:"#fff", fontWeight:600, margin:0, lineHeight:1.4, flex:1 }}>{label}</p>
+      <button onClick={() => onChange(!isYes)} aria-label={isYes ? "Taip" : "Ne"} style={{
+        position:"relative", width:60, height:34, borderRadius:99, border:"none", cursor:"pointer",
+        flexShrink:0, padding:0, fontFamily:"inherit",
+        background: isYes ? PK.mid : "rgba(255,255,255,0.18)",
+        transition:"background 0.25s",
+      }}>
+        <span style={{ position:"absolute", top:0, bottom:0, left:10, display:"flex", alignItems:"center", fontSize:10, fontWeight:800, color:"#fff", opacity: isYes ? 1 : 0, transition:"opacity 0.2s" }}>T</span>
+        <span style={{ position:"absolute", top:0, bottom:0, right:10, display:"flex", alignItems:"center", fontSize:10, fontWeight:800, color:"rgba(255,255,255,0.6)", opacity: isYes ? 0 : 1, transition:"opacity 0.2s" }}>N</span>
+        <span style={{
+          position:"absolute", top:3, left: isYes ? 29 : 3, width:28, height:28, borderRadius:"50%",
+          background:"#fff", transition:"left 0.25s cubic-bezier(.34,1.56,.64,1)",
+          boxShadow:"0 1px 4px rgba(0,0,0,0.35)",
+        }} />
+      </button>
+    </div>
+  );
+}
+
 function ChoiceBtn({ selected, onClick, label, desc }) {
   return (
     <button onClick={onClick} style={{
@@ -87,63 +110,6 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
       <span style={{ fontSize:14, fontWeight:700, color:selected?PK.dark:PK.mid, display:"inline-flex", alignItems:"center", gap:6 }}>{label}</span>
       {desc && <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginLeft:10, textAlign:"right", maxWidth:140 }}>{desc}</span>}
     </button>
-  );
-}
-
-function PhotoUpload({ label, Icon, value, onChange, userId, field }) {
-  const [loading, setLoading] = useState(false);
-
-  async function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setLoading(true);
-    try {
-      // Lokali peržiūra iš karto
-      const reader = new FileReader();
-      reader.onload = ev => onChange(ev.target.result);
-      reader.readAsDataURL(file);
-
-      // Įkelti į PocketBase
-      const formData = new FormData();
-      formData.append(field, file);
-      const updated = await pb.collection("users").update(userId, formData);
-      const url = pb.getFileUrl(updated, updated[field]);
-      onChange(url);
-    } catch(e) { console.warn("Photo upload:", e); }
-    setLoading(false);
-  }
-
-  return (
-    <label style={{ display:"block", cursor:"pointer" }}>
-      <input type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display:"none" }} />
-      <div style={{
-        border:"2px dashed " + (value ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)"),
-        borderRadius:16, overflow:"hidden", position:"relative",
-        background: value ? "transparent" : "rgba(255,255,255,0.07)",
-        aspectRatio:"3/4", display:"flex", flexDirection:"column",
-        alignItems:"center", justifyContent:"center", gap:8,
-      }}>
-        {value ? (
-          <img src={value} alt={label} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-        ) : (
-          <>
-            <Icon size={32} color="rgba(255,255,255,0.6)" />
-            <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.75)", textAlign:"center", padding:"0 8px" }}>{label}</span>
-          </>
-        )}
-        {loading && (
-          <div style={{ position:"absolute", inset:0, background:"rgba(255,255,255,0.8)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:11, color:PK.mid }}>Įkeliama...</span>
-          </div>
-        )}
-        <div style={{
-          position:"absolute", bottom:8, right:8,
-          background:PK.mid, borderRadius:"50%", width:28, height:28,
-          display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:14, color:"#fff",
-        }}>+</div>
-      </div>
-    </label>
   );
 }
 
@@ -172,10 +138,22 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
     hardest_part: "",
     expectations: "",
     wellbeing: null,
-    // 5 žingsnis
-    photo_front: "",
-    photo_side: "",
-    photo_back: "",
+    // 5 žingsnis — sveikata
+    health_pain_yn: null,
+    health_recent_pain: "",
+    health_injury_yn: null,
+    health_recent_injury: "",
+    health_bp_yn: null,
+    health_high_bp: "",
+    health_migraine: null,
+    health_allergies: null,
+    health_allergies_detail: "",
+    health_varicose: null,
+    health_hernia: null,
+    health_autoimmune: null,
+    health_autoimmune_detail: "",
+    health_torn_ligaments: null,
+    health_pregnant: null,
   });
 
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
@@ -185,6 +163,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
   { title:"Tikslas ir motyvacija", Icon:Target },
   { title:"Gyvensena",            Icon:Leaf },
   { title:"Mityba ir iššūkiai",   Icon:Salad },
+  { title:"Sveikata",             Icon:Heart },
 ];
 
   function canNext() {
@@ -215,6 +194,21 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
       hardest_part:  form.hardest_part,
       expectations:  form.expectations,
       wellbeing:     form.wellbeing,
+      health_pain_yn:          form.health_pain_yn,
+      health_recent_pain:      form.health_pain_yn ? form.health_recent_pain : "",
+      health_injury_yn:        form.health_injury_yn,
+      health_recent_injury:    form.health_injury_yn ? form.health_recent_injury : "",
+      health_bp_yn:            form.health_bp_yn,
+      health_high_bp:          form.health_bp_yn ? form.health_high_bp : "",
+      health_migraine:         form.health_migraine,
+      health_allergies:        form.health_allergies,
+      health_allergies_detail: form.health_allergies ? form.health_allergies_detail : "",
+      health_varicose:         form.health_varicose,
+      health_hernia:           form.health_hernia,
+      health_autoimmune:          form.health_autoimmune,
+      health_autoimmune_detail:   form.health_autoimmune ? form.health_autoimmune_detail : "",
+      health_torn_ligaments:   form.health_torn_ligaments,
+      health_pregnant:         form.health_pregnant,
       onboarding_done: true,
       track_progress:  true,
     });
@@ -419,33 +413,61 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
           </div>
         )}
 
-        {/* ── 5 žingsnis: Nuotraukos ── */}
+        {/* ── 5 žingsnis: Sveikata ── */}
         {step === 4 && (
           <div>
             <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid rgba(255,255,255,0.15)" }}>
-              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}><Camera size={14} />Pirminės nuotraukos</p>
+              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}><Heart size={14} />Sveikatos informacija</p>
               <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
-                Nuotraukos reikalingos progresui stebėti. Jos matomos tik man kaip treneriai. Galima įkelti vėliau.
+                Padeda saugiai suplanuoti treniruotes. Matoma tik man kaip trenerei.
               </p>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
-              <div>
-                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Priekis</p>
-                <PhotoUpload label="Priekio nuotrauka" Icon={User} field="front"
-                  value={form.photo_front} onChange={set("photo_front")} userId={user.id} />
-              </div>
-              <div>
-                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Šonas</p>
-                <PhotoUpload label="Šono nuotrauka" Icon={Walk} field="side"
-                  value={form.photo_side} onChange={set("photo_side")} userId={user.id} />
-              </div>
-              <div>
-                <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.75)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6, textAlign:"center" }}>Nugara</p>
-                <PhotoUpload label="Nugaros nuotrauka" Icon={ChevronLeft} field="back"
-                  value={form.photo_back} onChange={set("photo_back")} userId={user.id} />
-              </div>
-            </div>
+            <YesNoField label="Ar šiuo metu skauda ką nors, per pastaruosius 6 mėn.?" value={form.health_pain_yn} onChange={set("health_pain_yn")} />
+            {form.health_pain_yn === true && (
+              <Field label="Kur ir kaip stipriai?">
+                <TextArea value={form.health_recent_pain} onChange={set("health_recent_pain")} placeholder="Pvz. dešinį kelį, vidutiniškai..." rows={2} />
+              </Field>
+            )}
+
+            <YesNoField label="Ar turite šviežiai įvykusių traumų?" value={form.health_injury_yn} onChange={set("health_injury_yn")} />
+            {form.health_injury_yn === true && (
+              <Field label="Kokia trauma ir kada?">
+                <TextArea value={form.health_recent_injury} onChange={set("health_recent_injury")} placeholder="Pvz. persisukau čiurną prieš mėnesį..." rows={2} />
+              </Field>
+            )}
+
+            <YesNoField label="Ar turite aukštesnį kraujospūdį?" value={form.health_bp_yn} onChange={set("health_bp_yn")} />
+            {form.health_bp_yn === true && (
+              <Field label="Papildoma informacija">
+                <TextArea value={form.health_high_bp} onChange={set("health_high_bp")} placeholder="Pvz. vartojami vaistai, dažnis..." rows={2} />
+              </Field>
+            )}
+
+            <YesNoField label="Ar turite migreną?" value={form.health_migraine} onChange={set("health_migraine")} />
+
+            <YesNoField label="Ar turite alergijų?" value={form.health_allergies} onChange={set("health_allergies")} />
+            {form.health_allergies === true && (
+              <Field label="Kokių alergijų turite?">
+                <TextArea value={form.health_allergies_detail} onChange={set("health_allergies_detail")} placeholder="Pvz. žiedadulkių, tam tikro maisto..." rows={2} />
+              </Field>
+            )}
+
+            <YesNoField label="Ar turite varikozę?" value={form.health_varicose} onChange={set("health_varicose")} />
+            <YesNoField label="Ar turite išvaržų?" value={form.health_hernia} onChange={set("health_hernia")} />
+
+            <YesNoField label="Ar sergate autoimuninėmis ligomis (pvz. diabetas)?" value={form.health_autoimmune} onChange={set("health_autoimmune")} />
+            {form.health_autoimmune === true && (
+              <Field label="Kokiomis ligomis sergate?">
+                <TextArea value={form.health_autoimmune_detail} onChange={set("health_autoimmune_detail")} placeholder="Pvz. 1 tipo diabetas..." rows={2} />
+              </Field>
+            )}
+
+            <YesNoField label="Ar buvo plyšę / patempti raiščiai?" value={form.health_torn_ligaments} onChange={set("health_torn_ligaments")} />
+
+            {form.gender !== "m" && (
+              <YesNoField label="Ar šiuo metu laukiatės?" value={form.health_pregnant} onChange={set("health_pregnant")} />
+            )}
 
             {error && (
               <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:12, padding:"12px 14px", fontSize:13, color:"rgba(255,255,255,0.75)", marginBottom:16 }}>
