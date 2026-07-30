@@ -12,13 +12,14 @@ function ExercisePicker({ onAdd, onClose }) {
   const [filter, setFilter]       = useState("Visi");
   const [search, setSearch]       = useState("");
   const [selected, setSelected]   = useState(null);
-  const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"" });
+  const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"", duration_sec:"" });
   const [perSet, setPerSet]       = useState(false);
   const [setWeights, setSetWeights] = useState(["","",""]);
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
   const [videoUrl, setVideoUrl]   = useState("");
+  const [timedMode, setTimedMode] = useState(false);
 
   useEffect(() => {
     pb.collection("exercises").getFullList({ sort:"muscle,name", requestKey:null }).then(setExercises).catch(()=>{});
@@ -27,6 +28,7 @@ function ExercisePicker({ onAdd, onClose }) {
   function selectExercise(ex) {
     setSelected(ex);
     setVideoUrl(ex.video_url || "");
+    setTimedMode(false);
   }
 
   function handleSetsChange(val) {
@@ -49,13 +51,15 @@ function ExercisePicker({ onAdd, onClose }) {
 
   const filtered = exercises.filter(e => (filter==="Visi"||e.muscle===filter) && (!search||e.name.toLowerCase().includes(search.toLowerCase())));
   const isCardio = selected?.category==="cardio";
+  const isAbs = selected?.muscle==="Pilvas" && !isCardio;
+  const isTimedAbs = isAbs && timedMode;
 
   function handleAdd() {
     if (!selected) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
-    let weight_kg = isCardio ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
+    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
-    if (!isCardio && perSet && sets) {
+    if (!isCardio && !isTimedAbs && perSet && sets) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
@@ -65,9 +69,10 @@ function ExercisePicker({ onAdd, onClose }) {
       pb.collection("exercises").update(selected.id, { video_url: trimmedVideo || null }).catch(()=>{});
     }
     onAdd({ exercise_name:selected.name, category:selected.category, muscle:selected.muscle,
-      sets, reps:isCardio?null:(parseInt(form.reps)||null),
+      sets, reps:(isCardio || isTimedAbs)?null:(parseInt(form.reps)||null),
       weight_kg, set_weights,
-      duration_min:isCardio?(parseInt(form.duration_min)||null):null });
+      duration_min:isCardio?(parseInt(form.duration_min)||null):null,
+      duration_sec:isTimedAbs?(parseInt(form.duration_sec)||null):null });
   }
 
   return (
@@ -142,10 +147,27 @@ function ExercisePicker({ onAdd, onClose }) {
                 </a>
               )}
             </div>
+            {isAbs && (
+              <div style={{display:"flex",gap:8,marginBottom:14}}>
+                <button onClick={()=>setTimedMode(false)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${!timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:!timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Kartojimai</button>
+                <button onClick={()=>setTimedMode(true)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Sekundėmis</button>
+              </div>
+            )}
             {isCardio?(
               <div style={{marginBottom:14}}>
                 <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
                 <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
+              </div>
+            ):isTimedAbs?(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                <div>
+                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                  <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+                  <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+                </div>
               </div>
             ):(
               <>
@@ -210,9 +232,13 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
     reps: exercise.reps ?? "",
     weight_kg: exercise.weight_kg ?? "",
     duration_min: exercise.duration_min ?? "",
+    duration_sec: exercise.duration_sec ?? "",
   });
   const [perSet, setPerSet]         = useState(!!exercise.set_weights);
   const [setWeights, setSetWeights] = useState(initSetWeights);
+  const isAbs = exercise.muscle==="Pilvas" && !isCardio;
+  const [timedMode, setTimedMode] = useState(!!exercise.duration_sec);
+  const isTimedAbs = isAbs && timedMode;
 
   function handleSetsChange(val) {
     setForm(f => ({...f, sets: val}));
@@ -225,15 +251,15 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
   }
 
   function handleSave() {
-    const sets = parseInt(form.sets) || null;
-    let weight_kg = parseFloat(String(form.weight_kg).replace(",",".")) || null;
+    const sets = isCardio ? null : (parseInt(form.sets) || null);
+    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
-    if (perSet && sets) {
+    if (!isCardio && !isTimedAbs && perSet && sets) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
     }
-    onSave({ ...exercise, sets, reps: isCardio?null:(parseInt(form.reps)||null), weight_kg: isCardio?null:weight_kg, set_weights: isCardio?null:set_weights, duration_min: isCardio?(parseInt(form.duration_min)||null):null });
+    onSave({ ...exercise, sets, reps: (isCardio || isTimedAbs)?null:(parseInt(form.reps)||null), weight_kg, set_weights: (isCardio || isTimedAbs)?null:set_weights, duration_min: isCardio?(parseInt(form.duration_min)||null):null, duration_sec: isTimedAbs?(parseInt(form.duration_sec)||null):null });
   }
 
   return (
@@ -247,10 +273,27 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
           <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{exercise.exercise_name}</p>
           <p style={{fontSize:11,color:"rgba(255,255,255,0.5)",margin:0}}>{exercise.muscle}</p>
         </div>
+        {isAbs && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <button onClick={()=>setTimedMode(false)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${!timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:!timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Kartojimai</button>
+            <button onClick={()=>setTimedMode(true)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Sekundėmis</button>
+          </div>
+        )}
         {isCardio ? (
           <div style={{marginBottom:16}}>
             <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
             <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
+          </div>
+        ) : isTimedAbs ? (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+              <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+              <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+            </div>
           </div>
         ) : (
           <>
@@ -316,7 +359,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
       .then(async dbDays => {
         const fullDays = await Promise.all(dbDays.map(async d => {
           const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
-          return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, set_weights:e.set_weights||null })) };
+          return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec, set_weights:e.set_weights||null })) };
         }));
         setDays(fullDays);
         setLoading(false);
@@ -350,7 +393,7 @@ function PresetEditor({ preset, onClose, onSaved }) {
         const dayRec = await pb.collection("workout_preset_days").create({ preset_id:presetId, day_number:day.day_number, day_label:day.day_label });
         for (let i=0;i<day.exercises.length;i++) {
           const ex = day.exercises[i];
-          await pb.collection("workout_preset_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, order_num:i, set_weights:ex.set_weights||null });
+          await pb.collection("workout_preset_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, duration_sec:ex.duration_sec||null, order_num:i, set_weights:ex.set_weights||null });
         }
       }
       onSaved?.(); onClose();

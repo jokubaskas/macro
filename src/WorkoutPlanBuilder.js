@@ -18,6 +18,13 @@ export function ExerciseSummary({ ex }) {
       </span>
     );
   }
+  if (ex.duration_sec) {
+    return (
+      <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:"#B39DFF", background:"rgba(179,157,255,0.14)", borderRadius:8, padding:"2px 7px" }}>
+        <Timer size={10} />{ex.sets ? `${ex.sets} × ` : ""}{ex.duration_sec}s
+      </span>
+    );
+  }
   let weights = null;
   if (ex.set_weights) {
     try { weights = JSON.parse(ex.set_weights).map(Number); } catch { /* naudoti weight_kg žemiau */ }
@@ -70,13 +77,14 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
   const [filter, setFilter]       = useState("Visi");
   const [search, setSearch]       = useState("");
   const [selected, setSelected]   = useState(null);
-  const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"" });
+  const [form, setForm]           = useState({ sets:"3", reps:"12", weight_kg:"", duration_min:"", duration_sec:"" });
   const [perSet, setPerSet]       = useState(false);
   const [setWeights, setSetWeights] = useState(["","",""]);
   const [showNew, setShowNew]     = useState(false);
   const [newEx, setNewEx]         = useState({ name:"", category:"strength", muscle:"Krūtinė" });
   const [saving, setSaving]       = useState(false);
   const [videoUrl, setVideoUrl]   = useState("");
+  const [timedMode, setTimedMode] = useState(false);
 
   // Praeitą kartą atliktas šis pratimas (jei yra) — naudojama pasirinkus
   // pratimą, kad iš karto pasiūlytume tuos pačius skaičius kaip atskaitą.
@@ -86,12 +94,13 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
     setSelected(ex);
     setVideoUrl(ex.video_url || "");
     const prev = lastPerf[ex.name];
-    if (!prev) return;
+    if (!prev) { setTimedMode(false); return; }
     if (ex.category === "cardio") {
       setForm(f => ({ ...f, duration_min: prev.duration_min ? String(prev.duration_min) : "" }));
       return;
     }
-    setForm(f => ({ ...f, sets: prev.sets ? String(prev.sets) : f.sets, reps: prev.reps ? String(prev.reps) : f.reps, weight_kg: prev.weight_kg ? String(prev.weight_kg) : "" }));
+    setTimedMode(!!prev.duration_sec);
+    setForm(f => ({ ...f, sets: prev.sets ? String(prev.sets) : f.sets, reps: prev.reps ? String(prev.reps) : f.reps, weight_kg: prev.weight_kg ? String(prev.weight_kg) : "", duration_sec: prev.duration_sec ? String(prev.duration_sec) : "" }));
     if (prev.set_weights) {
       try {
         const arr = JSON.parse(prev.set_weights).map(String);
@@ -131,13 +140,15 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
     (!search || e.name.toLowerCase().includes(search.toLowerCase()))
   );
   const isCardio = selected?.category==="cardio";
+  const isAbs = selected?.muscle==="Pilvas" && !isCardio;
+  const isTimedAbs = isAbs && timedMode;
 
   function handleAdd() {
     if (!selected) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
-    let weight_kg = isCardio ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
+    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
-    if (!isCardio && perSet && sets) {
+    if (!isCardio && !isTimedAbs && perSet && sets) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
@@ -148,9 +159,10 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
     }
     onAdd({
       exercise_name: selected.name, category: selected.category, muscle: selected.muscle,
-      sets, reps: isCardio?null:(parseInt(form.reps)||null),
+      sets, reps: (isCardio || isTimedAbs) ? null : (parseInt(form.reps)||null),
       weight_kg, set_weights,
-      duration_min: isCardio?(parseInt(form.duration_min)||null):null
+      duration_min: isCardio?(parseInt(form.duration_min)||null):null,
+      duration_sec: isTimedAbs?(parseInt(form.duration_sec)||null):null,
     });
   }
 
@@ -237,10 +249,27 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
                 <p style={{fontSize:10,color:"rgba(255,215,0,0.6)",margin:"7px 0 0"}}>Reikšmės jau įrašytos žemiau, koreguokite jei reikia.</p>
               </div>
             )}
+            {isAbs && (
+              <div style={{display:"flex",gap:8,marginBottom:14}}>
+                <button onClick={()=>setTimedMode(false)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${!timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:!timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Kartojimai</button>
+                <button onClick={()=>setTimedMode(true)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Sekundėmis</button>
+              </div>
+            )}
             {isCardio?(
               <div style={{marginBottom:14}}>
                 <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
                 <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
+              </div>
+            ):isTimedAbs?(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                <div>
+                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                  <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+                  <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+                </div>
               </div>
             ):(
               <>
@@ -307,9 +336,13 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
     reps: exercise.reps ?? "",
     weight_kg: exercise.weight_kg ?? "",
     duration_min: exercise.duration_min ?? "",
+    duration_sec: exercise.duration_sec ?? "",
   });
   const [perSet, setPerSet]       = useState(!!exercise.set_weights);
   const [setWeights, setSetWeights] = useState(initSetWeights);
+  const isAbs = exercise.muscle==="Pilvas" && !isCardio;
+  const [timedMode, setTimedMode] = useState(!!exercise.duration_sec);
+  const isTimedAbs = isAbs && timedMode;
 
   // Kai keičiasi skaičius serijų — atnaujinti setWeights masyvą
   function handleSetsChange(val) {
@@ -323,11 +356,11 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
   }
 
   function handleSave() {
-    const sets = parseInt(form.sets) || null;
-    let weight_kg = parseFloat(String(form.weight_kg).replace(",",".")) || null;
+    const sets = isCardio ? null : (parseInt(form.sets) || null);
+    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
 
-    if (perSet && sets) {
+    if (!isCardio && !isTimedAbs && perSet && sets) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg; // pirmas setas kaip pagrindinis
@@ -336,10 +369,11 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
     onSave({
       ...exercise,
       sets,
-      reps: isCardio ? null : (parseInt(form.reps) || null),
-      weight_kg: isCardio ? null : weight_kg,
-      set_weights: isCardio ? null : set_weights,
+      reps: (isCardio || isTimedAbs) ? null : (parseInt(form.reps) || null),
+      weight_kg,
+      set_weights: (isCardio || isTimedAbs) ? null : set_weights,
       duration_min: isCardio ? (parseInt(form.duration_min) || null) : null,
+      duration_sec: isTimedAbs ? (parseInt(form.duration_sec) || null) : null,
     });
   }
 
@@ -362,10 +396,27 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
             <ExerciseSummary ex={lastEx} />
           </div>
         )}
+        {isAbs && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <button onClick={()=>setTimedMode(false)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${!timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:!timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Kartojimai</button>
+            <button onClick={()=>setTimedMode(true)} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${timedMode?"#AD1457":"rgba(255,255,255,0.2)"}`,background:timedMode?"rgba(173,20,87,0.2)":"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Sekundėmis</button>
+          </div>
+        )}
         {isCardio ? (
           <div style={{marginBottom:16}}>
             <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (minutės)</label>
             <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
+          </div>
+        ) : isTimedAbs ? (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+              <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+              <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+            </div>
           </div>
         ) : (
           <>
@@ -439,7 +490,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
       const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
       return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({
         exercise_name:e.exercise_name, category:e.category, muscle:e.muscle,
-        sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min,
+        sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec,
         set_weights:e.set_weights||null
       })) };
     }));
@@ -472,7 +523,7 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
         const dayRec = await pb.collection("workout_plan_days").create({ plan_id:plan.id, day_number:day.day_number, day_label:day.day_label });
         for (let i=0; i<day.exercises.length; i++) {
           const ex = day.exercises[i];
-          await pb.collection("workout_plan_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, order_num:i, set_weights:ex.set_weights||null });
+          await pb.collection("workout_plan_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, duration_sec:ex.duration_sec||null, order_num:i, set_weights:ex.set_weights||null });
         }
       }
       onSaved?.(); onClose();

@@ -211,7 +211,7 @@ export default function LiveTraining({ client, onClose }) {
     if (!session) { setShowPicker(false); return; }
     const rec = await pb.collection("live_session_exercises").create({
       session_id: session.id, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
-      sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min,
+      sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
       order_num: todayExercises.length,
     }).catch(() => null);
     if (rec) setTodayExercises(prev => [...prev, rec]);
@@ -228,7 +228,7 @@ export default function LiveTraining({ client, onClose }) {
     for (const ex of presetExercises) {
       const rec = await pb.collection("live_session_exercises").create({
         session_id: session.id, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
-        sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min,
+        sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
         order_num: order++,
       }).catch(() => null);
       if (rec) created.push(rec);
@@ -238,9 +238,9 @@ export default function LiveTraining({ client, onClose }) {
   }
 
   async function handleUpdateExercise(updated) {
-    const { id, exercise_name, category, muscle, sets, reps, weight_kg, set_weights, duration_min } = updated;
+    const { id, exercise_name, category, muscle, sets, reps, weight_kg, set_weights, duration_min, duration_sec } = updated;
     const rec = await pb.collection("live_session_exercises").update(id, {
-      exercise_name, category, muscle, sets, reps, weight_kg, set_weights, duration_min,
+      exercise_name, category, muscle, sets, reps, weight_kg, set_weights, duration_min, duration_sec,
     }).catch(() => null);
     if (rec) setTodayExercises(prev => prev.map(e => e.id === rec.id ? rec : e));
     setEditingExercise(null);

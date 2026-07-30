@@ -216,8 +216,12 @@ export default function ClientInfo({ client, onClose }) {
     { key:"ligaments",  label:"Plyšę / patempti raiščiai",  status:client.health_torn_ligaments },
     { key:"pregnant",   label:"Nėštumas",                    status:client.health_pregnant },
   ];
-  const answeredHealth = healthItems.filter(h => h.status != null);
-  const healthConcerns = answeredHealth.filter(h => h.status === true);
+  // client.health_survey_done yra vienintelis patikimas "ar užpildyta" žymuo —
+  // atskirų Bool laukų (health_migraine ir pan.) negalima naudoti tam tikslui,
+  // nes PocketBase esamiems įrašams naujo Bool lauko reikšme grąžina "false"
+  // (nulinę reikšmę), o ne null, tad "Ne" ir "dar neatsakyta" atrodo identiškai.
+  const hasFilledHealth = client.health_survey_done === true;
+  const healthConcerns = healthItems.filter(h => h.status === true);
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
@@ -279,11 +283,13 @@ export default function ClientInfo({ client, onClose }) {
         </Section>
 
         <Section
-          title={healthConcerns.length ? "Sveikata — atkreipti dėmesį" : answeredHealth.length ? "Sveikata" : "Sveikata — neužpildyta"}
-          accent={healthConcerns.length ? "#FF8888" : answeredHealth.length ? "#7FFFB0" : "#FFC15E"}
+          title={!hasFilledHealth ? "Sveikata — neužpildyta" : healthConcerns.length ? "Sveikata — atkreipti dėmesį" : "Sveikata"}
+          accent={!hasFilledHealth ? "#FFC15E" : healthConcerns.length ? "#FF8888" : "#7FFFB0"}
         >
-          {healthConcerns.length > 0 ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom: answeredHealth.length > healthConcerns.length ? 10 : 0 }}>
+          {!hasFilledHealth ? (
+            <p style={{ fontSize:12, color:"#FFC15E", margin:0, display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={13} />Klientas dar neužpildė sveikatos klausimų.</p>
+          ) : healthConcerns.length > 0 ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom: healthItems.length > healthConcerns.length ? 10 : 0 }}>
               {healthConcerns.map(h => (
                 <div key={h.key} style={{ display:"flex", alignItems:"flex-start", gap:8, background:"rgba(255,136,136,0.1)", border:"1px solid rgba(255,136,136,0.3)", borderRadius:12, padding:"9px 12px" }}>
                   <AlertTriangle size={13} color="#FF8888" style={{ flexShrink:0, marginTop:1 }} />
@@ -294,13 +300,11 @@ export default function ClientInfo({ client, onClose }) {
                 </div>
               ))}
             </div>
-          ) : answeredHealth.length > 0 ? (
-            <p style={{ fontSize:12, color:"#7FFFB0", margin:0, display:"flex", alignItems:"center", gap:6 }}><Check size={13} />Visi sveikatos klausimai — be pastabų.</p>
           ) : (
-            <p style={{ fontSize:12, color:"#FFC15E", margin:0, display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={13} />Klientas dar neužpildė sveikatos klausimų.</p>
+            <p style={{ fontSize:12, color:"#7FFFB0", margin:0, display:"flex", alignItems:"center", gap:6 }}><Check size={13} />Visi sveikatos klausimai — be pastabų.</p>
           )}
-          {healthConcerns.length > 0 && answeredHealth.length > healthConcerns.length && (
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Likusiais {answeredHealth.length - healthConcerns.length} klausimais pastabų nėra.</p>
+          {hasFilledHealth && healthConcerns.length > 0 && healthItems.length > healthConcerns.length && (
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Likusiais {healthItems.length - healthConcerns.length} klausimais pastabų nėra.</p>
           )}
         </Section>
 
