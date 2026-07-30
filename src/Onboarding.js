@@ -113,6 +113,68 @@ function ChoiceBtn({ selected, onClick, label, desc }) {
   );
 }
 
+// Sveikatos klausimų blokas — naudojamas ir registracijos anketos 5-ame
+// žingsnyje, ir atskirame HealthUpdatePrompt.js ekrane esamiems klientams,
+// kurie registravosi anksčiau, nei šis klausimynas atsirado.
+export function HealthQuestions({ form, set }) {
+  return (
+    <div>
+      <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid rgba(255,255,255,0.15)" }}>
+        <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}><Heart size={14} />Sveikatos informacija</p>
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
+          Padeda saugiai suplanuoti treniruotes. Matoma tik man kaip trenerei.
+        </p>
+      </div>
+
+      <YesNoField label="Ar šiuo metu skauda ką nors, per pastaruosius 6 mėn.?" value={form.health_pain_yn} onChange={set("health_pain_yn")} />
+      {form.health_pain_yn === true && (
+        <Field label="Kur ir kaip stipriai?">
+          <TextArea value={form.health_recent_pain} onChange={set("health_recent_pain")} placeholder="Pvz. dešinį kelį, vidutiniškai..." rows={2} />
+        </Field>
+      )}
+
+      <YesNoField label="Ar turite šviežiai įvykusių traumų?" value={form.health_injury_yn} onChange={set("health_injury_yn")} />
+      {form.health_injury_yn === true && (
+        <Field label="Kokia trauma ir kada?">
+          <TextArea value={form.health_recent_injury} onChange={set("health_recent_injury")} placeholder="Pvz. persisukau čiurną prieš mėnesį..." rows={2} />
+        </Field>
+      )}
+
+      <YesNoField label="Ar turite aukštesnį kraujospūdį?" value={form.health_bp_yn} onChange={set("health_bp_yn")} />
+      {form.health_bp_yn === true && (
+        <Field label="Papildoma informacija">
+          <TextArea value={form.health_high_bp} onChange={set("health_high_bp")} placeholder="Pvz. vartojami vaistai, dažnis..." rows={2} />
+        </Field>
+      )}
+
+      <YesNoField label="Ar turite migreną?" value={form.health_migraine} onChange={set("health_migraine")} />
+
+      <YesNoField label="Ar turite alergijų?" value={form.health_allergies} onChange={set("health_allergies")} />
+      {form.health_allergies === true && (
+        <Field label="Kokių alergijų turite?">
+          <TextArea value={form.health_allergies_detail} onChange={set("health_allergies_detail")} placeholder="Pvz. žiedadulkių, tam tikro maisto..." rows={2} />
+        </Field>
+      )}
+
+      <YesNoField label="Ar turite varikozę?" value={form.health_varicose} onChange={set("health_varicose")} />
+      <YesNoField label="Ar turite išvaržų?" value={form.health_hernia} onChange={set("health_hernia")} />
+
+      <YesNoField label="Ar sergate autoimuninėmis ligomis (pvz. diabetas)?" value={form.health_autoimmune} onChange={set("health_autoimmune")} />
+      {form.health_autoimmune === true && (
+        <Field label="Kokiomis ligomis sergate?">
+          <TextArea value={form.health_autoimmune_detail} onChange={set("health_autoimmune_detail")} placeholder="Pvz. 1 tipo diabetas..." rows={2} />
+        </Field>
+      )}
+
+      <YesNoField label="Ar buvo plyšę / patempti raiščiai?" value={form.health_torn_ligaments} onChange={set("health_torn_ligaments")} />
+
+      {form.gender !== "m" && (
+        <YesNoField label="Ar šiuo metu laukiatės?" value={form.health_pregnant} onChange={set("health_pregnant")} />
+      )}
+    </div>
+  );
+}
+
 // ── Pagrindinis komponentas ───────────────────────────────────────────────────
 export default function Onboarding({ user, onComplete, startStep = 0 }) {
   const [step, setStep] = useState(startStep);
@@ -210,6 +272,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
       health_torn_ligaments:   form.health_torn_ligaments,
       health_pregnant:         form.health_pregnant,
       onboarding_done: true,
+      health_survey_done: true,
       track_progress:  true,
     });
     onComplete();
@@ -416,59 +479,7 @@ export default function Onboarding({ user, onComplete, startStep = 0 }) {
         {/* ── 5 žingsnis: Sveikata ── */}
         {step === 4 && (
           <div>
-            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:20, border:"1px solid rgba(255,255,255,0.15)" }}>
-              <p style={{ fontSize:13, color:"#fff", fontWeight:600, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}><Heart size={14} />Sveikatos informacija</p>
-              <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0, lineHeight:1.5 }}>
-                Padeda saugiai suplanuoti treniruotes. Matoma tik man kaip trenerei.
-              </p>
-            </div>
-
-            <YesNoField label="Ar šiuo metu skauda ką nors, per pastaruosius 6 mėn.?" value={form.health_pain_yn} onChange={set("health_pain_yn")} />
-            {form.health_pain_yn === true && (
-              <Field label="Kur ir kaip stipriai?">
-                <TextArea value={form.health_recent_pain} onChange={set("health_recent_pain")} placeholder="Pvz. dešinį kelį, vidutiniškai..." rows={2} />
-              </Field>
-            )}
-
-            <YesNoField label="Ar turite šviežiai įvykusių traumų?" value={form.health_injury_yn} onChange={set("health_injury_yn")} />
-            {form.health_injury_yn === true && (
-              <Field label="Kokia trauma ir kada?">
-                <TextArea value={form.health_recent_injury} onChange={set("health_recent_injury")} placeholder="Pvz. persisukau čiurną prieš mėnesį..." rows={2} />
-              </Field>
-            )}
-
-            <YesNoField label="Ar turite aukštesnį kraujospūdį?" value={form.health_bp_yn} onChange={set("health_bp_yn")} />
-            {form.health_bp_yn === true && (
-              <Field label="Papildoma informacija">
-                <TextArea value={form.health_high_bp} onChange={set("health_high_bp")} placeholder="Pvz. vartojami vaistai, dažnis..." rows={2} />
-              </Field>
-            )}
-
-            <YesNoField label="Ar turite migreną?" value={form.health_migraine} onChange={set("health_migraine")} />
-
-            <YesNoField label="Ar turite alergijų?" value={form.health_allergies} onChange={set("health_allergies")} />
-            {form.health_allergies === true && (
-              <Field label="Kokių alergijų turite?">
-                <TextArea value={form.health_allergies_detail} onChange={set("health_allergies_detail")} placeholder="Pvz. žiedadulkių, tam tikro maisto..." rows={2} />
-              </Field>
-            )}
-
-            <YesNoField label="Ar turite varikozę?" value={form.health_varicose} onChange={set("health_varicose")} />
-            <YesNoField label="Ar turite išvaržų?" value={form.health_hernia} onChange={set("health_hernia")} />
-
-            <YesNoField label="Ar sergate autoimuninėmis ligomis (pvz. diabetas)?" value={form.health_autoimmune} onChange={set("health_autoimmune")} />
-            {form.health_autoimmune === true && (
-              <Field label="Kokiomis ligomis sergate?">
-                <TextArea value={form.health_autoimmune_detail} onChange={set("health_autoimmune_detail")} placeholder="Pvz. 1 tipo diabetas..." rows={2} />
-              </Field>
-            )}
-
-            <YesNoField label="Ar buvo plyšę / patempti raiščiai?" value={form.health_torn_ligaments} onChange={set("health_torn_ligaments")} />
-
-            {form.gender !== "m" && (
-              <YesNoField label="Ar šiuo metu laukiatės?" value={form.health_pregnant} onChange={set("health_pregnant")} />
-            )}
-
+            <HealthQuestions form={form} set={set} />
             {error && (
               <div style={{ background:"#FFF0F5", border:"1px solid "+PK.coral, borderRadius:12, padding:"12px 14px", fontSize:13, color:"rgba(255,255,255,0.75)", marginBottom:16 }}>
                 {error}

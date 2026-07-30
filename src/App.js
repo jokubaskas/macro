@@ -6,6 +6,7 @@ import AdminPanel from "./AdminPanel";
 import ClientView from "./ClientView";
 import Onboarding from "./Onboarding";
 import PhotoUploadPrompt from "./Photouploadprompt";
+import HealthUpdatePrompt from "./HealthUpdatePrompt";
 import { LoadingScreen } from "./ui/kit";
 
 export default function App() {
@@ -53,6 +54,8 @@ export default function App() {
   if (!profile) return <LoadingScreen background="linear-gradient(135deg,#6D1B3B,#AD1457)" textColor="#F8BBD9" />;
 
   if (!profile.onboarding_done) return <Onboarding user={user} onComplete={() => loadProfile(user)} />;
+
+  if (!profile.health_survey_done && profile.track_progress !== false) return <HealthUpdatePrompt user={user} profile={profile} onComplete={() => loadProfile(user)} />;
 
   if (!profile.photo_front && profile.track_progress !== false) return <PhotoUploadPrompt user={user} onComplete={() => { loadProfile(user); }} />;
 
