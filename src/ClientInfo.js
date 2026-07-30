@@ -278,28 +278,31 @@ export default function ClientInfo({ client, onClose }) {
           <MacroGoalsCard client={client} />
         </Section>
 
-        {answeredHealth.length > 0 && (
-          <Section title={healthConcerns.length ? "Sveikata — atkreipti dėmesį" : "Sveikata"} accent={healthConcerns.length ? "#FF8888" : "#7FFFB0"}>
-            {healthConcerns.length > 0 ? (
-              <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom: answeredHealth.length > healthConcerns.length ? 10 : 0 }}>
-                {healthConcerns.map(h => (
-                  <div key={h.key} style={{ display:"flex", alignItems:"flex-start", gap:8, background:"rgba(255,136,136,0.1)", border:"1px solid rgba(255,136,136,0.3)", borderRadius:12, padding:"9px 12px" }}>
-                    <AlertTriangle size={13} color="#FF8888" style={{ flexShrink:0, marginTop:1 }} />
-                    <div style={{ minWidth:0, flex:1 }}>
-                      <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>{h.label}</p>
-                      {h.detail && <p style={{ fontSize:11, color:"rgba(255,255,255,0.6)", margin:"2px 0 0", lineHeight:1.4 }}>{h.detail}</p>}
-                    </div>
+        <Section
+          title={healthConcerns.length ? "Sveikata — atkreipti dėmesį" : answeredHealth.length ? "Sveikata" : "Sveikata — neužpildyta"}
+          accent={healthConcerns.length ? "#FF8888" : answeredHealth.length ? "#7FFFB0" : "#FFC15E"}
+        >
+          {healthConcerns.length > 0 ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom: answeredHealth.length > healthConcerns.length ? 10 : 0 }}>
+              {healthConcerns.map(h => (
+                <div key={h.key} style={{ display:"flex", alignItems:"flex-start", gap:8, background:"rgba(255,136,136,0.1)", border:"1px solid rgba(255,136,136,0.3)", borderRadius:12, padding:"9px 12px" }}>
+                  <AlertTriangle size={13} color="#FF8888" style={{ flexShrink:0, marginTop:1 }} />
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:"#fff", margin:0 }}>{h.label}</p>
+                    {h.detail && <p style={{ fontSize:11, color:"rgba(255,255,255,0.6)", margin:"2px 0 0", lineHeight:1.4 }}>{h.detail}</p>}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize:12, color:"#7FFFB0", margin:0, display:"flex", alignItems:"center", gap:6 }}><Check size={13} />Visi sveikatos klausimai — be pastabų.</p>
-            )}
-            {healthConcerns.length > 0 && answeredHealth.length > healthConcerns.length && (
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Likusiais {answeredHealth.length - healthConcerns.length} klausimais pastabų nėra.</p>
-            )}
-          </Section>
-        )}
+                </div>
+              ))}
+            </div>
+          ) : answeredHealth.length > 0 ? (
+            <p style={{ fontSize:12, color:"#7FFFB0", margin:0, display:"flex", alignItems:"center", gap:6 }}><Check size={13} />Visi sveikatos klausimai — be pastabų.</p>
+          ) : (
+            <p style={{ fontSize:12, color:"#FFC15E", margin:0, display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={13} />Klientas dar neužpildė sveikatos klausimų.</p>
+          )}
+          {healthConcerns.length > 0 && answeredHealth.length > healthConcerns.length && (
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>Likusiais {answeredHealth.length - healthConcerns.length} klausimais pastabų nėra.</p>
+          )}
+        </Section>
 
         {hasNutrition && (
           <Section title="Mityba ir iššūkiai">
