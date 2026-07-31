@@ -23,6 +23,24 @@ function TrendBadge({ pct }) {
   );
 }
 
+// Kompaktiška plytelė sąrašams (verta dėmesio / sustojęs progresas / naujausiai
+// atlikta) — dvi kolonos vietoj per visą plotį ištęstų eilučių, kad tilptų
+// daugiau informacijos be scrollinimo.
+function MiniTile({ onClick, title, subtitle, badge, bg = "rgba(255,255,255,0.05)", border = "rgba(255,255,255,0.1)" }) {
+  return (
+    <button onClick={onClick} style={{
+      background: bg, border: `1px solid ${border}`, borderRadius:12, padding:"9px 10px", color:"#fff",
+      cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", flexDirection:"column", gap:5, minWidth:0,
+    }}>
+      <p style={{ fontSize:12, fontWeight:700, margin:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{title}</p>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6 }}>
+        <span style={{ fontSize:9, color:"rgba(255,255,255,0.45)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{subtitle}</span>
+        {badge}
+      </div>
+    </button>
+  );
+}
+
 // Catmull-Rom → kubinė Bezier — glotni linija vietoj laužtės (tas pats modelis kaip ClientStats.js).
 function smoothPath(pts) {
   if (pts.length < 2) return "";
@@ -233,15 +251,12 @@ function ExerciseHistoryView({ clientId }) {
           {notable.length > 0 && (
             <div style={{ marginBottom:18 }}>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Verta atkreipti dėmesį</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {notable.map(n => (
-                  <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background: n.trendPct>=0 ? "rgba(127,255,176,0.08)" : "rgba(255,136,136,0.08)", border: `1px solid ${n.trendPct>=0?"rgba(127,255,176,0.25)":"rgba(255,136,136,0.25)"}`, borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-                    <div style={{ minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.name}</p>
-                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{formatLastResult(n.last)}</p>
-                    </div>
-                    <TrendBadge pct={n.trendPct} />
-                  </button>
+                  <MiniTile key={n.name} onClick={()=>openExercise(n.name, n.muscle)}
+                    title={n.name} subtitle={formatLastResult(n.last)} badge={<TrendBadge pct={n.trendPct} />}
+                    bg={n.trendPct>=0 ? "rgba(127,255,176,0.08)" : "rgba(255,136,136,0.08)"}
+                    border={n.trendPct>=0 ? "rgba(127,255,176,0.25)" : "rgba(255,136,136,0.25)"} />
                 ))}
               </div>
             </div>
@@ -250,15 +265,11 @@ function ExerciseHistoryView({ clientId }) {
           {plateaued.length > 0 && (
             <div style={{ marginBottom:18 }}>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Sustojęs progresas — verta keisti krūvį</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {plateaued.map(n => (
-                  <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,200,0,0.06)", border:"1px solid rgba(255,200,0,0.2)", borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-                    <div style={{ minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.name}</p>
-                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{formatLastResult(n.last)} · keli kartai be pokyčio</p>
-                    </div>
-                    <AlertTriangle size={13} color="#FFD700" style={{ flexShrink:0 }} />
-                  </button>
+                  <MiniTile key={n.name} onClick={()=>openExercise(n.name, n.muscle)}
+                    title={n.name} subtitle={formatLastResult(n.last)} badge={<AlertTriangle size={13} color="#FFD700" style={{ flexShrink:0 }} />}
+                    bg="rgba(255,200,0,0.06)" border="rgba(255,200,0,0.2)" />
                 ))}
               </div>
             </div>
@@ -267,15 +278,10 @@ function ExerciseHistoryView({ clientId }) {
           {feed.length > 0 && (
             <div style={{ marginBottom:18 }}>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Naujausiai atlikta</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {feed.map((e,i) => (
-                  <button key={i} onClick={()=>openExercise(e.exercise_name, e.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-                    <div style={{ minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{e.exercise_name}</p>
-                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{fmtDate(e.date)} · {formatLastResult(e)}</p>
-                    </div>
-                    <TrendBadge pct={e.trendPct} />
-                  </button>
+                  <MiniTile key={i} onClick={()=>openExercise(e.exercise_name, e.muscle)}
+                    title={e.exercise_name} subtitle={`${fmtDate(e.date)} · ${formatLastResult(e)}`} badge={<TrendBadge pct={e.trendPct} />} />
                 ))}
               </div>
             </div>
@@ -439,11 +445,11 @@ function MuscleBalanceView({ clientId }) {
           </p>
 
           {behind.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
               {behind.map(g => (
-                <div key={g.muscle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,200,0,0.08)", border:"1px solid rgba(255,200,0,0.25)", borderRadius:12, padding:"9px 12px" }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={12} color="#FFD700" />{g.muscle} atsilieka nuo plano</span>
-                  <span style={{ fontSize:12, fontWeight:800, color:"#FFD700" }}>{Math.round(g.compliance*100)}%</span>
+                <div key={g.muscle} style={{ background:"rgba(255,200,0,0.08)", border:"1px solid rgba(255,200,0,0.25)", borderRadius:12, padding:"9px 10px", display:"flex", flexDirection:"column", gap:5, minWidth:0 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:5, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><AlertTriangle size={12} color="#FFD700" style={{ flexShrink:0 }} />{g.muscle}</span>
+                  <span style={{ fontSize:9, color:"rgba(255,255,255,0.45)" }}>atsilieka nuo plano · <span style={{ color:"#FFD700", fontWeight:800 }}>{Math.round(g.compliance*100)}%</span></span>
                 </div>
               ))}
             </div>
