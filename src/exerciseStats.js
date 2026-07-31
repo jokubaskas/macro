@@ -74,7 +74,7 @@ export async function fetchExerciseHistory(clientId, exerciseName) {
   return exs
     .map(ex => ({ ...ex, date: dateById[ex.session_id] }))
     .filter(ex => ex.date)
-    .sort((a,b) => a.date.localeCompare(b.date));
+    .sort((a,b) => a.date.localeCompare(b.date) || (a.created||"").localeCompare(b.created||""));
 }
 
 // Vieno atlikimo trumpas tekstinis apibendrinimas — "82kg×5", "3× 30s" arba
@@ -87,7 +87,11 @@ export function formatLastResult(ex) {
 
 // Vienas palyginamas skaičius progresui matuoti — e1RM stiprumo pratimams,
 // trukmė laikomiems pilvo pratimams, minutės kardio. null, jei nėra ką lyginti.
-function metricOf(ex) {
+// Eksportuojama, kad ta pati logika būtų naudojama ir pavienio pratimo
+// istorijos rodinyje (ExerciseProgress.js) — kitaip stiprumo pratimams skirtas
+// maxWeightOf-pagrįstas filtras klaidingai paslėpdavo kardio/laikomų pratimų
+// istoriją net kai ji realiai yra.
+export function metricOf(ex) {
   if (ex.category === "cardio") return ex.duration_min || null;
   if (ex.duration_sec) return ex.duration_sec;
   return e1rmOf(ex) || null;

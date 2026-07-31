@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchProgressOverview, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf, formatLastResult } from "./exerciseStats";
+import { fetchProgressOverview, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf, formatLastResult, metricOf } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
 import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle, Calendar, BarChart } from "./ui/icons";
 
@@ -58,14 +58,15 @@ function smoothPath(pts) {
 // Animuotas svorio progreso grafikas — linija + gradientinė sritis SVG'e
 // (viewBox 0-100 x, non-scaling-stroke), taškai kaip HTML overlay (kad
 // neiškraipytų viewBox tempimas), paliečiamas taškas rodo mini tooltip.
-function WeightChart({ entries, prId }) {
+function WeightChart({ entries, prId, isStrength }) {
   const [active, setActive] = useState(entries.length - 1);
   const H = 150, PAD_X = 3, PAD_Y = 20;
   const n = entries.length;
-  // Linija piešiama pagal jėgos indeksą (e1RM), o ne žalią svorį — kad grafiko
-  // kryptis visada sutaptų su "Jėgos indeksas ±X%" ženkliuku virš jo (žalias
-  // svoris vienas gali klaidingai atrodyti kaip kritimas, jei kartojimai augo).
-  const vals = entries.map(e1rmOf);
+  // Stiprumo pratimams linija piešiama pagal jėgos indeksą (e1RM), o ne žalią
+  // svorį — kad grafiko kryptis visada sutaptų su "Jėgos indeksas ±X%"
+  // ženkliuku virš jo. Kardio/laikomiems pratimams naudojamas tas pats
+  // metricOf (trukmė), nes jiems e1RM neturi prasmės.
+  const vals = entries.map(metricOf);
   const min = Math.min(...vals), max = Math.max(...vals);
   const range = (max - min) || 1;
   const pts = vals.map((v,i) => [
@@ -121,8 +122,14 @@ function WeightChart({ entries, prId }) {
             background:"#1a0a14", border:"1px solid rgba(255,255,255,0.2)", borderRadius:10, padding:"6px 10px",
             whiteSpace:"nowrap", pointerEvents:"none", boxShadow:"0 4px 14px rgba(0,0,0,0.45)", zIndex:2,
           }}>
-            <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{Math.round(e1rmOf(activeEntry))}kg indeksas</p>
-            <p style={{ fontSize:9, color:"rgba(255,255,255,0.6)", margin:"1px 0 0" }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
+            {isStrength ? (
+              <>
+                <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{Math.round(e1rmOf(activeEntry))}kg indeksas</p>
+                <p style={{ fontSize:9, color:"rgba(255,255,255,0.6)", margin:"1px 0 0" }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
+              </>
+            ) : (
+              <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{formatLastResult(activeEntry)}</p>
+            )}
             <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:"1px 0 0" }}>{fmtDate(activeEntry.date)}</p>
           </div>
         );
@@ -155,21 +162,24 @@ function ExerciseHistoryView({ clientId }) {
 
   if (selectedName) {
     const entries = history || [];
-    const withWeight = entries.filter(e => maxWeightOf(e) > 0);
-    const pr = withWeight.length ? withWeight.reduce((best,e) => maxWeightOf(e) > maxWeightOf(best) ? e : best) : null;
-    const first = withWeight[0];
-    const last = withWeight[withWeight.length-1];
-    const prev = withWeight.length > 1 ? withWeight[withWeight.length-2] : null;
+    // metricOf (ne vien maxWeightOf) — kad kardio ir laikomi (duration_sec)
+    // pratimai irgi turėtų istoriją, ne vien svoriu grįsti stiprumo pratimai.
+    const withData = entries.filter(e => metricOf(e) !== null);
+    const pr = withData.length ? withData.reduce((best,e) => metricOf(e) > metricOf(best) ? e : best) : null;
+    const first = withData[0];
+    const last = withData[withData.length-1];
+    const prev = withData.length > 1 ? withData[withData.length-2] : null;
+    const isStrength = last ? (last.category !== "cardio" && !last.duration_sec) : true;
 
-    // Jėgos indeksas (e1RM) ir darbo apimtis lyginami su PRAĖJUSIU kartu (ne pirmu
-    // įrašu) — parodo ar žmogus progresuoja dabar, ne vien nuo pat pradžių.
-    const lastE1rm = last ? e1rmOf(last) : 0;
-    const prevE1rm = prev ? e1rmOf(prev) : 0;
-    const strengthDiffPct = prev && prevE1rm > 0 ? Math.round(((lastE1rm - prevE1rm) / prevE1rm) * 100) : null;
+    // Progresas lyginamas su PRAĖJUSIU kartu (ne pirmu įrašu) — parodo ar
+    // žmogus progresuoja dabar, ne vien nuo pat pradžių.
+    const lastMetric = last ? metricOf(last) : 0;
+    const prevMetric = prev ? metricOf(prev) : 0;
+    const strengthDiffPct = prev && prevMetric > 0 ? Math.round(((lastMetric - prevMetric) / prevMetric) * 100) : null;
 
-    const lastVolume = last ? volumeOf(last) : 0;
-    const prevVolume = prev ? volumeOf(prev) : 0;
-    const volumeDiffPct = prev && prevVolume > 0 ? Math.round(((lastVolume - prevVolume) / prevVolume) * 100) : null;
+    const lastVolume = last && isStrength ? volumeOf(last) : 0;
+    const prevVolume = prev && isStrength ? volumeOf(prev) : 0;
+    const volumeDiffPct = isStrength && prev && prevVolume > 0 ? Math.round(((lastVolume - prevVolume) / prevVolume) * 100) : null;
 
     return (
       <div>
@@ -184,18 +194,24 @@ function ExerciseHistoryView({ clientId }) {
 
         {loadingHist ? (
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
-        ) : withWeight.length === 0 ? (
+        ) : withData.length === 0 ? (
           <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Istorijos dar nėra</p>
         ) : (
           <>
             <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap", margin:"6px 0 8px" }}>
-              <span style={{ fontSize:42, fontWeight:800, color:"#fff", lineHeight:1 }}>
-                {maxWeightOf(last)}<span style={{ fontSize:17, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>kg</span>
-              </span>
-              {last.reps ? <span style={{ fontSize:15, fontWeight:700, color:"rgba(255,255,255,0.5)", marginBottom:8 }}>× {last.reps}</span> : null}
+              {isStrength ? (
+                <>
+                  <span style={{ fontSize:42, fontWeight:800, color:"#fff", lineHeight:1 }}>
+                    {maxWeightOf(last)}<span style={{ fontSize:17, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>kg</span>
+                  </span>
+                  {last.reps ? <span style={{ fontSize:15, fontWeight:700, color:"rgba(255,255,255,0.5)", marginBottom:8 }}>× {last.reps}</span> : null}
+                </>
+              ) : (
+                <span style={{ fontSize:32, fontWeight:800, color:"#fff", lineHeight:1 }}>{formatLastResult(last)}</span>
+              )}
               {pr && (
                 <span style={{ fontSize:12, fontWeight:800, color:"#FFD700", background:"rgba(255,215,0,0.12)", border:"1px solid rgba(255,215,0,0.3)", borderRadius:20, padding:"5px 11px", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
-                  <Flame size={12} />PR {maxWeightOf(pr)}kg
+                  <Flame size={12} />PR {formatLastResult(pr)}
                 </span>
               )}
             </div>
@@ -204,7 +220,7 @@ function ExerciseHistoryView({ clientId }) {
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:6 }}>
                 {strengthDiffPct !== null && (
                   <span style={{ fontSize:12, fontWeight:800, color: strengthDiffPct>=0?"#7FFFB0":"#FF8888", background: strengthDiffPct>=0?"rgba(127,255,176,0.14)":"rgba(255,136,136,0.14)", borderRadius:20, padding:"6px 12px", display:"flex", alignItems:"center", gap:4 }}>
-                    {strengthDiffPct>=0?"▲":"▼"} Jėgos indeksas {strengthDiffPct>=0?"+":""}{strengthDiffPct}%
+                    {strengthDiffPct>=0?"▲":"▼"} {isStrength ? "Jėgos indeksas" : "Progresas"} {strengthDiffPct>=0?"+":""}{strengthDiffPct}%
                   </span>
                 )}
                 {volumeDiffPct !== null && (
@@ -217,14 +233,14 @@ function ExerciseHistoryView({ clientId }) {
 
             {prev && (
               <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"0 0 10px" }}>
-                Praeitą kartą {maxWeightOf(prev)}kg×{prev.reps||"–"} → dabar {maxWeightOf(last)}kg×{last.reps||"–"}
+                Praeitą kartą {formatLastResult(prev)} → dabar {formatLastResult(last)}
               </p>
             )}
 
-            <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", margin:"0 0 4px", textTransform:"uppercase", letterSpacing:0.4 }}>Jėgos indeksas laikui bėgant</p>
-            <WeightChart entries={withWeight} prId={pr?.id} />
+            <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", margin:"0 0 4px", textTransform:"uppercase", letterSpacing:0.4 }}>{isStrength ? "Jėgos indeksas laikui bėgant" : "Progresas laikui bėgant"}</p>
+            <WeightChart entries={withData} prId={pr?.id} isStrength={isStrength} />
             <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"8px 0 0" }}>
-              {withWeight.length} įrašų · {fmtDate(first.date)} – {fmtDate(last.date)}
+              {withData.length} įrašų · {fmtDate(first.date)} – {fmtDate(last.date)}
             </p>
           </>
         )}
