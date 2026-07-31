@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, maxWeightOf } from "./exerciseStats";
+import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
 import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle } from "./ui/icons";
 
@@ -123,7 +123,17 @@ function ExerciseHistoryView({ clientId }) {
     const pr = withWeight.length ? withWeight.reduce((best,e) => maxWeightOf(e) > maxWeightOf(best) ? e : best) : null;
     const first = withWeight[0];
     const last = withWeight[withWeight.length-1];
-    const diff = first && last && first !== last ? maxWeightOf(last) - maxWeightOf(first) : 0;
+    const prev = withWeight.length > 1 ? withWeight[withWeight.length-2] : null;
+
+    // Jėgos indeksas (e1RM) ir darbo apimtis lyginami su PRAĖJUSIU kartu (ne pirmu
+    // įrašu) — parodo ar žmogus progresuoja dabar, ne vien nuo pat pradžių.
+    const lastE1rm = e1rmOf(last);
+    const prevE1rm = prev ? e1rmOf(prev) : 0;
+    const strengthDiffPct = prev && prevE1rm > 0 ? Math.round(((lastE1rm - prevE1rm) / prevE1rm) * 100) : null;
+
+    const lastVolume = volumeOf(last);
+    const prevVolume = prev ? volumeOf(prev) : 0;
+    const volumeDiffPct = prev && prevVolume > 0 ? Math.round(((lastVolume - prevVolume) / prevVolume) * 100) : null;
 
     return (
       <div>
@@ -142,21 +152,38 @@ function ExerciseHistoryView({ clientId }) {
           <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Istorijos dar nėra</p>
         ) : (
           <>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap", margin:"6px 0 10px" }}>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap", margin:"6px 0 8px" }}>
               <span style={{ fontSize:42, fontWeight:800, color:"#fff", lineHeight:1 }}>
                 {maxWeightOf(last)}<span style={{ fontSize:17, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>kg</span>
               </span>
-              {diff !== 0 && (
-                <span style={{ fontSize:13, fontWeight:800, color: diff>0?"#7FFFB0":"#FF8888", background: diff>0?"rgba(127,255,176,0.14)":"rgba(255,136,136,0.14)", borderRadius:20, padding:"5px 11px", marginBottom:8, display:"flex", alignItems:"center", gap:3 }}>
-                  {diff>0?"▲":"▼"}{Math.abs(diff)}kg
-                </span>
-              )}
+              {last.reps ? <span style={{ fontSize:15, fontWeight:700, color:"rgba(255,255,255,0.5)", marginBottom:8 }}>× {last.reps}</span> : null}
               {pr && (
                 <span style={{ fontSize:12, fontWeight:800, color:"#FFD700", background:"rgba(255,215,0,0.12)", border:"1px solid rgba(255,215,0,0.3)", borderRadius:20, padding:"5px 11px", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
                   <Flame size={12} />PR {maxWeightOf(pr)}kg
                 </span>
               )}
             </div>
+
+            {(strengthDiffPct !== null || volumeDiffPct !== null) && (
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:6 }}>
+                {strengthDiffPct !== null && (
+                  <span style={{ fontSize:12, fontWeight:800, color: strengthDiffPct>=0?"#7FFFB0":"#FF8888", background: strengthDiffPct>=0?"rgba(127,255,176,0.14)":"rgba(255,136,136,0.14)", borderRadius:20, padding:"6px 12px", display:"flex", alignItems:"center", gap:4 }}>
+                    {strengthDiffPct>=0?"▲":"▼"} Jėgos indeksas {strengthDiffPct>=0?"+":""}{strengthDiffPct}%
+                  </span>
+                )}
+                {volumeDiffPct !== null && (
+                  <span style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.75)", background:"rgba(255,255,255,0.08)", borderRadius:20, padding:"6px 12px", display:"flex", alignItems:"center", gap:4 }}>
+                    Apimtis {volumeDiffPct>=0?"+":""}{volumeDiffPct}%
+                  </span>
+                )}
+              </div>
+            )}
+
+            {prev && (
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"0 0 10px" }}>
+                Praeitą kartą {maxWeightOf(prev)}kg×{prev.reps||"–"} → dabar {maxWeightOf(last)}kg×{last.reps||"–"}
+              </p>
+            )}
 
             <WeightChart entries={withWeight} prId={pr?.id} />
             <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"8px 0 0" }}>
@@ -259,6 +286,47 @@ function MuscleBalanceView({ clientId }) {
   );
 }
 
+// ── Šios savaitės krūvio santrauka (matoma virš abiejų skirtukų) ────────────
+function StatCell({ label, value, icon }) {
+  return (
+    <div>
+      <p style={{ fontSize:19, fontWeight:800, color:"#fff", margin:"0 0 2px", display:"flex", alignItems:"center", gap:5 }}>{icon}{value}</p>
+      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{label}</p>
+    </div>
+  );
+}
+
+function WeeklySummaryCard({ clientId }) {
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    setSummary(null);
+    fetchWeeklyWorkSummary(clientId).then(setSummary);
+  }, [clientId]);
+
+  if (!summary) return null;
+  const { sessionsCompleted, plannedSessions, workingSets, volume, volumeChangePct, sessionCountDiffers, prCount } = summary;
+  if (sessionsCompleted === 0 && volume === 0) return null;
+
+  return (
+    <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", marginBottom:16 }}>
+      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 12px", textTransform:"uppercase", letterSpacing:0.4 }}>Šios savaitės krūvis</p>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <StatCell label="Treniruotės" value={plannedSessions ? `${sessionsCompleted} iš ${plannedSessions}` : sessionsCompleted} />
+        <StatCell label="Darbinės serijos" value={workingSets} />
+        <StatCell label="Bendra apimtis" value={`${volume.toLocaleString("lt-LT")} kg`} />
+        <StatCell label="Nauji rekordai" value={prCount} icon={prCount > 0 ? <Flame size={13} color="#FFD700" /> : null} />
+      </div>
+      {volumeChangePct !== null && (
+        <p style={{ fontSize:12, fontWeight:700, color: volumeChangePct>=0?"#7FFFB0":"#FF8888", margin:"12px 0 0" }}>
+          {volumeChangePct>=0?"▲":"▼"} {Math.abs(volumeChangePct)}% apimties pokytis nuo praėjusios savaitės
+          {sessionCountDiffers && <span style={{ color:"rgba(255,255,255,0.4)", fontWeight:600 }}> (skirtingas treniruočių skaičius, lyginti reikia atsargiai)</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function ExerciseProgress({ client, onClose }) {
   const [tab, setTab] = useState("progress"); // "progress" | "balance"
 
@@ -274,6 +342,8 @@ export default function ExerciseProgress({ client, onClose }) {
       </div>
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
+        <WeeklySummaryCard clientId={client.id} />
+
         <div style={{ display:"flex", gap:6, marginBottom:16 }}>
           {[{k:"progress",l:"Pratimų progresas"},{k:"balance",l:"Raumenų balansas"}].map(t => (
             <button key={t.k} onClick={()=>setTab(t.k)} style={{ flex:1, padding:"10px", borderRadius:12, border:"none", background:tab===t.k?"#AD1457":"rgba(255,255,255,0.1)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
