@@ -431,7 +431,7 @@ function WeeklySummaryCard({ clientId }) {
       )}
       {volumeChangePct !== null && (
         <p style={{ fontSize:12, fontWeight:700, color: volumeChangePct>=0?"#7FFFB0":"#FF8888", margin:"12px 0 0" }}>
-          {volumeChangePct>=0?"▲":"▼"} {Math.abs(volumeChangePct)}% apimties pokytis nuo praėjusios savaitės
+          {volumeChangePct>=0?"▲":"▼"} {Math.abs(volumeChangePct)}% viso savaitės krūvio pokytis (visi pratimai kartu) nuo praėjusios savaitės
           {sessionCountDiffers && <span style={{ color:"rgba(255,255,255,0.4)", fontWeight:600 }}> (skirtingas treniruočių skaičius, lyginti reikia atsargiai)</span>}
         </p>
       )}
