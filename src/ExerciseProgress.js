@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchProgressOverview, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf, formatLastResult } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
-import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle } from "./ui/icons";
+import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle, Calendar, BarChart } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const KEYFRAMES = `
@@ -455,11 +455,14 @@ function MuscleBalanceView({ clientId }) {
 }
 
 // ── Šios savaitės krūvio santrauka (matoma virš abiejų skirtukų) ────────────
-function StatCell({ label, value, icon }) {
+// Kompaktiška plytelė — ta pati vizualinė kalba kaip Kliento anketos
+// "Amžius/Ūgis/Svoris" plytelės viršuje, kad santrauka užimtų mažiau vietos.
+function StatTile({ Icon, value, label }) {
   return (
-    <div>
-      <p style={{ fontSize:19, fontWeight:800, color:"#fff", margin:"0 0 2px", display:"flex", alignItems:"center", gap:5 }}>{icon}{value}</p>
-      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{label}</p>
+    <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
+      <Icon size={15} color="rgba(255,255,255,0.6)" style={{ marginBottom:4 }} />
+      <p style={{ fontSize:14, fontWeight:800, color:"#fff", margin:"0 0 1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{value}</p>
+      <p style={{ fontSize:9, color:"rgba(255,255,255,0.45)", margin:0, textTransform:"uppercase", letterSpacing:"0.04em" }}>{label}</p>
     </div>
   );
 }
@@ -478,12 +481,12 @@ function WeeklySummaryCard({ clientId }) {
 
   return (
     <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:16, padding:"14px 16px", marginBottom:16 }}>
-      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 12px", textTransform:"uppercase", letterSpacing:0.4 }}>Šios savaitės krūvis</p>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <StatCell label="Treniruotės" value={plannedSessions ? `${sessionsCompleted} iš ${plannedSessions}` : sessionsCompleted} />
-        <StatCell label="Darbinės serijos" value={workingSets} />
-        <StatCell label="Bendra apimtis" value={`${volume.toLocaleString("lt-LT")} kg`} />
-        <StatCell label="Nauji rekordai" value={prCount} icon={prCount > 0 ? <Flame size={13} color="#FFD700" /> : null} />
+      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 10px", textTransform:"uppercase", letterSpacing:0.4 }}>Šios savaitės krūvis</p>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
+        <StatTile Icon={Calendar} label="Treniruotės" value={plannedSessions ? `${sessionsCompleted}/${plannedSessions}` : sessionsCompleted} />
+        <StatTile Icon={Dumbbell} label="Serijos" value={workingSets} />
+        <StatTile Icon={BarChart} label="Apimtis" value={`${volume.toLocaleString("lt-LT")}kg`} />
+        <StatTile Icon={Flame} label="Rekordai" value={prCount} />
       </div>
       {prNames && prNames.length > 0 && (
         <p style={{ fontSize:11, color:"rgba(255,215,0,0.85)", margin:"10px 0 0" }}>
