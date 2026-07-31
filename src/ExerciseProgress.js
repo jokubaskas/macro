@@ -334,24 +334,76 @@ function ExerciseHistoryView({ clientId }) {
   );
 }
 
-// ── Raumenų grupių balansas per pasirinktą laikotarpį ────────────────────────
+// ── Raumenų grupių balansas — radaro diagrama, lyginanti su tuo, kas ────────
+// šiam klientui ĮPRASTA/PLANUOTA (ne tarpusparpiais tarp grupių) ─────────────
 const BALANCE_PERIODS = [{ k:14, l:"14 d." }, { k:28, l:"28 d." }, { k:56, l:"56 d." }];
+
+// N-kampio radaro diagrama: kiekviena ašis — raumenų grupė, spindulys —
+// kiek % nuo įprastos/planuotos šios grupės dalies realiai atlikta per
+// pasirinktą laikotarpį (100% = pilnai atitinka arba viršija normą).
+function MuscleRadar({ groups, hasBaseline }) {
+  const n = groups.length;
+  const size = 300, cx = size/2, cy = size/2 - 6, R = 92;
+  const angleFor = i => -Math.PI/2 + i * (2*Math.PI/n);
+  const ringPoint = (i, frac) => {
+    const a = angleFor(i), r = R * frac;
+    return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  };
+
+  const valueFrac = g => hasBaseline
+    ? Math.max(0.04, Math.min(g.compliance, 1))
+    : (groups.length ? Math.max(0.04, g.count / Math.max(...groups.map(x=>x.count), 1)) : 0.04);
+
+  const dataPts = groups.map((g,i) => ringPoint(i, valueFrac(g)));
+  const dataPath = dataPts.map((p,i) => `${i===0?"M":"L"}${p[0]},${p[1]}`).join(" ") + " Z";
+  const rings = [0.33, 0.66, 1];
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width="100%" style={{ display:"block", maxWidth:340, margin:"0 auto" }}>
+      <defs>
+        <radialGradient id="mr-fill" cx="50%" cy="50%" r="65%">
+          <stop offset="0%" stopColor="#FF6EB4" stopOpacity="0.55"/>
+          <stop offset="100%" stopColor="#AD1457" stopOpacity="0.25"/>
+        </radialGradient>
+      </defs>
+
+      {rings.map(f => (
+        <polygon key={f} points={groups.map((_,i)=>ringPoint(i,f).join(",")).join(" ")} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
+      ))}
+      {groups.map((g,i) => {
+        const [ex,ey] = ringPoint(i,1);
+        return <line key={g.muscle} x1={cx} y1={cy} x2={ex} y2={ey} stroke="rgba(255,255,255,0.14)" strokeWidth="1" />;
+      })}
+
+      <path d={dataPath} fill="url(#mr-fill)" stroke="#FF6EB4" strokeWidth="2" strokeLinejoin="round" />
+      {dataPts.map((p,i) => <circle key={i} cx={p[0]} cy={p[1]} r="3.5" fill="#fff" stroke="#FF6EB4" strokeWidth="1.5" />)}
+
+      {groups.map((g,i) => {
+        const [lx,ly] = ringPoint(i, 1.32);
+        const anchor = Math.abs(lx-cx) < 8 ? "middle" : lx > cx ? "start" : "end";
+        return (
+          <text key={g.muscle} x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle">
+            <tspan x={lx} dy="-6" fontSize="11" fontWeight="700" fill="rgba(255,255,255,0.75)">{g.muscle}</tspan>
+            <tspan x={lx} dy="15" fontSize="13" fontWeight="800" fill="#fff">{hasBaseline ? `${Math.round(g.compliance*100)}%` : g.count}</tspan>
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
 
 function MuscleBalanceView({ clientId }) {
   const [period, setPeriod] = useState(28);
   const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState({});
+  const [data, setData] = useState({ groups:[], behind:[], hasBaseline:false });
 
   useEffect(() => {
     setLoading(true);
-    fetchMuscleBalance(clientId, period).then(c => { setCounts(c); setLoading(false); });
+    fetchMuscleBalance(clientId, period).then(d => { setData(d); setLoading(false); });
   }, [clientId, period]);
 
-  const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]);
-  const total = entries.reduce((s,[,c])=>s+c, 0);
-  const max = entries.length ? entries[0][1] : 1;
-  const least = entries.length ? entries[entries.length-1] : null;
-  const imbalanced = least && entries.length >= 3 && least[1] < max * 0.3;
+  const { groups, behind, hasBaseline } = data;
+  const total = groups.reduce((s,g) => s + g.count, 0);
 
   return (
     <div>
@@ -367,24 +419,33 @@ function MuscleBalanceView({ clientId }) {
         <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
       ) : total === 0 ? (
         <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Šiuo laikotarpiu pratimų neįrašyta</p>
+      ) : groups.length < 3 ? (
+        <div>
+          {groups.map(g => (
+            <div key={g.muscle} style={{ position:"relative", height:40, borderRadius:12, background:"rgba(255,255,255,0.08)", overflow:"hidden", marginBottom:8 }}>
+              <div style={{ position:"absolute", inset:0, width:`${Math.min(g.compliance,1)*100}%`, background:"linear-gradient(90deg,#AD1457,#FF6EB4)" }} />
+              <div style={{ position:"relative", height:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 14px" }}>
+                <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Dumbbell size={13} />{g.muscle}</span>
+                <span style={{ fontSize:15, fontWeight:800, color:"#fff" }}>{g.count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <>
-          <div style={{ marginBottom: imbalanced ? 14 : 0 }}>
-            {entries.map(([muscle, count]) => (
-              <div key={muscle} style={{ position:"relative", height:40, borderRadius:12, background:"rgba(255,255,255,0.08)", overflow:"hidden", marginBottom:8 }}>
-                <div style={{ position:"absolute", inset:0, width:`${(count/max)*100}%`, background:"linear-gradient(90deg,#AD1457,#FF6EB4)", transition:"width 0.7s cubic-bezier(.23,1,.32,1)" }} />
-                <div style={{ position:"relative", height:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 14px" }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><Dumbbell size={13} />{muscle}</span>
-                  <span style={{ fontSize:15, fontWeight:800, color:"#fff" }}>{count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <MuscleRadar groups={groups} hasBaseline={hasBaseline} />
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"4px 0 16px" }}>
+            {hasBaseline ? "% — kiek atlikta nuo įprastos/planuotos šios grupės dalies" : "Dar nėra su kuo palyginti — rodomas santykinis pasiskirstymas"}
+          </p>
 
-          {imbalanced && (
-            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,200,0,0.12)", border:"1px solid rgba(255,200,0,0.3)", borderRadius:20, padding:"7px 13px" }}>
-              <AlertTriangle size={12} color="#FFD700" />
-              <span style={{ fontSize:11, fontWeight:700, color:"#FFD700" }}>{least[0]} atsilieka</span>
+          {behind.length > 0 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {behind.map(g => (
+                <div key={g.muscle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,200,0,0.08)", border:"1px solid rgba(255,200,0,0.25)", borderRadius:12, padding:"9px 12px" }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={12} color="#FFD700" />{g.muscle} atsilieka nuo plano</span>
+                  <span style={{ fontSize:12, fontWeight:800, color:"#FFD700" }}>{Math.round(g.compliance*100)}%</span>
+                </div>
+              ))}
             </div>
           )}
         </>

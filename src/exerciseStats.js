@@ -159,23 +159,79 @@ export async function fetchProgressOverview(clientId, { feedLimit = 8, notableLi
   return { tiles, feed, notable, plateaued };
 }
 
-// Kiek kartų (skaičiuojant pratimų įrašus) treniruota kiekviena raumenų
-// grupė per pastarąsias N dienų — atskleidžia disbalansą.
+// Raumenų grupių balansas per pasirinktą laikotarpį — LYGINAMAS NE tarpusavyje
+// (mažiausiai treniruota grupė vs daugiausiai), o su tuo, kiek tos grupės
+// paprastai tenka ŠIAM klientui. "Įprasta" (baseline) proporcija sudaroma iš
+// DVIEJŲ šaltinių: priskirto online coaching plano pratimų IR VISOS gyvų
+// treniruočių istorijos — nes dažnai treniruojama gyvai pagal šablonus, ne
+// vien pagal formalų priskirtą planą. Taip grupė, kurios pagal programą ir
+// turi būti mažiau (pvz. pečiai), nebus klaidingai pažymėta kaip "atsilieka".
 export async function fetchMuscleBalance(clientId, sinceDays = 28) {
-  const since = new Date(Date.now() - sinceDays*24*60*60*1000).toISOString().split("T")[0];
-  const sessions = await pb.collection("live_sessions").getFullList({
+  const baseline = {};
+  const addToBaseline = (muscle) => { if (muscle) baseline[muscle] = (baseline[muscle] || 0) + 1; };
+
+  // 1) Aktyvaus online coaching plano pratimai
+  const activePlans = await pb.collection("workout_plans").getFullList({
+    filter: `user_id="${clientId}" && is_active=true`, requestKey: null,
+  }).catch(() => []);
+  if (activePlans.length) {
+    const planDays = await pb.collection("workout_plan_days").getFullList({
+      filter: activePlans.map(p => `plan_id="${p.id}"`).join(" || "), requestKey: null,
+    }).catch(() => []);
+    if (planDays.length) {
+      const dayFilter = planDays.map(d => `day_id="${d.id}"`).join(" || ");
+      const planExs = await pb.collection("workout_plan_exercises").getFullList({ filter: dayFilter, requestKey: null }).catch(() => []);
+      for (const ex of planExs) if (ex.category !== "cardio") addToBaseline(ex.muscle);
+    }
+  }
+
+  // 2) Visa gyvų treniruočių istorija (atspindi realų, dažnai per šablonus vykdomą, treniravimo pobūdį)
+  const allSessions = await pb.collection("live_sessions").getFullList({
+    filter: `user_id="${clientId}"`, requestKey: null,
+  }).catch(() => []);
+  if (allSessions.length) {
+    const capped = allSessions.slice(0, MAX_SESSIONS_FOR_BULK_FETCH);
+    const filter = capped.map(s => `session_id="${s.id}"`).join(" || ");
+    const allExs = await pb.collection("live_session_exercises").getFullList({ filter, requestKey: null }).catch(() => []);
+    for (const ex of allExs) if (ex.category !== "cardio") addToBaseline(ex.muscle);
+  }
+
+  // Pasirinkto periodo faktiškai atlikti pratimai
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const recentSessions = await pb.collection("live_sessions").getFullList({
     filter: `user_id="${clientId}" && date>="${since}"`, requestKey: null,
   }).catch(() => []);
-  if (!sessions.length) return {};
-  const filter = sessions.map(s => `session_id="${s.id}"`).join(" || ");
-  const exs = await pb.collection("live_session_exercises").getFullList({ filter, requestKey: null }).catch(() => []);
   const counts = {};
-  for (const ex of exs) {
-    if (ex.category === "cardio") continue;
-    const m = ex.muscle || "Kita";
-    counts[m] = (counts[m] || 0) + 1;
+  if (recentSessions.length) {
+    const filter = recentSessions.map(s => `session_id="${s.id}"`).join(" || ");
+    const exs = await pb.collection("live_session_exercises").getFullList({ filter, requestKey: null }).catch(() => []);
+    for (const ex of exs) {
+      if (ex.category === "cardio") continue;
+      const m = ex.muscle || "Kita";
+      counts[m] = (counts[m] || 0) + 1;
+    }
   }
-  return counts;
+
+  const hasBaseline = Object.keys(baseline).length > 0;
+  const baseTotal = Object.values(baseline).reduce((s, v) => s + v, 0) || 1;
+  const countTotal = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
+  const muscles = [...new Set([...Object.keys(baseline), ...Object.keys(counts)])];
+
+  const groups = muscles.map(m => {
+    const count = counts[m] || 0;
+    const basePct = (baseline[m] || 0) / baseTotal * 100;
+    const actualPct = count / countTotal * 100;
+    // "Atitikimas" (compliance) — kiek % nuo įprastos/planuotos šios grupės dalies realiai atlikta.
+    // Jei grupė visai nėra baseline (papildomai daroma), o kažkas atlikta — nelaikoma atsiliekančia.
+    const compliance = basePct > 0 ? actualPct / basePct : (count > 0 ? 1 : 0);
+    return { muscle: m, count, basePct, actualPct, compliance };
+  }).sort((a, b) => a.muscle.localeCompare(b.muscle));
+
+  const behind = groups
+    .filter(g => g.basePct >= 5 && g.compliance < 0.5)
+    .sort((a, b) => a.compliance - b.compliance);
+
+  return { groups, behind, hasBaseline };
 }
 
 // Pirmadienis-sekmadienis savaitės ribos (offsetWeeks=-1 → praėjusi savaitė).
