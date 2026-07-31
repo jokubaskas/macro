@@ -127,11 +127,11 @@ function ExerciseHistoryView({ clientId }) {
 
     // Jėgos indeksas (e1RM) ir darbo apimtis lyginami su PRAĖJUSIU kartu (ne pirmu
     // įrašu) — parodo ar žmogus progresuoja dabar, ne vien nuo pat pradžių.
-    const lastE1rm = e1rmOf(last);
+    const lastE1rm = last ? e1rmOf(last) : 0;
     const prevE1rm = prev ? e1rmOf(prev) : 0;
     const strengthDiffPct = prev && prevE1rm > 0 ? Math.round(((lastE1rm - prevE1rm) / prevE1rm) * 100) : null;
 
-    const lastVolume = volumeOf(last);
+    const lastVolume = last ? volumeOf(last) : 0;
     const prevVolume = prev ? volumeOf(prev) : 0;
     const volumeDiffPct = prev && prevVolume > 0 ? Math.round(((lastVolume - prevVolume) / prevVolume) * 100) : null;
 
