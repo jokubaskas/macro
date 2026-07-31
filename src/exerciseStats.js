@@ -116,6 +116,7 @@ export async function fetchProgressOverview(clientId, { feedLimit = 8, notableLi
   withDate.sort((a, b) => a.date.localeCompare(b.date) || (a.created || "").localeCompare(b.created || ""));
 
   const prevByName = {};
+  const windowByName = {}; // paskutinės ~4 palyginamos reikšmės kiekvienam pratimui — plato aptikimui
   const processed = [];
   for (const ex of withDate) {
     const prev = prevByName[ex.exercise_name] || null;
@@ -124,22 +125,38 @@ export async function fetchProgressOverview(clientId, { feedLimit = 8, notableLi
     const trendPct = metric && prevMetric ? Math.round(((metric - prevMetric) / prevMetric) * 100) : null;
     processed.push({ ...ex, trendPct });
     prevByName[ex.exercise_name] = ex;
+    if (metric) {
+      const w = windowByName[ex.exercise_name] || (windowByName[ex.exercise_name] = []);
+      w.push(metric);
+      if (w.length > 4) w.shift();
+    }
   }
 
   const tilesMap = new Map();
   for (const entry of processed) tilesMap.set(entry.exercise_name, entry); // paskutinis chronologiškai laimi
   const tiles = [...tilesMap.values()]
-    .map(e => ({ name: e.exercise_name, muscle: e.muscle, last: e, trendPct: e.trendPct }))
+    .map(e => {
+      const window = windowByName[e.exercise_name] || [];
+      let plateau = false;
+      if (window.length >= 3) {
+        const wMax = Math.max(...window), wMin = Math.min(...window);
+        const rangePct = wMin > 0 ? ((wMax - wMin) / wMin) * 100 : 0;
+        plateau = rangePct <= 6;
+      }
+      return { name: e.exercise_name, muscle: e.muscle, last: e, trendPct: e.trendPct, plateau };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const feed = [...processed].reverse().slice(0, feedLimit);
 
   const notable = tiles
-    .filter(t => t.trendPct !== null && Math.abs(t.trendPct) >= notableThreshold)
+    .filter(t => !t.plateau && t.trendPct !== null && Math.abs(t.trendPct) >= notableThreshold)
     .sort((a, b) => Math.abs(b.trendPct) - Math.abs(a.trendPct))
     .slice(0, notableLimit);
 
-  return { tiles, feed, notable };
+  const plateaued = tiles.filter(t => t.plateau).slice(0, notableLimit);
+
+  return { tiles, feed, notable, plateaued };
 }
 
 // Kiek kartų (skaičiuojant pratimų įrašus) treniruota kiekviena raumenų
@@ -225,6 +242,7 @@ export async function fetchWeeklyWorkSummary(clientId) {
     thisExs.filter(e => e.category !== "cardio" && (e.weight_kg || e.set_weights)).map(e => e.exercise_name)
   )];
   let prCount = 0;
+  const prNames = [];
   for (const name of namesThisWeek) {
     const full = await fetchExerciseHistory(clientId, name);
     const before = full.filter(e => e.date < thisWeek.start && maxWeightOf(e) > 0);
@@ -232,7 +250,7 @@ export async function fetchWeeklyWorkSummary(clientId) {
     if (!before.length || !during.length) continue;
     const priorBest = Math.max(...before.map(e1rmOf));
     const weekBest = Math.max(...during.map(e1rmOf));
-    if (weekBest > priorBest) prCount++;
+    if (weekBest > priorBest) { prCount++; prNames.push(name); }
   }
 
   return {
@@ -246,5 +264,6 @@ export async function fetchWeeklyWorkSummary(clientId) {
     volumeChangePct,
     sessionCountDiffers: thisSessions.length !== prevSessions.length,
     prCount,
+    prNames,
   };
 }

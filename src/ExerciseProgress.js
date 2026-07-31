@@ -44,7 +44,10 @@ function WeightChart({ entries, prId }) {
   const [active, setActive] = useState(entries.length - 1);
   const H = 150, PAD_X = 3, PAD_Y = 20;
   const n = entries.length;
-  const vals = entries.map(maxWeightOf);
+  // Linija piešiama pagal jėgos indeksą (e1RM), o ne žalią svorį — kad grafiko
+  // kryptis visada sutaptų su "Jėgos indeksas ±X%" ženkliuku virš jo (žalias
+  // svoris vienas gali klaidingai atrodyti kaip kritimas, jei kartojimai augo).
+  const vals = entries.map(e1rmOf);
   const min = Math.min(...vals), max = Math.max(...vals);
   const range = (max - min) || 1;
   const pts = vals.map((v,i) => [
@@ -100,8 +103,9 @@ function WeightChart({ entries, prId }) {
             background:"#1a0a14", border:"1px solid rgba(255,255,255,0.2)", borderRadius:10, padding:"6px 10px",
             whiteSpace:"nowrap", pointerEvents:"none", boxShadow:"0 4px 14px rgba(0,0,0,0.45)", zIndex:2,
           }}>
-            <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
-            <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:0 }}>{fmtDate(activeEntry.date)}</p>
+            <p style={{ fontSize:12, fontWeight:800, color:"#fff", margin:0 }}>{Math.round(e1rmOf(activeEntry))}kg indeksas</p>
+            <p style={{ fontSize:9, color:"rgba(255,255,255,0.6)", margin:"1px 0 0" }}>{maxWeightOf(activeEntry)}kg{activeEntry.reps ? ` × ${activeEntry.reps}` : ""}</p>
+            <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", margin:"1px 0 0" }}>{fmtDate(activeEntry.date)}</p>
           </div>
         );
       })()}
@@ -111,9 +115,10 @@ function WeightChart({ entries, prId }) {
 
 // ── Vieno pratimo istorija — hero skaičius, PR ženkliukas, grafikas ──────────
 function ExerciseHistoryView({ clientId }) {
-  const [overview, setOverview]     = useState({ tiles:[], feed:[], notable:[] });
+  const [overview, setOverview]     = useState({ tiles:[], feed:[], notable:[], plateaued:[] });
   const [loadingNames, setLoadingN] = useState(true);
   const [search, setSearch]         = useState("");
+  const [muscleFilter, setMuscleFilter] = useState(null);
   const [selectedName, setSelName]  = useState(null);
   const [selectedMuscle, setSelMuscle] = useState(null);
   const [history, setHistory]       = useState(null);
@@ -122,7 +127,7 @@ function ExerciseHistoryView({ clientId }) {
   useEffect(() => {
     fetchProgressOverview(clientId).then(o => { setOverview(o); setLoadingN(false); });
   }, [clientId]);
-  const { tiles: names, feed, notable } = overview;
+  const { tiles: names, feed, notable, plateaued } = overview;
 
   useEffect(() => {
     if (!selectedName) return;
@@ -198,6 +203,7 @@ function ExerciseHistoryView({ clientId }) {
               </p>
             )}
 
+            <p style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", margin:"0 0 4px", textTransform:"uppercase", letterSpacing:0.4 }}>Jėgos indeksas laikui bėgant</p>
             <WeightChart entries={withWeight} prId={pr?.id} />
             <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"8px 0 0" }}>
               {withWeight.length} įrašų · {fmtDate(first.date)} – {fmtDate(last.date)}
@@ -208,8 +214,13 @@ function ExerciseHistoryView({ clientId }) {
     );
   }
 
-  const filtered = search ? names.filter(n => n.name.toLowerCase().includes(search.toLowerCase())) : names;
+  const muscles = [...new Set(names.map(n => n.muscle).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  const filtered = names.filter(n =>
+    (!search || n.name.toLowerCase().includes(search.toLowerCase())) &&
+    (!muscleFilter || n.muscle === muscleFilter)
+  );
   function openExercise(name, muscle) { setSelName(name); setSelMuscle(muscle); }
+  function daysSinceOf(dateStr) { return Math.floor((Date.now() - new Date(dateStr + "T00:00:00")) / 86400000); }
 
   return (
     <div>
@@ -236,6 +247,23 @@ function ExerciseHistoryView({ clientId }) {
             </div>
           )}
 
+          {plateaued.length > 0 && (
+            <div style={{ marginBottom:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Sustojęs progresas — verta keisti krūvį</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {plateaued.map(n => (
+                  <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,200,0,0.06)", border:"1px solid rgba(255,200,0,0.2)", borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.name}</p>
+                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{formatLastResult(n.last)} · keli kartai be pokyčio</p>
+                    </div>
+                    <AlertTriangle size={13} color="#FFD700" style={{ flexShrink:0 }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {feed.length > 0 && (
             <div style={{ marginBottom:18 }}>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Naujausiai atlikta</p>
@@ -254,27 +282,51 @@ function ExerciseHistoryView({ clientId }) {
           )}
 
           <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Visi pratimai</p>
+
+          {muscles.length > 1 && (
+            <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:10, paddingBottom:2 }}>
+              <button onClick={()=>setMuscleFilter(null)} style={{ flexShrink:0, padding:"7px 13px", borderRadius:20, border:"none", background: muscleFilter===null ? "#AD1457" : "rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                Visi
+              </button>
+              {muscles.map(m => (
+                <button key={m} onClick={()=>setMuscleFilter(m)} style={{ flexShrink:0, padding:"7px 13px", borderRadius:20, border:"none", background: muscleFilter===m ? "#AD1457" : "rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+
           {names.length > 8 && <SearchInput value={search} onChange={setSearch} placeholder="Ieškoti pratimo..." />}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop: names.length > 8 ? 10 : 0 }}>
-            {filtered.map(n => (
-              <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} className="tile-tap" style={{
-                background:"linear-gradient(160deg, rgba(255,110,180,0.16), rgba(255,110,180,0.05))", border:"1px solid rgba(255,110,180,0.25)",
-                borderRadius:16, padding:"14px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
-                display:"flex", flexDirection:"column", gap:10,
-              }}>
-                <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Dumbbell size={15} color="#FF6EB4" />}
-                </div>
-                <div>
-                  <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
-                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{n.muscle}</p>
-                </div>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6, marginTop:-2 }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.65)" }}>{formatLastResult(n.last)}</span>
-                  <TrendBadge pct={n.trendPct} />
-                </div>
-              </button>
-            ))}
+            {filtered.map(n => {
+              const days = daysSinceOf(n.last.date);
+              const stale = days >= 21;
+              return (
+                <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} className="tile-tap" style={{
+                  background:"linear-gradient(160deg, rgba(255,110,180,0.16), rgba(255,110,180,0.05))", border:"1px solid rgba(255,110,180,0.25)",
+                  borderRadius:16, padding:"14px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+                  display:"flex", flexDirection:"column", gap:10,
+                }}>
+                  <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Dumbbell size={15} color="#FF6EB4" />}
+                  </div>
+                  <div>
+                    <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
+                    <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{n.muscle}</p>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6, marginTop:-2 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.65)" }}>{formatLastResult(n.last)}</span>
+                    {stale ? (
+                      <span style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.45)", background:"rgba(255,255,255,0.08)", borderRadius:20, padding:"3px 8px", flexShrink:0 }}>
+                        Seniai · {days}d.
+                      </span>
+                    ) : (
+                      <TrendBadge pct={n.trendPct} />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </>
       )}
@@ -360,7 +412,7 @@ function WeeklySummaryCard({ clientId }) {
   }, [clientId]);
 
   if (!summary) return null;
-  const { sessionsCompleted, plannedSessions, workingSets, volume, volumeChangePct, sessionCountDiffers, prCount } = summary;
+  const { sessionsCompleted, plannedSessions, workingSets, volume, volumeChangePct, sessionCountDiffers, prCount, prNames } = summary;
   if (sessionsCompleted === 0 && volume === 0) return null;
 
   return (
@@ -372,6 +424,11 @@ function WeeklySummaryCard({ clientId }) {
         <StatCell label="Bendra apimtis" value={`${volume.toLocaleString("lt-LT")} kg`} />
         <StatCell label="Nauji rekordai" value={prCount} icon={prCount > 0 ? <Flame size={13} color="#FFD700" /> : null} />
       </div>
+      {prNames && prNames.length > 0 && (
+        <p style={{ fontSize:11, color:"rgba(255,215,0,0.85)", margin:"10px 0 0" }}>
+          <Flame size={11} color="#FFD700" /> {prNames.join(", ")}
+        </p>
+      )}
       {volumeChangePct !== null && (
         <p style={{ fontSize:12, fontWeight:700, color: volumeChangePct>=0?"#7FFFB0":"#FF8888", margin:"12px 0 0" }}>
           {volumeChangePct>=0?"▲":"▼"} {Math.abs(volumeChangePct)}% apimties pokytis nuo praėjusios savaitės
