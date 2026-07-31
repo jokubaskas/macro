@@ -544,8 +544,10 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
     (approvedByDate[b.date] ||= []).push(b);
   });
 
+  // Visos tos dienos rezervacijos (patvirtintos ir laukiančios — abi užima
+  // laiką grafike), kad laisvi laikai matytųsi tarpuose tarp jų, ne atskirai.
   const dayBookings = selectedDate
-    ? (approvedByDate[selectedDate]||[]).slice().sort((a,b)=>timeToMin(a.start_time)-timeToMin(b.start_time))
+    ? bookings.filter(b => b.date===selectedDate && (b.status==="approved"||b.status==="pending")).slice().sort((a,b)=>timeToMin(a.start_time)-timeToMin(b.start_time))
     : [];
 
   // Laisvi laikai pasirinktai dienai — trenerės grafikas tai dienai minus jau
@@ -577,6 +579,14 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
     ? generateSlots(daySchedule.start_time, daySchedule.end_time, daySchedule.slot_duration)
         .filter(s => !takenStarts.has(s.start) && !isSlotBlocked(selectedDate, s.start, s.end) && !heldByRecurring(selectedDate, s.start))
     : [];
+
+  // Vieninga dienos laiko juosta — rezervacijos ir laisvi laikai sumaišyti
+  // chronologine tvarka, kad laisvi tarpai matytųsi TARP užimtų laikų, o ne
+  // atskirame bloke po jų.
+  const dayTimeline = [
+    ...dayBookings.map(b => ({ type:"booking", start:b.start_time, end:b.end_time, booking:b })),
+    ...freeSlots.map(s => ({ type:"free", start:s.start, end:s.end })),
+  ].sort((a,b)=>timeToMin(a.start)-timeToMin(b.start));
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
@@ -624,48 +634,39 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
         </div>
 
         {selectedDate && (
-          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16,marginBottom:16}}>
+          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16}}>
             <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 12px",display:"flex",alignItems:"center",gap:6}}><Calendar size={13} />{selectedDate}</p>
-            {dayBookings.length===0 ? (
-              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną treniruočių nėra</p>
+            {vacation ? (
+              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną nedirbama{vacation.reason ? ` — ${vacation.reason}` : ""}</p>
+            ) : dayTimeline.length===0 ? (
+              !daySchedule ? (
+                <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią savaitės dieną pagal grafiką nedirbama</p>
+              ) : (
+                <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną treniruočių nėra</p>
+              )
             ) : (
-              dayBookings.map(b => (
-                <div key={b.id} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              dayTimeline.map((item,i) => item.type==="free" ? (
+                <div key={"free-"+i} style={{background:"rgba(127,255,176,0.06)",border:"1px dashed rgba(127,255,176,0.3)",borderRadius:12,padding:"9px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,fontWeight:700,color:"rgba(127,255,176,0.85)"}}>Laisva</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"rgba(127,255,176,0.85)",display:"flex",alignItems:"center",gap:4}}><Timer size={12} />{item.start}–{item.end}</span>
+                </div>
+              ) : (
+                <div key={item.booking.id} style={{background: item.booking.status==="pending" ? "rgba(255,200,0,0.08)" : "rgba(255,255,255,0.08)", border: item.booking.status==="pending" ? "1px solid rgba(255,200,0,0.25)" : "none", borderRadius:12, padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
-                    {clients[b.client_id] && onOpenClient ? (
-                      <button onClick={()=>onOpenClient(clients[b.client_id])} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
-                        <span style={{fontSize:13,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{clients[b.client_id].name}</span>
+                    {clients[item.booking.client_id] && onOpenClient ? (
+                      <button onClick={()=>onOpenClient(clients[item.booking.client_id])} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,margin:"0 0 2px"}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#89CFF0",textDecoration:"underline"}}>{clients[item.booking.client_id].name}</span>
                         <ChevronRight size={10} color="#89CFF0" />
                       </button>
                     ) : (
-                      <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{clients[b.client_id]?.name||"Nežinomas"}</p>
+                      <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 2px"}}>{clients[item.booking.client_id]?.name||"Nežinomas"}</p>
                     )}
-                    {b.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0,fontStyle:"italic"}}>"{b.notes}"</p>}
+                    {item.booking.status==="pending" && <p style={{fontSize:10,fontWeight:700,color:"#FFD700",margin:"0 0 2px"}}>Laukia patvirtinimo</p>}
+                    {item.booking.notes && <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0,fontStyle:"italic"}}>"{item.booking.notes}"</p>}
                   </div>
-                  <span style={{fontSize:12,fontWeight:700,color:"#7FFFB0",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Timer size={12} />{b.start_time}–{b.end_time}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#7FFFB0",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Timer size={12} />{item.start}–{item.end}</span>
                 </div>
               ))
-            )}
-          </div>
-        )}
-
-        {selectedDate && (
-          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16}}>
-            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 12px",display:"flex",alignItems:"center",gap:6}}><Timer size={13} />Laisvi laikai</p>
-            {vacation ? (
-              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną nedirbama{vacation.reason ? ` — ${vacation.reason}` : ""}</p>
-            ) : !daySchedule ? (
-              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią savaitės dieną pagal grafiką nedirbama</p>
-            ) : freeSlots.length === 0 ? (
-              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Laisvų laikų šiai dienai nebeliko</p>
-            ) : (
-              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {freeSlots.map(s => (
-                  <span key={s.start} style={{fontSize:12,fontWeight:700,color:"#fff",background:"rgba(127,255,176,0.12)",border:"1px solid rgba(127,255,176,0.3)",borderRadius:20,padding:"6px 12px"}}>
-                    {s.start}–{s.end}
-                  </span>
-                ))}
-              </div>
             )}
           </div>
         )}
