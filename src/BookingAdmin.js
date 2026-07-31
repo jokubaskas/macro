@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
-import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME } from "./constants";
+import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
 import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, ChevronRight, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 
@@ -115,6 +115,20 @@ export function downloadIcal(booking, clientName) {
 function timeToMin(t) { const [h,m] = t.split(":").map(Number); return h*60+m; }
 function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 function todayStr() { return new Date().toISOString().split("T")[0]; }
+function dowOf(dateStr) { const d = new Date(dateStr + "T12:00:00"); return d.getDay() === 0 ? 7 : d.getDay(); }
+
+// Laikų tarpai tarp start/end, kas slot_duration minučių, visada nuo pilnos
+// valandos — tas pats modelis kaip kliento rezervacijos ekrane (BookingClient.js).
+function generateSlots(start, end, duration) {
+  const slots = [];
+  let cur = Math.ceil(timeToMin(start) / 60) * 60;
+  const last = timeToMin(end) - duration;
+  while (cur <= last) {
+    slots.push({ start: minToTime(cur), end: minToTime(cur + duration) });
+    cur += 60;
+  }
+  return slots;
+}
 
 const inp = { padding:"9px 8px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", WebkitAppearance:"none" };
 
@@ -507,7 +521,18 @@ function RecurringSlotsSettings({ onClose }) {
 function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
   const [calMonth, setCalMonth] = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
   const [selectedDate, setSelectedDate] = useState(null);
+  const [schedule, setSchedule] = useState([]);
+  const [exceptions, setExceptions] = useState([]);
+  const [recurringSlots, setRecurringSlots] = useState([]);
   const today = todayStr();
+
+  useEffect(() => {
+    Promise.all([
+      pb.collection("trainer_schedule").getFullList({ filter:"is_active=true", requestKey:null }).catch(()=>[]),
+      pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
+      pb.collection("recurring_slots").getFullList({ filter:"is_active=true", requestKey:null }).catch(()=>[]),
+    ]).then(([sch, exc, rec]) => { setSchedule(sch); setExceptions(exc); setRecurringSlots(rec); });
+  }, []);
 
   const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
   const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
@@ -521,6 +546,36 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
 
   const dayBookings = selectedDate
     ? (approvedByDate[selectedDate]||[]).slice().sort((a,b)=>timeToMin(a.start_time)-timeToMin(b.start_time))
+    : [];
+
+  // Laisvi laikai pasirinktai dienai — trenerės grafikas tai dienai minus jau
+  // užimti (laukiantys ar patvirtinti) laikai, blokuotos išimtys (atostogos ir
+  // pan.) ir dar neatsakyti klientų įprasti (pastovūs) laikai.
+  function isSlotBlocked(dateStr, slotStart, slotEnd) {
+    const slotS = timeToMin(slotStart), slotE = timeToMin(slotEnd);
+    return exceptions.some(ex => {
+      const exEnd = ex.end_date || ex.date;
+      if (dateStr < ex.date || dateStr > exEnd) return false;
+      if (ex.all_day) return true;
+      const exS = timeToMin(ex.start_time), exE = timeToMin(ex.end_time);
+      return slotS < exE && slotE > exS;
+    });
+  }
+  function heldByRecurring(dateStr, slotStart) {
+    if (!isRecurringHoldActive(dateStr)) return false;
+    const rec = recurringSlots.find(r => r.day_of_week === dowOf(dateStr) && r.start_time === slotStart);
+    if (!rec) return false;
+    return !bookings.some(b => b.date === dateStr && b.start_time === slotStart); // jei jau atsakyta — matoma tarp dayBookings
+  }
+
+  const vacation = selectedDate ? exceptions.find(ex => ex.all_day && selectedDate >= ex.date && selectedDate <= (ex.end_date||ex.date)) : null;
+  const daySchedule = selectedDate ? schedule.find(s => s.day_of_week === dowOf(selectedDate)) : null;
+  const takenStarts = new Set(
+    selectedDate ? bookings.filter(b => b.date===selectedDate && (b.status==="pending"||b.status==="approved")).map(b=>b.start_time) : []
+  );
+  const freeSlots = (selectedDate && daySchedule && !vacation)
+    ? generateSlots(daySchedule.start_time, daySchedule.end_time, daySchedule.slot_duration)
+        .filter(s => !takenStarts.has(s.start) && !isSlotBlocked(selectedDate, s.start, s.end) && !heldByRecurring(selectedDate, s.start))
     : [];
 
   return (
@@ -569,7 +624,7 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
         </div>
 
         {selectedDate && (
-          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16}}>
+          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16,marginBottom:16}}>
             <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 12px",display:"flex",alignItems:"center",gap:6}}><Calendar size={13} />{selectedDate}</p>
             {dayBookings.length===0 ? (
               <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną treniruočių nėra</p>
@@ -590,6 +645,27 @@ function TrainerCalendar({ bookings, clients, onClose, onOpenClient }) {
                   <span style={{fontSize:12,fontWeight:700,color:"#7FFFB0",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Timer size={12} />{b.start_time}–{b.end_time}</span>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {selectedDate && (
+          <div style={{background:"rgba(0,0,0,0.2)",borderRadius:16,padding:16}}>
+            <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 12px",display:"flex",alignItems:"center",gap:6}}><Timer size={13} />Laisvi laikai</p>
+            {vacation ? (
+              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią dieną nedirbama{vacation.reason ? ` — ${vacation.reason}` : ""}</p>
+            ) : !daySchedule ? (
+              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Šią savaitės dieną pagal grafiką nedirbama</p>
+            ) : freeSlots.length === 0 ? (
+              <p style={{color:"rgba(255,255,255,0.35)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Laisvų laikų šiai dienai nebeliko</p>
+            ) : (
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {freeSlots.map(s => (
+                  <span key={s.start} style={{fontSize:12,fontWeight:700,color:"#fff",background:"rgba(127,255,176,0.12)",border:"1px solid rgba(127,255,176,0.3)",borderRadius:20,padding:"6px 12px"}}>
+                    {s.start}–{s.end}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         )}
