@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchDistinctExerciseNames, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf } from "./exerciseStats";
+import { fetchProgressOverview, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf, formatLastResult } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
 import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle } from "./ui/icons";
 
@@ -10,6 +10,18 @@ const KEYFRAMES = `
 `;
 
 function fmtDate(d) { return d ? new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { month:"short", day:"numeric" }) : "–"; }
+
+// Mažas tendencijos ženkliukas (▲/▼ + %) — naudojamas plytelėse, naujausio
+// srauto eilutėse ir "verta atkreipti dėmesį" sąraše.
+function TrendBadge({ pct }) {
+  if (pct === null || pct === undefined) return null;
+  const up = pct >= 0;
+  return (
+    <span style={{ fontSize:10, fontWeight:800, color: up?"#7FFFB0":"#FF8888", background: up?"rgba(127,255,176,0.14)":"rgba(255,136,136,0.14)", borderRadius:20, padding:"3px 8px", display:"inline-flex", alignItems:"center", gap:2, flexShrink:0 }}>
+      {up?"▲":"▼"}{Math.abs(pct)}%
+    </span>
+  );
+}
 
 // Catmull-Rom → kubinė Bezier — glotni linija vietoj laužtės (tas pats modelis kaip ClientStats.js).
 function smoothPath(pts) {
@@ -99,7 +111,7 @@ function WeightChart({ entries, prId }) {
 
 // ── Vieno pratimo istorija — hero skaičius, PR ženkliukas, grafikas ──────────
 function ExerciseHistoryView({ clientId }) {
-  const [names, setNames]           = useState([]);
+  const [overview, setOverview]     = useState({ tiles:[], feed:[], notable:[] });
   const [loadingNames, setLoadingN] = useState(true);
   const [search, setSearch]         = useState("");
   const [selectedName, setSelName]  = useState(null);
@@ -108,8 +120,9 @@ function ExerciseHistoryView({ clientId }) {
   const [loadingHist, setLoadingH]  = useState(false);
 
   useEffect(() => {
-    fetchDistinctExerciseNames(clientId).then(list => { setNames(list); setLoadingN(false); });
+    fetchProgressOverview(clientId).then(o => { setOverview(o); setLoadingN(false); });
   }, [clientId]);
+  const { tiles: names, feed, notable } = overview;
 
   useEffect(() => {
     if (!selectedName) return;
@@ -196,32 +209,74 @@ function ExerciseHistoryView({ clientId }) {
   }
 
   const filtered = search ? names.filter(n => n.name.toLowerCase().includes(search.toLowerCase())) : names;
+  function openExercise(name, muscle) { setSelName(name); setSelMuscle(muscle); }
 
   return (
     <div>
-      {names.length > 8 && <SearchInput value={search} onChange={setSearch} placeholder="Ieškoti pratimo..." />}
       {loadingNames ? (
         <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"30px 0" }}>Kraunama...</p>
-      ) : filtered.length === 0 ? (
+      ) : names.length === 0 ? (
         <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, textAlign:"center", padding:"30px 0" }}>Gyvų treniruočių istorijos dar nėra</p>
       ) : (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          {filtered.map(n => (
-            <button key={n.name} onClick={()=>{setSelName(n.name); setSelMuscle(n.muscle);}} className="tile-tap" style={{
-              background:"linear-gradient(160deg, rgba(255,110,180,0.16), rgba(255,110,180,0.05))", border:"1px solid rgba(255,110,180,0.25)",
-              borderRadius:16, padding:"14px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
-              display:"flex", flexDirection:"column", gap:10,
-            }}>
-              <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Dumbbell size={15} color="#FF6EB4" />}
+        <>
+          {notable.length > 0 && (
+            <div style={{ marginBottom:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Verta atkreipti dėmesį</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {notable.map(n => (
+                  <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background: n.trendPct>=0 ? "rgba(127,255,176,0.08)" : "rgba(255,136,136,0.08)", border: `1px solid ${n.trendPct>=0?"rgba(127,255,176,0.25)":"rgba(255,136,136,0.25)"}`, borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.name}</p>
+                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{formatLastResult(n.last)}</p>
+                    </div>
+                    <TrendBadge pct={n.trendPct} />
+                  </button>
+                ))}
               </div>
-              <div>
-                <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
-                <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{n.muscle}</p>
+            </div>
+          )}
+
+          {feed.length > 0 && (
+            <div style={{ marginBottom:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Naujausiai atlikta</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {feed.map((e,i) => (
+                  <button key={i} onClick={()=>openExercise(e.exercise_name, e.muscle)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"9px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:700, margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{e.exercise_name}</p>
+                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{fmtDate(e.date)} · {formatLastResult(e)}</p>
+                    </div>
+                    <TrendBadge pct={e.trendPct} />
+                  </button>
+                ))}
               </div>
-            </button>
-          ))}
-        </div>
+            </div>
+          )}
+
+          <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:0.4 }}>Visi pratimai</p>
+          {names.length > 8 && <SearchInput value={search} onChange={setSearch} placeholder="Ieškoti pratimo..." />}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop: names.length > 8 ? 10 : 0 }}>
+            {filtered.map(n => (
+              <button key={n.name} onClick={()=>openExercise(n.name, n.muscle)} className="tile-tap" style={{
+                background:"linear-gradient(160deg, rgba(255,110,180,0.16), rgba(255,110,180,0.05))", border:"1px solid rgba(255,110,180,0.25)",
+                borderRadius:16, padding:"14px 12px", color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+                display:"flex", flexDirection:"column", gap:10,
+              }}>
+                <div style={{ width:32, height:32, borderRadius:"50%", background: n.muscle==="Cardio" ? "rgba(137,207,240,0.18)" : "rgba(255,110,180,0.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {n.muscle === "Cardio" ? <Walk size={15} color="#89CFF0" /> : <Dumbbell size={15} color="#FF6EB4" />}
+                </div>
+                <div>
+                  <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", lineHeight:1.25 }}>{n.name}</p>
+                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.45)", margin:0 }}>{n.muscle}</p>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6, marginTop:-2 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.65)" }}>{formatLastResult(n.last)}</span>
+                  <TrendBadge pct={n.trendPct} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

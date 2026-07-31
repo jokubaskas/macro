@@ -77,21 +77,69 @@ export async function fetchExerciseHistory(clientId, exerciseName) {
     .sort((a,b) => a.date.localeCompare(b.date));
 }
 
-// Visi skirtingi pratimų pavadinimai, kuriuos šis klientas kada nors darė
-// gyvose treniruotėse — naudojama pasirenkant, kurio pratimo progresą žiūrėti.
-export async function fetchDistinctExerciseNames(clientId) {
+// Vieno atlikimo trumpas tekstinis apibendrinimas — "82kg×5", "3× 30s" arba
+// "12 min", priklausomai nuo pratimo tipo.
+export function formatLastResult(ex) {
+  if (ex.category === "cardio") return `${ex.duration_min || 0} min`;
+  if (ex.duration_sec) return `${ex.sets ? ex.sets + "× " : ""}${ex.duration_sec}s`;
+  return `${maxWeightOf(ex)}kg×${ex.reps || "–"}`;
+}
+
+// Vienas palyginamas skaičius progresui matuoti — e1RM stiprumo pratimams,
+// trukmė laikomiems pilvo pratimams, minutės kardio. null, jei nėra ką lyginti.
+function metricOf(ex) {
+  if (ex.category === "cardio") return ex.duration_min || null;
+  if (ex.duration_sec) return ex.duration_sec;
+  return e1rmOf(ex) || null;
+}
+
+// Bendra "Pratimų progreso" pradinio ekrano suvestinė vienu užklausų rinkiniu:
+// - tiles: kiekvienas kada nors atliktas pratimas su paskutiniu rezultatu ir
+//   tendencija (%) nuo priešpaskutinio karto — kad nereikėtų lįsti į kiekvieną
+//   pratimą atskirai, norint pamatyti ar žmogus progresuoja;
+// - feed: keli paskutiniai atlikti pratimai chronologine tvarka (bet kokio
+//   pavadinimo) — greitas "kas naujausiai atlikta" vaizdas;
+// - notable: pratimai, kurių tendencija ženkli (progresas arba regresas) —
+//   ką verta pastebėti be viso sąrašo skenavimo.
+export async function fetchProgressOverview(clientId, { feedLimit = 8, notableLimit = 5, notableThreshold = 15 } = {}) {
   const sessions = await pb.collection("live_sessions").getFullList({
-    filter: `user_id="${clientId}"`, requestKey: null,
+    filter: `user_id="${clientId}"`, sort: "date", requestKey: null,
   }).catch(() => []);
-  if (!sessions.length) return [];
-  const capped = sessions.slice(0, MAX_SESSIONS_FOR_BULK_FETCH);
+  if (!sessions.length) return { tiles: [], feed: [], notable: [] };
+
+  const capped = sessions.slice(-MAX_SESSIONS_FOR_BULK_FETCH);
+  const dateById = {}; capped.forEach(s => { dateById[s.id] = (s.date || "").slice(0, 10); });
   const filter = capped.map(s => `session_id="${s.id}"`).join(" || ");
-  const exs = await pb.collection("live_session_exercises").getFullList({
-    filter, fields: "exercise_name,muscle", requestKey: null,
-  }).catch(() => []);
-  const seen = new Map();
-  for (const ex of exs) if (!seen.has(ex.exercise_name)) seen.set(ex.exercise_name, ex.muscle);
-  return [...seen.entries()].map(([name, muscle]) => ({ name, muscle })).sort((a,b) => a.name.localeCompare(b.name));
+  const exs = await pb.collection("live_session_exercises").getFullList({ filter, requestKey: null }).catch(() => []);
+
+  const withDate = exs.map(ex => ({ ...ex, date: dateById[ex.session_id] })).filter(ex => ex.date);
+  withDate.sort((a, b) => a.date.localeCompare(b.date) || (a.created || "").localeCompare(b.created || ""));
+
+  const prevByName = {};
+  const processed = [];
+  for (const ex of withDate) {
+    const prev = prevByName[ex.exercise_name] || null;
+    const metric = metricOf(ex);
+    const prevMetric = prev ? metricOf(prev) : null;
+    const trendPct = metric && prevMetric ? Math.round(((metric - prevMetric) / prevMetric) * 100) : null;
+    processed.push({ ...ex, trendPct });
+    prevByName[ex.exercise_name] = ex;
+  }
+
+  const tilesMap = new Map();
+  for (const entry of processed) tilesMap.set(entry.exercise_name, entry); // paskutinis chronologiškai laimi
+  const tiles = [...tilesMap.values()]
+    .map(e => ({ name: e.exercise_name, muscle: e.muscle, last: e, trendPct: e.trendPct }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const feed = [...processed].reverse().slice(0, feedLimit);
+
+  const notable = tiles
+    .filter(t => t.trendPct !== null && Math.abs(t.trendPct) >= notableThreshold)
+    .sort((a, b) => Math.abs(b.trendPct) - Math.abs(a.trendPct))
+    .slice(0, notableLimit);
+
+  return { tiles, feed, notable };
 }
 
 // Kiek kartų (skaičiuojant pratimų įrašus) treniruota kiekviena raumenų
