@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
-import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle } from "./ui/icons";
+import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -338,7 +338,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
 }
 
 // ── Šablono kūrimo/redagavimo forma ───────────────────────────────────────────
-function PresetEditor({ preset, onClose, onSaved }) {
+function PresetEditor({ preset, onClose, onSaved, readOnly }) {
   const isNew = !preset;
   const [name, setName]           = useState(preset?.name || "");
   const [daysCount, setDaysCount] = useState(preset?.days_count || 3);
@@ -419,13 +419,19 @@ function PresetEditor({ preset, onClose, onSaved }) {
 
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
-        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{isNew?"Naujas šablonas":"Redaguoti šabloną"}</h1>
+        <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}>{readOnly && <Eye size={15} />}{readOnly?"Peržiūra":isNew?"Naujas šablonas":"Redaguoti šabloną"}</h1>
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Šablono pavadinimas</label>
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="pvz. 3 dienų jėgos planas" style={inp}/>
+          {readOnly ? (
+            <p style={{fontSize:17,fontWeight:700,color:"#fff",margin:0}}>{name}</p>
+          ) : (
+            <>
+              <label style={{fontSize:12,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:6}}>Šablono pavadinimas</label>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="pvz. 3 dienų jėgos planas" style={inp}/>
+            </>
+          )}
         </div>
 
         {isNew && (
@@ -447,7 +453,11 @@ function PresetEditor({ preset, onClose, onSaved }) {
           ))}
         </div>
 
-        <input value={days[activeDay]?.day_label||""} onChange={e=>setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,day_label:e.target.value}:d))} style={{...inp,marginBottom:12,fontWeight:700}} placeholder="Dienos pavadinimas"/>
+        {readOnly ? (
+          <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:"0 0 12px"}}>{days[activeDay]?.day_label}</p>
+        ) : (
+          <input value={days[activeDay]?.day_label||""} onChange={e=>setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,day_label:e.target.value}:d))} style={{...inp,marginBottom:12,fontWeight:700}} placeholder="Dienos pavadinimas"/>
+        )}
 
         {days[activeDay]?.exercises.length===0?(
           <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"20px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.15)",marginBottom:12}}>
@@ -456,11 +466,13 @@ function PresetEditor({ preset, onClose, onSaved }) {
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
             {days[activeDay].exercises.map((ex,j)=>(
-              <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"linear-gradient(160deg, rgba(255,110,180,0.1), rgba(255,255,255,0.05))",border:"1px solid rgba(255,110,180,0.18)",borderRadius:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-                <div style={{display:"flex",flexDirection:"column",gap:3,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-                  <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
-                  <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
-                </div>
+              <div key={j} onClick={readOnly?undefined:()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"linear-gradient(160deg, rgba(255,110,180,0.1), rgba(255,255,255,0.05))",border:"1px solid rgba(255,110,180,0.18)",borderRadius:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:readOnly?"default":"pointer"}}>
+                {!readOnly && (
+                  <div style={{display:"flex",flexDirection:"column",gap:3,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                    <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
+                    <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
+                  </div>
+                )}
                 <div style={{width:30,height:30,borderRadius:"50%",flexShrink:0,marginRight:10,background:ex.category==="cardio"?"rgba(137,207,240,0.16)":"rgba(255,179,198,0.16)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {ex.category==="cardio" ? <Walk size={14} color="#89CFF0" /> : <Muscle size={14} color="#FFB3C6" />}
                 </div>
@@ -468,13 +480,15 @@ function PresetEditor({ preset, onClose, onSaved }) {
                   <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 4px"}}>{ex.exercise_name}</p>
                   <ExerciseSummary ex={ex} />
                 </div>
-                <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center",marginLeft:8}}><Close size={12} /></button>
+                {!readOnly && (
+                  <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center",marginLeft:8}}><Close size={12} /></button>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        {editingExercise && (
+        {!readOnly && editingExercise && (
           <ExerciseEditModal
             exercise={editingExercise.exercise}
             onClose={()=>setEditingExercise(null)}
@@ -485,12 +499,16 @@ function PresetEditor({ preset, onClose, onSaved }) {
           />
         )}
 
-        <button onClick={()=>setShowPicker(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"2px dashed rgba(255,255,255,0.25)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ Pridėti pratimą</button>
+        {!readOnly && (
+          <button onClick={()=>setShowPicker(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"2px dashed rgba(255,255,255,0.25)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ Pridėti pratimą</button>
+        )}
 
-        <button onClick={handleSave} disabled={saving||!name.trim()||days.every(d=>d.exercises.length===0)}
-          style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          {saving?"Saugoma...":<><Save size={15} />Išsaugoti šabloną</>}
-        </button>
+        {!readOnly && (
+          <button onClick={handleSave} disabled={saving||!name.trim()||days.every(d=>d.exercises.length===0)}
+            style={{width:"100%",padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            {saving?"Saugoma...":<><Save size={15} />Išsaugoti šabloną</>}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -501,6 +519,7 @@ export default function WorkoutPresets({ onClose }) {
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null=uždaryta, false=naujas, objektas=redaguoti
+  const [viewing, setViewing] = useState(null); // objektas=peržiūra (be redagavimo)
 
   function load() {
     setLoading(true);
@@ -520,6 +539,10 @@ export default function WorkoutPresets({ onClose }) {
     }
     await pb.collection("workout_presets").delete(id).catch(()=>{});
     load();
+  }
+
+  if (viewing) {
+    return <PresetEditor preset={viewing} onClose={()=>setViewing(null)} readOnly />;
   }
 
   if (editing !== null) {
@@ -554,6 +577,7 @@ export default function WorkoutPresets({ onClose }) {
               </div>
             </div>
             <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setViewing(p)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Eye size={12} />Peržiūrėti</button>
               <button onClick={()=>setEditing(p)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Edit size={12} />Redaguoti</button>
               <button onClick={()=>handleDelete(p.id)} style={{padding:"9px 14px",borderRadius:10,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(255,100,100,0.1)",color:"#FF8888",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center"}}><Trash size={12} /></button>
             </div>
