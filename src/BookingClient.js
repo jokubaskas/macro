@@ -302,8 +302,11 @@ export default function BookingClient({ user, onClose }) {
   const sched = selectedDate ? getScheduleForDate(selectedDate) : null;
   const slots = sched ? generateSlots(sched.start_time, sched.end_time, sched.slot_duration) : [];
 
-  // Mano įprastas laikas šiai pasirinktai datai (jei terminas dar nepraėjęs ir dar nepatvirtintas)
-  const myReservedSlot = selectedDate
+  // Mano įprastas laikas šiai pasirinktai datai (jei terminas dar nepraėjęs ir dar
+  // nepatvirtintas) — NEI siūlomas, jei diena pažymėta kaip trenerės atostogos/
+  // nepasiekiama (schedule_exceptions), kitaip klientas galėtų patvirtinti laiką
+  // tada, kai trenerė realiai nedirba.
+  const myReservedSlot = selectedDate && !vacationForDate(selectedDate)
     ? recurringSlots.find(r => r.client_id === user.id && r.day_of_week === dowOf(selectedDate) && isRecurringHoldActive(selectedDate) && !myRecurringResponded(selectedDate, r.start_time)) || null
     : null;
 

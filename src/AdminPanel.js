@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { PK, GOALS, daysUntilBirthday } from "./constants";
+import { effectiveDeadline, fetchAllDayVacations, daysUntil as pkgDaysUntil } from "./packageDeadline";
 import WorkoutPlanBuilder, { ExerciseSummary } from "./WorkoutPlanBuilder";
 import BookingAdmin, { downloadIcal } from "./BookingAdmin";
 import TrainerStats from "./TrainerStats";
@@ -910,18 +911,29 @@ export default function AdminPanel({ user, onLogout }) {
     setLoading(false);
     refreshBookingSignals();
     // Kiekvieno kliento paskutinė paketo užklausa + aktyvus paketas
-    pb.collection("training_packages").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]).then(pkgs => {
+    Promise.all([
+      pb.collection("training_packages").getFullList({ sort:"-created", requestKey:null }).catch(()=>[]),
+      fetchAllDayVacations(),
+    ]).then(([pkgs, vacations]) => {
       const summary = {};
       pkgs.forEach(p => {
         if (!summary[p.client_id]) summary[p.client_id] = { lastOrder: p.created, active: null };
-        // Sudedame VISUS dar neišnaudotus patvirtintus paketus, ne tik naujausią —
-        // klientas gali vienu metu turėti kelis galiojančius paketus.
+        // Sudedame VISUS dar neišnaudotus IR NEPASIBAIGUSIO galiojimo patvirtintus
+        // paketus, ne tik naujausią — klientas gali vienu metu turėti kelis
+        // galiojančius paketus. Pasibaigusio galiojimo (net su likusiais
+        // kreditais) čia nebelaikomas aktyviu — kitaip šis ženkliukas rodytų
+        // klientą turintį treniruočių, kai realiai jomis pasinaudoti jis
+        // nebegali (žr. tą pačią patikrą TrainingPackages.js/PackageAdmin.js).
         if (p.status === "approved" && p.credits_used < p.credits_total) {
-          if (!summary[p.client_id].active) {
-            summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
-          } else {
-            summary[p.client_id].active.total += p.credits_total;
-            summary[p.client_id].active.used += p.credits_used;
+          const dl = effectiveDeadline(p, vacations);
+          const expired = dl && pkgDaysUntil(dl) < 0;
+          if (!expired) {
+            if (!summary[p.client_id].active) {
+              summary[p.client_id].active = { total: p.credits_total, used: p.credits_used };
+            } else {
+              summary[p.client_id].active.total += p.credits_total;
+              summary[p.client_id].active.used += p.credits_used;
+            }
           }
         }
       });

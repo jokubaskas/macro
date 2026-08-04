@@ -136,9 +136,11 @@ export default function TrainingPackages({ user, onClose }) {
   // su konkrečiu paketu (žr. BookingClient.js/BookingAdmin.js), bet čia
   // klientui rodomas vienas bendras skaičius.
   // Pasibaigusio galiojimo paketai (senų, be valid_until, dar neliečiame —
-  // jie lieka matomi kaip anksčiau) čia nebeskaičiuojami aktyviais.
+  // jie lieka matomi kaip anksčiau) čia nebeskaičiuojami aktyviais. Pilnai
+  // išnaudoti paketai (nepriklausomai nuo termino) irgi nebeįtraukiami į sumą
+  // — kad rodomas vardiklis sutaptų su tuo, ką mato trenerė (PackageAdmin.js).
   const approvedPackages = packages.filter(p => {
-    if (p.status !== "approved") return false;
+    if (p.status !== "approved" || (p.credits_total||0) <= (p.credits_used||0)) return false;
     const dl = effectiveDeadline(p, vacations);
     return !dl || daysUntil(dl) >= 0;
   });
