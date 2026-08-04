@@ -869,13 +869,21 @@ export default function AdminPanel({ user, onLogout }) {
     setShowPackages(tab === "packages");
   }
 
+  // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI — mobiliuosiuose
+  // .ics atsisiuntimas dažnai atidaro sisteminį "Pridėti į kalendorių" langą
+  // ir nustumia programėlę į foną, o tai gali nutraukti tuo metu dar
+  // vykstantį PocketBase užklausimą (rodydavosi kaip "failas atsisiuntė, bet
+  // pažymėti nepavyko" būtent telefonuose, kompiuteryje veikdavo be klaidų).
   async function handleAddToCalendar(booking) {
     setCalendarError("");
     const clientName = clients.find(c => c.id === booking.client_id)?.name || "Klientas";
-    downloadIcal(booking, clientName);
     const ok = await pb.collection("bookings").update(booking.id, { added_to_calendar: true }).then(() => true).catch(() => false);
-    if (ok) setNotInCalendar(prev => prev.filter(b => b.id !== booking.id));
-    else setCalendarError("Failas atsisiuntė, bet pažymėti kaip pridėtą nepavyko — bandykite dar kartą.");
+    if (ok) {
+      setNotInCalendar(prev => prev.filter(b => b.id !== booking.id));
+      downloadIcal(booking, clientName);
+    } else {
+      setCalendarError("Nepavyko pažymėti kaip pridėtos — patikrinkite interneto ryšį ir bandykite dar kartą.");
+    }
   }
 
   const activeAdminTab = showBookings ? "bookings"

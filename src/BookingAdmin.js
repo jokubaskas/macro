@@ -719,12 +719,19 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     }
   }
 
+  // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI (kaip handleApprove
+  // aukščiau) — mobiliuosiuose .ics atsisiuntimas dažnai atidaro sisteminį
+  // "Pridėti į kalendorių" langą ir nustumia programėlę į foną, o tai gali
+  // nutraukti tuo metu dar vykstantį PocketBase užklausimą.
   async function handleAddToCalendar(booking, clientName) {
     setActionError("");
-    downloadIcal(booking, clientName);
     const ok = await pb.collection("bookings").update(booking.id, { added_to_calendar:true }).then(()=>true).catch(()=>false);
-    if (ok) setBookings(prev => prev.map(b => b.id===booking.id ? {...b,added_to_calendar:true} : b));
-    else setActionError("Failas atsisiuntė, bet pažymėti kaip pridėtą nepavyko — bandykite dar kartą, kitaip vėl matysite šią rezervaciją kaip nepridėtą.");
+    if (ok) {
+      setBookings(prev => prev.map(b => b.id===booking.id ? {...b,added_to_calendar:true} : b));
+      downloadIcal(booking, clientName);
+    } else {
+      setActionError("Nepavyko pažymėti kaip pridėtos — patikrinkite interneto ryšį ir bandykite dar kartą.");
+    }
   }
 
   // Vienkartinis sutvarkymas senoms rezervacijoms, kurios jau realiai buvo
