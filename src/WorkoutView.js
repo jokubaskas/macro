@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Skeleton, ProgressBar, ConfettiBurst } from "./ui/kit";
-import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, PlayCircle } from "./ui/icons";
+import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, PlayCircle, MessageCircle } from "./ui/icons";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
@@ -172,6 +172,12 @@ export default function WorkoutView({ user, onClose }) {
                           {isSav?"⋯":isDone?<Check size={16} />:"○"}
                         </button>
                       </div>
+                      {ex.trainer_note && (
+                        <div style={{marginTop:10,background:"rgba(255,255,255,0.06)",borderLeft:"3px solid #FF6EB4",borderRadius:"0 10px 10px 0",padding:"8px 12px"}}>
+                          <p style={{fontSize:10,fontWeight:700,color:"#FF6EB4",margin:"0 0 3px",textTransform:"uppercase",letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:4}}><MessageCircle size={11} />Trenerės komentaras</p>
+                          <p style={{fontSize:12,color:"rgba(255,255,255,0.85)",margin:0,lineHeight:1.5}}>{ex.trainer_note}</p>
+                        </div>
+                      )}
                       {videoUrl && (
                         <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:10,padding:"6px 12px",borderRadius:10,background:"rgba(137,207,240,0.14)",color:"#89CFF0",fontSize:12,fontWeight:700,textDecoration:"none"}}>
                           <PlayCircle size={13} />Žiūrėti kaip atlikti

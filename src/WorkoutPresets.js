@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
-import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye } from "./ui/icons";
+import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle } from "./ui/icons";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -20,6 +20,7 @@ function ExercisePicker({ onAdd, onClose }) {
   const [saving, setSaving]       = useState(false);
   const [videoUrl, setVideoUrl]   = useState("");
   const [timedMode, setTimedMode] = useState(false);
+  const [trainerNote, setTrainerNote] = useState("");
 
   useEffect(() => {
     pb.collection("exercises").getFullList({ sort:"muscle,name", requestKey:null }).then(setExercises).catch(()=>{});
@@ -29,6 +30,7 @@ function ExercisePicker({ onAdd, onClose }) {
     setSelected(ex);
     setVideoUrl(ex.video_url || "");
     setTimedMode(false);
+    setTrainerNote("");
   }
 
   function handleSetsChange(val) {
@@ -73,7 +75,8 @@ function ExercisePicker({ onAdd, onClose }) {
       sets, reps:(isCardio || isTimedAbs)?null:(parseInt(form.reps)||null),
       weight_kg, set_weights,
       duration_min:isCardio?(parseInt(form.duration_min)||null):null,
-      duration_sec:isTimedAbs?(parseInt(form.duration_sec)||null):null });
+      duration_sec:isTimedAbs?(parseInt(form.duration_sec)||null):null,
+      trainer_note: trainerNote.trim() || null });
   }
 
   return (
@@ -204,6 +207,10 @@ function ExercisePicker({ onAdd, onClose }) {
                 </div>
               </>
             )}
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Komentaras klientui (nebūtina)</label>
+              <textarea value={trainerNote} onChange={e=>setTrainerNote(e.target.value)} placeholder="pvz. Daryti lėtai, kontroliuojant judesį" rows={2} style={{...inp,resize:"none",fontFamily:"inherit"}}/>
+            </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSelected(null)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
               <button onClick={handleAdd} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti</button>
@@ -237,6 +244,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
   });
   const [perSet, setPerSet]         = useState(!!exercise.set_weights);
   const [setWeights, setSetWeights] = useState(initSetWeights);
+  const [trainerNote, setTrainerNote] = useState(exercise.trainer_note || "");
   // Bet kuris ne-kardio pratimas gali būti fiksuojamas laiku, ne tik pilvo.
   const isAbs = !isCardio;
   const [timedMode, setTimedMode] = useState(!!exercise.duration_sec);
@@ -261,7 +269,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
       set_weights = JSON.stringify(parsed);
       weight_kg = parsed[0] || weight_kg;
     }
-    onSave({ ...exercise, sets, reps: (isCardio || isTimedAbs)?null:(parseInt(form.reps)||null), weight_kg, set_weights: (isCardio || isTimedAbs)?null:set_weights, duration_min: isCardio?(parseInt(form.duration_min)||null):null, duration_sec: isTimedAbs?(parseInt(form.duration_sec)||null):null });
+    onSave({ ...exercise, sets, reps: (isCardio || isTimedAbs)?null:(parseInt(form.reps)||null), weight_kg, set_weights: (isCardio || isTimedAbs)?null:set_weights, duration_min: isCardio?(parseInt(form.duration_min)||null):null, duration_sec: isTimedAbs?(parseInt(form.duration_sec)||null):null, trainer_note: trainerNote.trim() || null });
   }
 
   return (
@@ -331,6 +339,10 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
             </div>
           </>
         )}
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Komentaras klientui (nebūtina)</label>
+          <textarea value={trainerNote} onChange={e=>setTrainerNote(e.target.value)} placeholder="pvz. Daryti lėtai, kontroliuojant judesį" rows={2} style={{...inp,resize:"none",fontFamily:"inherit"}}/>
+        </div>
         <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <Save size={15} />Išsaugoti pakeitimus
         </button>
@@ -361,7 +373,7 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
       .then(async dbDays => {
         const fullDays = await Promise.all(dbDays.map(async d => {
           const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
-          return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec, set_weights:e.set_weights||null })) };
+          return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({ exercise_name:e.exercise_name, category:e.category, muscle:e.muscle, sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec, set_weights:e.set_weights||null, trainer_note:e.trainer_note||null })) };
         }));
         setDays(fullDays);
         setLoading(false);
@@ -395,7 +407,7 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
         const dayRec = await pb.collection("workout_preset_days").create({ preset_id:presetId, day_number:day.day_number, day_label:day.day_label });
         for (let i=0;i<day.exercises.length;i++) {
           const ex = day.exercises[i];
-          await pb.collection("workout_preset_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, duration_sec:ex.duration_sec||null, order_num:i, set_weights:ex.set_weights||null });
+          await pb.collection("workout_preset_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, duration_sec:ex.duration_sec||null, order_num:i, set_weights:ex.set_weights||null, trainer_note:ex.trainer_note||null });
         }
       }
       onSaved?.(); onClose();
@@ -481,6 +493,7 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
                 <div style={{flex:1, minWidth:0}}>
                   <p style={{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 4px"}}>{ex.exercise_name}</p>
                   <ExerciseSummary ex={ex} />
+                  {ex.trainer_note && <p style={{fontSize:11,color:"#FF6EB4",margin:"4px 0 0",fontStyle:"italic",display:"flex",alignItems:"center",gap:4}}><MessageCircle size={10} />{ex.trainer_note}</p>}
                 </div>
                 {!readOnly && (
                   <button onClick={(e)=>{e.stopPropagation();removeExercise(activeDay,j);}} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.3)",borderRadius:8,padding:"6px 10px",color:"#FF8888",cursor:"pointer",fontSize:12,flexShrink:0,display:"flex",alignItems:"center",marginLeft:8}}><Close size={12} /></button>
