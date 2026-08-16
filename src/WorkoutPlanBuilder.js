@@ -140,7 +140,9 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
     (!search || e.name.toLowerCase().includes(search.toLowerCase()))
   );
   const isCardio = selected?.category==="cardio";
-  const isAbs = selected?.muscle==="Pilvas" && !isCardio;
+  // Bet kuris ne-kardio pratimas gali būti fiksuojamas laiku (ne vien kartojimais) —
+  // ne tik pilvo pratimai, nes ir kitos raumenų grupės kartais atliekamos statiškai.
+  const isAbs = !isCardio;
   const isTimedAbs = isAbs && timedMode;
 
   function handleAdd() {
@@ -340,7 +342,8 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
   });
   const [perSet, setPerSet]       = useState(!!exercise.set_weights);
   const [setWeights, setSetWeights] = useState(initSetWeights);
-  const isAbs = exercise.muscle==="Pilvas" && !isCardio;
+  // Bet kuris ne-kardio pratimas gali būti fiksuojamas laiku, ne tik pilvo.
+  const isAbs = !isCardio;
   const [timedMode, setTimedMode] = useState(!!exercise.duration_sec);
   const isTimedAbs = isAbs && timedMode;
 
