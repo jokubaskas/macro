@@ -758,6 +758,7 @@ function ClientDetail({ client, onClose }) {
                       {i+1}. {ex.exercise_name}
                     </p>
                     <ExerciseSummary ex={ex} />
+                    {ex.trainer_note && <p style={{ fontSize: 11, color: "#FF6EB4", margin: "4px 0 0", fontStyle: "italic" }}>{ex.trainer_note}</p>}
                   </div>
                 </div>
                 <span style={{ fontSize: 10, color: ex.category==="cardio"?"#89CFF0":"#FFB3C6", background:"rgba(255,255,255,0.08)", padding:"2px 8px", borderRadius:6 }}>{ex.muscle}</span>
