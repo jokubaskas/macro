@@ -149,6 +149,7 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
 
   function handleAdd() {
     if (!selected) return;
+    if (isTimedAbs && !form.duration_sec) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
     let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
@@ -314,9 +315,12 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
               <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Komentaras klientui (nebūtina)</label>
               <textarea value={trainerNote} onChange={e=>setTrainerNote(e.target.value)} placeholder="pvz. Daryti lėtai, kontroliuojant judesį" rows={2} style={{...inp,resize:"none",fontFamily:"inherit"}}/>
             </div>
+            {isTimedAbs && !form.duration_sec && (
+              <p style={{fontSize:11,color:"#FFD700",margin:"-6px 0 12px"}}>Įrašykite trukmę sekundėmis, kad galėtumėte pridėti.</p>
+            )}
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSelected(null)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><ChevronLeft size={14} />Atgal</button>
-              <button onClick={handleAdd} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Pridėti</button>
+              <button onClick={handleAdd} disabled={isTimedAbs && !form.duration_sec} style={{flex:2,padding:"12px",borderRadius:12,background:(isTimedAbs && !form.duration_sec)?"rgba(255,255,255,0.15)":"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:(isTimedAbs && !form.duration_sec)?"default":"pointer",fontFamily:"inherit"}}>+ Pridėti</button>
             </div>
           </div>
         )}
@@ -367,6 +371,7 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
   }
 
   function handleSave() {
+    if (isTimedAbs && !form.duration_sec) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
     let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
@@ -471,7 +476,10 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
           <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Komentaras klientui (nebūtina)</label>
           <textarea value={trainerNote} onChange={e=>setTrainerNote(e.target.value)} placeholder="pvz. Daryti lėtai, kontroliuojant judesį" rows={2} style={{...inp,resize:"none",fontFamily:"inherit"}}/>
         </div>
-        <button onClick={handleSave} style={{width:"100%",padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        {isTimedAbs && !form.duration_sec && (
+          <p style={{fontSize:11,color:"#FFD700",margin:"-8px 0 12px"}}>Įrašykite trukmę sekundėmis, kad galėtumėte išsaugoti.</p>
+        )}
+        <button onClick={handleSave} disabled={isTimedAbs && !form.duration_sec} style={{width:"100%",padding:"12px",borderRadius:12,background:(isTimedAbs && !form.duration_sec)?"rgba(255,255,255,0.15)":"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:(isTimedAbs && !form.duration_sec)?"default":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <Save size={14} />Išsaugoti pakeitimus
         </button>
       </div>
