@@ -551,7 +551,7 @@ function ClientDetail({ client, onClose }) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
   const [calendarView, setCalendarView] = useState("day"); // "day" | "period"
-  const [showPlanBuilder, setShowPlanBuilder] = useState(false);
+  const [planBuilder, setPlanBuilder] = useState(null); // null=uždaryta, true=naujas, objektas=redaguoti esamą
   const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
   const [showLiveTraining, setShowLiveTraining] = useState(false);
@@ -646,8 +646,8 @@ function ClientDetail({ client, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1150, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      {showPlanBuilder && (
-        <WorkoutPlanBuilder client={client} onClose={()=>setShowPlanBuilder(false)} onSaved={()=>{ setShowPlanBuilder(false); reloadPlans(); }} />
+      {planBuilder && (
+        <WorkoutPlanBuilder client={client} plan={planBuilder===true?undefined:planBuilder} onClose={()=>setPlanBuilder(null)} onSaved={()=>{ setPlanBuilder(null); reloadPlans(); }} />
       )}
       {showProgressCompare && (
         <ProgressCompare client={client} onClose={()=>setShowProgressCompare(false)} />
@@ -722,7 +722,12 @@ function ClientDetail({ client, onClose }) {
                 </p>
               )}
             </div>
-            <button onClick={() => setShowPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>+ Naujas</button>
+            <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+              {planForDate && (
+                <button onClick={() => setPlanBuilder(planForDate)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Redaguoti</button>
+              )}
+              <button onClick={() => setPlanBuilder(true)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>+ Naujas</button>
+            </div>
           </div>
 
           {/* Dienų tab'ai */}

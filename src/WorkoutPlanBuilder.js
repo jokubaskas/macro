@@ -487,24 +487,50 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
   );
 }
 
-export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
-  const [step, setStep]           = useState(0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
+export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
+  const isEditing = !!plan;
+  const [step, setStep]           = useState(isEditing ? 1 : 0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
   const [presets, setPresets]     = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
-  const [planName, setPlanName]   = useState("");
-  const [daysCount, setDaysCount] = useState(3);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate]     = useState("");
+  const [planName, setPlanName]   = useState(plan?.plan_name || "");
+  const [daysCount, setDaysCount] = useState(plan?.days_count || 3);
+  const [startDate, setStartDate] = useState(plan?.start_date?.slice(0,10) || new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate]     = useState(plan?.end_date?.slice(0,10) || "");
   const [days, setDays]           = useState([]);
   const [activeDay, setActiveDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null); // {dayIdx, exIdx, exercise}
   const [saving, setSaving]       = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(isEditing);
 
   useEffect(() => {
+    if (isEditing) return; // redaguojant esamą planą šablonų pasirinkti nereikia
     pb.collection("workout_presets").getFullList({ sort:"name", requestKey:null })
       .then(data => { setPresets(data); setPresetsLoading(false); }).catch(()=>setPresetsLoading(false));
-  }, []);
+  }, [isEditing]);
+
+  // Redaguojant esamą planą — įkelti jo dienas/pratimus (kad nereikėtų iš
+  // naujo priskirti šablono ir redaguoti kiekvieno pratimo nuo nulio).
+  useEffect(() => {
+    if (!isEditing) return;
+    let cancelled = false;
+    async function loadExisting() {
+      const dbDays = await pb.collection("workout_plan_days").getFullList({ filter:`plan_id="${plan.id}"`, sort:"day_number", requestKey:null }).catch(()=>[]);
+      const fullDays = await Promise.all(dbDays.map(async d => {
+        const exs = await pb.collection("workout_plan_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
+        return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({
+          exercise_name:e.exercise_name, category:e.category, muscle:e.muscle,
+          sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec,
+          set_weights:e.set_weights||null, trainer_note:e.trainer_note||null
+        })) };
+      }));
+      if (cancelled) return;
+      setDays(fullDays);
+      setLoadingExisting(false);
+    }
+    loadExisting();
+    return () => { cancelled = true; };
+  }, [isEditing, plan?.id]);
 
   async function loadFromPreset(preset) {
     setPlanName(preset.name);
@@ -538,13 +564,31 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const plan = await pb.collection("workout_plans").create({
-        user_id: client.id, plan_name: planName||`${client.name} planas`,
-        days_count: daysCount, start_date: startDate, end_date: endDate,
-        created_by: pb.authStore.model?.id, is_active: true,
-      });
+      let planId;
+      if (isEditing) {
+        await pb.collection("workout_plans").update(plan.id, {
+          plan_name: planName||`${client.name} planas`,
+          days_count: days.length, start_date: startDate, end_date: endDate,
+        });
+        planId = plan.id;
+        // Ištrinti senas dienas/pratimus (perkuriame iš naujo) — tas pats
+        // modelis kaip redaguojant šabloną (WorkoutPresets.js PresetEditor).
+        const oldDays = await pb.collection("workout_plan_days").getFullList({ filter:`plan_id="${planId}"`, requestKey:null });
+        for (const od of oldDays) {
+          const oldExs = await pb.collection("workout_plan_exercises").getFullList({ filter:`day_id="${od.id}"`, requestKey:null });
+          for (const oe of oldExs) await pb.collection("workout_plan_exercises").delete(oe.id).catch(()=>{});
+          await pb.collection("workout_plan_days").delete(od.id).catch(()=>{});
+        }
+      } else {
+        const newPlan = await pb.collection("workout_plans").create({
+          user_id: client.id, plan_name: planName||`${client.name} planas`,
+          days_count: daysCount, start_date: startDate, end_date: endDate,
+          created_by: pb.authStore.model?.id, is_active: true,
+        });
+        planId = newPlan.id;
+      }
       for (const day of days) {
-        const dayRec = await pb.collection("workout_plan_days").create({ plan_id:plan.id, day_number:day.day_number, day_label:day.day_label });
+        const dayRec = await pb.collection("workout_plan_days").create({ plan_id:planId, day_number:day.day_number, day_label:day.day_label });
         for (let i=0; i<day.exercises.length; i++) {
           const ex = day.exercises[i];
           await pb.collection("workout_plan_exercises").create({ day_id:dayRec.id, exercise_name:ex.exercise_name, category:ex.category, muscle:ex.muscle, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight_kg, duration_min:ex.duration_min, duration_sec:ex.duration_sec||null, order_num:i, set_weights:ex.set_weights||null, trainer_note:ex.trainer_note||null });
@@ -564,14 +608,18 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <div>
-          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>Sporto planas</h1>
+          <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{isEditing?"Redaguoti planą":"Sporto planas"}</h1>
           <p style={{fontSize:10,color:"rgba(255,255,255,0.4)",margin:0}}>{client.name}</p>
         </div>
         {step===2&&<button onClick={()=>setStep(1)} style={{marginLeft:"auto",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><ChevronLeft size={11} />Parametrai</button>}
-        {step===1&&<button onClick={()=>{setStep(0);setDays([]);}} style={{marginLeft:"auto",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><ChevronLeft size={11} />Šablonai</button>}
+        {step===1&&!isEditing&&<button onClick={()=>{setStep(0);setDays([]);}} style={{marginLeft:"auto",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><ChevronLeft size={11} />Šablonai</button>}
       </div>
 
       <div style={{maxWidth:480,margin:"0 auto",padding:"16px"}}>
+        {loadingExisting ? (
+          <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"40px 0"}}>Kraunama...</p>
+        ) : (
+        <>
         {step===0&&(
           <div>
             <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 16px"}}>Kaip norite pradėti?</p>
@@ -693,6 +741,8 @@ export default function WorkoutPlanBuilder({ client, onClose, onSaved }) {
               {saving?"Saugoma...":<><Save size={14} />Išsaugoti planą</>}
             </button>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>
