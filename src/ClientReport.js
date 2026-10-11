@@ -111,10 +111,14 @@ export default function ClientReport({ client, onClose }) {
     const latestM  = inRangeM[inRangeM.length - 1] || null;
     const baseline = beforeRangeM[beforeRangeM.length - 1] || (inRangeM.length > 1 ? inRangeM[0] : null);
 
+    // PocketBase tuščią (nepildytą) skaičiaus lauką saugo kaip 0, ne kaip tuščią
+    // reikšmę — todėl čia (kaip ir ClientMeasurements.js/ClientStats.js) naudojamas
+    // paprastas "ar reikšmė yra" patikrinimas, ne == null, kitaip neįvestas rodiklis
+    // ataskaitoje atsirastų kaip klaidinantis "0".
     const measureDeltas = MFIELDS.map(f => {
-      if (!latestM || latestM[f.key] == null || latestM[f.key] === "") return null;
+      if (!latestM || !latestM[f.key]) return null;
       const lv = parseFloat(latestM[f.key]);
-      const bv = (baseline && baseline !== latestM && baseline[f.key] != null && baseline[f.key] !== "") ? parseFloat(baseline[f.key]) : null;
+      const bv = (baseline && baseline !== latestM && baseline[f.key]) ? parseFloat(baseline[f.key]) : null;
       return { ...f, value: lv, delta: bv != null ? lv - bv : null };
     }).filter(Boolean);
 
@@ -260,16 +264,19 @@ export default function ClientReport({ client, onClose }) {
                   )
                 )}
 
-                {/* Treniruotės — pagrindinis akcentas */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.1)", borderRadius: 16, padding: "10px 14px" }}>
-                  <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(127,255,176,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Dumbbell size={16} color="#7FFFB0" />
-                  </span>
-                  <div>
-                    <p style={{ fontSize: 18, fontWeight: 800, color: "#fff", margin: 0 }}>{data.workoutsCount} treniruotės</p>
-                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", margin: 0 }}>atlikta per šį periodą</p>
+                {/* Treniruotės — pagrindinis akcentas (rodoma tik jei bent viena atlikta,
+                    kad 0 nebūtų supainiotas su realiu rezultatu, kai tiesiog nebuvo žymėta) */}
+                {data.workoutsCount > 0 && (
+                  <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.1)", borderRadius: 16, padding: "10px 14px" }}>
+                    <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(127,255,176,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Dumbbell size={16} color="#7FFFB0" />
+                    </span>
+                    <div>
+                      <p style={{ fontSize: 18, fontWeight: 800, color: "#fff", margin: 0 }}>{data.workoutsCount} treniruotės</p>
+                      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", margin: 0 }}>atlikta per šį periodą</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Matavimų pokyčiai */}
                 {data.measureDeltas.length > 0 && (
