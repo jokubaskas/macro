@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart, Glass } from "./ui/icons";
+import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart, Glass, Dumbbell } from "./ui/icons";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 
@@ -18,6 +18,8 @@ const FIELDS = [
   { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
   { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle,    c:"#FFC15E" },
   { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler,     c:"#FF9FC7" },
+  { key:"muscle_mass_kg",  label:"Raumenų masė", unit:"kg", Icon:Dumbbell, c:"#4FD1C5" },
+  { key:"biological_age",  label:"Biologinis amžius", unit:"m.", Icon:Heart, c:"#FF6B6B" },
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -77,7 +79,7 @@ function MiniChart({ data, field }) {
 
   const first = vals[0], last = vals[vals.length - 1];
   const diff = last - first;
-  const isLowerBetter = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm";
+  const isLowerBetter = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm" || field === "biological_age";
   const trend = diff === 0 ? "flat" : (isLowerBetter ? diff < 0 : diff > 0) ? "up" : "down";
   const color   = trend === "up" ? "#7FFFB0" : trend === "down" ? "#FF8888" : "rgba(255,255,255,0.4)";
   const badgeBg = trend === "up" ? "rgba(127,255,176,0.16)" : trend === "down" ? "rgba(255,136,136,0.16)" : "rgba(255,255,255,0.12)";
