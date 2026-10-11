@@ -9,7 +9,7 @@ import {
 } from "./ui/icons";
 
 const PAYMENT = {
-  name: "Vilma Strumilaitė",
+  name: "Vilma Kasperavičienė",
   iban: "LT367300010131256704",
 };
 
