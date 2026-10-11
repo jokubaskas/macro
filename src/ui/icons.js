@@ -334,6 +334,16 @@ export function Lock(props) {
   </IconBase>;
 }
 
+export function Trophy(props) {
+  return <IconBase {...props}>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/>
+    <path d="M7 5H4.5a1 1 0 0 0-1 1v1.2a3.3 3.3 0 0 0 3.3 3.3H7"/>
+    <path d="M17 5h2.5a1 1 0 0 1 1 1v1.2a3.3 3.3 0 0 1-3.3 3.3H17"/>
+    <path d="M12 14v3.5"/>
+    <path d="M8.7 20.5h6.6M9.3 20.5v-.8a1.8 1.8 0 0 1 1.8-1.8h1.8a1.8 1.8 0 0 1 1.8 1.8v.8"/>
+  </IconBase>;
+}
+
 export function Bell(props) {
   return <IconBase {...props}>
     <path d="M6 10.5a6 6 0 0 1 12 0c0 4 1.2 5.2 1.5 5.8H4.5c.3-.6 1.5-1.8 1.5-5.8Z"/>

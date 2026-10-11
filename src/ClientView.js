@@ -11,8 +11,9 @@ import StreakBadge from "./StreakBadge";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
 import ClientStats from "./ClientStats";
+import Achievements from "./Achievements";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Camera, TrendingUp, Cake, Sparkle, Refresh, Close } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Camera, TrendingUp, Cake, Sparkle, Refresh, Close, Trophy } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
@@ -224,6 +225,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [showProgress, setShowProgress] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [showStats,    setShowStats]    = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [hasStreak, setHasStreak] = useState(false);
@@ -234,6 +236,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     : showBooking ? "booking"
     : showProgress ? "progress"
     : showStats ? "stats"
+    : showAchievements ? "achievements"
     : null;
 
   function openTab(tab) {
@@ -242,6 +245,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     setShowBooking(tab === "booking");
     setShowProgress(tab === "progress");
     setShowStats(tab === "stats");
+    setShowAchievements(tab === "achievements");
   }
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [nextBooking,   setNextBooking]   = useState(null);
@@ -478,6 +482,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             { id:"booking",  Icon:Calendar,   label:"Rezervacija", badge: badges.booking },
             { id:"progress", Icon:Camera,     label:"Progresas",   badge:0 },
             { id:"stats",    Icon:TrendingUp, label:"Statistika",  badge:0 },
+            { id:"achievements", Icon:Trophy, label:"Pasiekimai",  badge:0 },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -514,6 +519,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
       {showProgress && <ClientProgressCompare user={user} onClose={()=>openTab(null)} />}
       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
       {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
+      {showAchievements && <Achievements user={user} profile={profile} onClose={()=>openTab(null)} />}
       {showOnboarding && (
         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(); setShowOnboarding(false); }} />
       )}
