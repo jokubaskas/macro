@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { pb } from "./pb";
-import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar } from "./ui/icons";
+import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar, Dumbbell, Heart } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
@@ -13,6 +13,8 @@ const FIELDS = [
   { key:"chest_cm",        label:"Krūtinė",   unit:"cm",  Icon:Ruler,    color:"#7FFFB0" },
   { key:"arm_cm",          label:"Ranka",     unit:"cm",  Icon:Muscle,   color:"#FF8888" },
   { key:"thigh_cm",        label:"Šlaunis",   unit:"cm",  Icon:Ruler,    color:"#FFB347" },
+  { key:"muscle_mass_kg",  label:"Raumenų masė", unit:"kg", Icon:Dumbbell, color:"#4FD1C5" },
+  { key:"biological_age",  label:"Biologinis amžius", unit:"m.", Icon:Heart, color:"#FF6B6B" },
 ];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -75,7 +77,7 @@ function MiniChart({ data, field }) {
 
   const first = vals[0], last = vals[vals.length - 1];
   const diff = last - first;
-  const isLowerBetter = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm";
+  const isLowerBetter = field === "weight_measured" || field === "body_fat" || field === "waist_cm" || field === "hips_cm" || field === "biological_age";
   const trend = diff === 0 ? "flat" : (isLowerBetter ? diff < 0 : diff > 0) ? "up" : "down";
   const color = trend === "up" ? "#7FFFB0" : trend === "down" ? "#FF8888" : "rgba(255,255,255,0.4)";
   const gid = "mcm-" + field;
@@ -111,7 +113,7 @@ export default function ClientMeasurements({ client, onClose }) {
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(8);
-  const [form, setForm]         = useState({ measured_at: todayStr(), weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arm_cm:"", thigh_cm:"", trainer_note:"" });
+  const [form, setForm]         = useState({ measured_at: todayStr(), weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arm_cm:"", thigh_cm:"", muscle_mass_kg:"", biological_age:"", trainer_note:"" });
   const [saving, setSaving]     = useState(false);
 
   async function load() {
@@ -147,7 +149,7 @@ export default function ClientMeasurements({ client, onClose }) {
     await pb.collection("trainer_measurements").create(data).catch(()=>{});
     setSaving(false);
     setShowForm(false);
-    setForm({ measured_at: todayStr(), weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arm_cm:"", thigh_cm:"", trainer_note:"" });
+    setForm({ measured_at: todayStr(), weight_measured:"", body_fat:"", waist_cm:"", hips_cm:"", chest_cm:"", arm_cm:"", thigh_cm:"", muscle_mass_kg:"", biological_age:"", trainer_note:"" });
     load();
   }
 
