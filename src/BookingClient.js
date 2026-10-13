@@ -466,7 +466,7 @@ export default function BookingClient({ user, onClose }) {
           <div>
             <div style={{background:"rgba(0,0,0,0.2)",borderRadius:14,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Calendar size={13} />{selectedDate}</p>
-              <button onClick={()=>{ setView("calendar"); setSelectedSlot(null); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Keisti datą</button>
+              <button onClick={()=>{ setView("calendar"); setSelectedSlot(null); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Į kalendorių</button>
             </div>
 
             {declineDone && (
