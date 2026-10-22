@@ -11,12 +11,13 @@ const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį",
 // Rezervacijos taisyklių versija — įrašoma kartu su sutikimu, kad būtų aišku,
 // kurią taisyklių redakciją klientas matė ir su kuria sutiko, jei taisyklės
 // vėliau būtų pakeistos.
-const RULES_VERSION = "2026-10-22";
+const RULES_VERSION = "2026-10-22b";
 const BOOKING_RULES = [
   "Ši rezervacija yra tik užklausa, ne galutinis patvirtinimas — pasirinktas laikas priskiriamas jums tik tada, kai jį patvirtina trenerė Vilma.",
   "Trenerė Vilma pasilieka teisę atmesti rezervacijos užklausą (pvz. dėl užimtumo ar kitų priežasčių). Atmetus užklausą, kreditas iš jūsų treniruočių paketo nenuskaičiuojamas.",
   "Prieš pateikdami rezervaciją, įsitikinkite, kad pasirinkta data ir laikas jums tikrai tinka.",
   "Patvirtintą rezervaciją galite atšaukti nemokamai (kreditas grąžinamas), jei tai padarote likus daugiau nei 24 val. iki treniruotės. Atšaukus vėliau arba neatvykus, kreditas negrąžinamas.",
+  "Nemokamų (su kredito grąžinimu) atšaukimų skaičius ribojamas iki 3 per kalendorinį mėnesį. Viršijus šią ribą, kreditas nebegrąžinamas net ir atšaukus laiku.",
   "Vėluojant atvykti, treniruotės laikas nėra pratęsiamas — ji baigiasi iš anksto suplanuotu laiku.",
   "Rezervuodami patvirtinate, kad esate sveikas(-a) fizinei veiklai, arba iš anksto informavote trenerę apie turimus sveikatos ribojimus, traumas ar kontraindikacijas (pastabų laukelyje arba asmeniškai).",
   "Trenerė neatsako už sužalojimus ar pasekmes, kilusias dėl nuslėptos/netikslios informacijos apie sveikatos būklę arba dėl pratimų atlikimo nesilaikant trenerės nurodymų.",
