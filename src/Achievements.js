@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Medal } from "./ui/Medal";
 import { ChevronLeft, Trophy } from "./ui/icons";
 import { ConfettiBurst, Skeleton } from "./ui/kit";
@@ -98,7 +99,7 @@ export default function Achievements({ user, profile, onClose }) {
         })}
       </div>
 
-      {celebrate && (
+      {celebrate && createPortal(
         <div onClick={() => setCelebrate(null)} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 20 }}>
           <div style={{ position: "relative" }}>
             <Medal tier={celebrate.tier} Icon={celebrate.achievement.Icon} size={120} />
@@ -112,7 +113,8 @@ export default function Achievements({ user, profile, onClose }) {
           </p>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: "10px 0 0" }}>{celebrate.achievement.label}</p>
           <button onClick={() => setCelebrate(null)} style={{ marginTop: 20, padding: "10px 24px", borderRadius: 14, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Super!</button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

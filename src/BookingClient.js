@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
 import { effectiveDeadline, daysUntil } from "./packageDeadline";
@@ -145,8 +146,11 @@ const RULES_SCROLL_STYLE = `
 `;
 
 function BookingRulesModal({ onAccept, onCancel }) {
-  return (
-    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:16, boxSizing:"border-box" }}>
+  // createPortal — be jo šis modalas būtų "įstrigęs" BookingClient šaknies
+  // (zIndex:500) sluoksnyje ir visada rodytųsi UŽ apatinės tab juostos
+  // (zIndex:1000), kad ir koks aukštas būtų jo paties zIndex.
+  return createPortal(
+    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:1200, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:16, boxSizing:"border-box" }}>
       <style>{RULES_SCROLL_STYLE}</style>
       <div onClick={e=>e.stopPropagation()} style={{
         width:"100%", maxWidth:480, maxHeight:"min(680px, 100%)", minHeight:0,
@@ -173,7 +177,8 @@ function BookingRulesModal({ onAccept, onCancel }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

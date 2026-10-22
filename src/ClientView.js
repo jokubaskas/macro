@@ -166,7 +166,7 @@ function DatePickerModal({ value, minDate, onSelect, onClose, userId }) {
   const offset = firstDay === 0 ? 6 : firstDay - 1;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end" }}
+    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: "linear-gradient(160deg,#3a0a20,#6D1B3B)", borderRadius: "24px 24px 0 0", padding: "20px 16px 40px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -526,7 +526,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
           onSelect={d => setSelectedDate(d)} onClose={() => setShowCalendar(false)} />
       )}
       {showTipModal && (
-        <div onClick={()=>setShowTipModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"flex-end" }}>
+        <div onClick={()=>setShowTipModal(false)} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"flex-end" }}>
           <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#3a0a20,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"20px 16px 40px" }}>
             <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
               <button onClick={()=>setShowTipModal(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:"50%", width:32, height:32, color:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><Close size={15} /></button>
