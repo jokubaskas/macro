@@ -126,13 +126,27 @@ function CancelButton({ booking, userId, onCancelled }) {
   );
 }
 
+const RULES_SCROLL_STYLE = `
+.booking-rules-scroll::-webkit-scrollbar { width: 5px; }
+.booking-rules-scroll::-webkit-scrollbar-track { background: transparent; }
+.booking-rules-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 99px; }
+`;
+
 function BookingRulesModal({ onAccept, onCancel }) {
   return (
-    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-end" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:480, margin:"0 auto", maxHeight:"85vh", display:"flex", flexDirection:"column", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 60%,#AD1457 100%)", borderRadius:"24px 24px 0 0", padding:"20px 20px max(20px, env(safe-area-inset-bottom))" }}>
-        <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 4px", display:"flex", alignItems:"center", gap:7 }}><AlertTriangle size={16} color="#FFD700" />Rezervacijos taisyklės</p>
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"0 0 14px" }}>Prieš pateikdami rezervaciją, susipažinkite su taisyklėmis.</p>
-        <div style={{ overflowY:"auto", flex:1, marginBottom:14, paddingRight:2 }}>
+    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:16, boxSizing:"border-box" }}>
+      <style>{RULES_SCROLL_STYLE}</style>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width:"100%", maxWidth:480, maxHeight:"min(680px, 100%)", minHeight:0,
+        display:"flex", flexDirection:"column", overflow:"hidden",
+        background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 60%,#AD1457 100%)", borderRadius:20,
+        boxShadow:"0 20px 60px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{ padding:"20px 20px 14px", flexShrink:0 }}>
+          <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 4px", display:"flex", alignItems:"center", gap:7 }}><AlertTriangle size={16} color="#FFD700" />Rezervacijos taisyklės</p>
+          <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0 }}>Prieš pateikdami rezervaciją, susipažinkite su taisyklėmis.</p>
+        </div>
+        <div className="booking-rules-scroll" style={{ overflowY:"auto", flex:"1 1 auto", minHeight:0, padding:"0 20px" }}>
           {BOOKING_RULES.map((rule, i) => (
             <div key={i} style={{ display:"flex", gap:10, marginBottom:12 }}>
               <span style={{ flexShrink:0, width:20, height:20, borderRadius:"50%", background:"rgba(255,255,255,0.12)", color:"#fff", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>{i+1}</span>
@@ -140,7 +154,7 @@ function BookingRulesModal({ onAccept, onCancel }) {
             </div>
           ))}
         </div>
-        <div style={{ display:"flex", gap:10, flexShrink:0 }}>
+        <div style={{ display:"flex", gap:10, flexShrink:0, padding:"14px 20px max(14px, env(safe-area-inset-bottom))", boxShadow:"0 -8px 16px -8px rgba(0,0,0,0.3)" }}>
           <button onClick={onCancel} style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atgal</button>
           <button onClick={onAccept} style={{ flex:2, padding:"13px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
             <CheckCircle size={14} />Sutinku ir rezervuoju
