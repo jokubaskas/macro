@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Skeleton, ProgressBar, ConfettiBurst } from "./ui/kit";
+import { haptic } from "./ui/pullToRefresh";
 import { ChevronLeft, Dumbbell, CheckCircle, Party, Check, PlayCircle, MessageCircle } from "./ui/icons";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
 
@@ -79,7 +80,7 @@ export default function WorkoutView({ user, onClose }) {
       calendar_date: today,
       is_done: true,
     }).catch(() => null);
-    if (rec) setLogs(l => ({...l, [ex.id]: rec}));
+    if (rec) { setLogs(l => ({...l, [ex.id]: rec})); haptic(); }
     setSaving(s => ({...s, [ex.id]: false}));
   }
 

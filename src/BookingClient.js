@@ -4,6 +4,8 @@ import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive 
 import { effectiveDeadline, daysUntil } from "./packageDeadline";
 import { Timer, CheckCircle, Close, Ban, ChevronLeft, Calendar, Ticket, Phone, Sparkle, AlertTriangle, MessageCircle } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
+import { toast } from "./ui/toast";
+import { haptic } from "./ui/pullToRefresh";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį","Penktadienį","Šeštadienį","Sekmadienį"];
@@ -108,6 +110,7 @@ function CancelButton({ booking, userId, onCancelled, freeCancelsRemaining }) {
     // aukščiau) atlieka serverio hook (bookings.pb.js) — čia nebedubliuojame.
     setSaving(false);
     setOpen(false);
+    haptic();
     onCancelled();
   }
 
@@ -316,14 +319,14 @@ export default function BookingClient({ user, onClose }) {
 
   function requestBook() {
     if (!selectedSlot || !selectedDate) return;
-    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    if (!activePackage) { toast("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą.", "error"); return; }
     setRulesAction("book");
     setShowRules(true);
   }
 
   function requestConfirmRecurring() {
     if (!myReservedSlot || !selectedDate) return;
-    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    if (!activePackage) { toast("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą.", "error"); return; }
     setRulesAction("confirmRecurring");
     setShowRules(true);
   }
@@ -337,7 +340,7 @@ export default function BookingClient({ user, onClose }) {
 
   async function handleBook() {
     if (!selectedSlot || !selectedDate) return;
-    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    if (!activePackage) { toast("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą.", "error"); return; }
     setSaving(true);
     await pb.collection("bookings").create({
       client_id:  user.id,
@@ -352,13 +355,15 @@ export default function BookingClient({ user, onClose }) {
     await incrementPackageCredit(activePackage.id);
     await load();
     setSaving(false);
+    haptic();
+    toast("Rezervacijos užklausa išsiųsta!", "success");
     setView("mybookings");
     setSelectedDate(null); setSelectedSlot(null); setNotes("");
   }
 
   async function handleConfirmRecurring() {
     if (!myReservedSlot || !selectedDate) return;
-    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    if (!activePackage) { toast("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą.", "error"); return; }
     setConfirmingRecurring(true);
     await pb.collection("bookings").create({
       client_id:  user.id,
@@ -374,6 +379,8 @@ export default function BookingClient({ user, onClose }) {
     await incrementPackageCredit(activePackage.id);
     await load();
     setConfirmingRecurring(false);
+    haptic();
+    toast("Laikas patvirtintas!", "success");
     setView("mybookings");
     setSelectedDate(null); setSelectedSlot(null);
   }

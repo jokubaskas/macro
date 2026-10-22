@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb, pbFileToken } from "./pb";
 import { ChevronLeft, Camera, Close, Save, Calendar, ArrowUp, ArrowDown, ChevronRight, Edit } from "./ui/icons";
 import PhotoCropper from "./PhotoCropper";
+import { toast } from "./ui/toast";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -103,7 +104,8 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
         }
         await load();
       } catch (err) {
-        alert("Klaida keičiant nuotrauką: " + (err?.message || ""));
+        console.error("Photo edit error:", err);
+        toast("Nepavyko pakeisti nuotraukos. Patikrinkite interneto ryšį ir bandykite dar kartą.", "error");
       }
       setSavingEdit(false);
       setEditHistoryItem(null);
@@ -138,7 +140,7 @@ export default function ProgressPhotos({ user, onClose, canEdit = false }) {
     } catch(err) {
       console.error("Progress photo save error:", err);
       console.error("Error data:", JSON.stringify(err?.data || err?.response, null, 2));
-      alert("Klaida: " + JSON.stringify(err?.data?.data || err?.response?.data || err?.message));
+      toast("Nepavyko išsaugoti nuotraukų. Patikrinkite interneto ryšį ir bandykite dar kartą.", "error");
     }
     setSaving(false);
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, Clipboard, Timer, PlayCircle, MessageCircle } from "./ui/icons";
+import { toast } from "./ui/toast";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -595,7 +596,7 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
         }
       }
       onSaved?.(); onClose();
-    } catch(e) { console.error(e); alert("Klaida išsaugant"); }
+    } catch(e) { console.error(e); toast("Nepavyko išsaugoti plano. Patikrinkite interneto ryšį ir bandykite dar kartą.", "error"); }
     setSaving(false);
   }
 

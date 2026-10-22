@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { pb, pbFileToken } from "./pb";
 import { ArrowUp, ChevronRight, ArrowDown, Close, ChevronLeft, Camera, MessageCircle } from "./ui/icons";
+import { Skeleton } from "./ui/kit";
 
 const VIEWS = [
   { key:"photo_front", label:"Priekis", Icon:ArrowUp },
@@ -75,7 +76,17 @@ export default function ClientProgressCompare({ user, onClose }) {
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
 
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
+        {loading && (
+          <div>
+            <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+              {Array.from({ length:3 }).map((_,i) => <Skeleton key={i} height={34} radius={12} />)}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <Skeleton height={240} radius={14} />
+              <Skeleton height={240} radius={14} />
+            </div>
+          </div>
+        )}
 
         {!loading && history.length === 0 && (
           <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:"28px 16px", textAlign:"center", border:"2px dashed rgba(255,255,255,0.12)" }}>
