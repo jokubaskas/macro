@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Medal } from "./ui/Medal";
 import { ChevronLeft, Trophy } from "./ui/icons";
-import { ConfettiBurst } from "./ui/kit";
+import { ConfettiBurst, Skeleton } from "./ui/kit";
+import { haptic } from "./ui/pullToRefresh";
 import { ACHIEVEMENTS, evaluateAchievements } from "./achievementsData";
 
 function bodyChangeLabel(threshold, goal) {
@@ -35,6 +36,7 @@ export default function Achievements({ user, profile, onClose }) {
     if (queue.length && !celebrate) {
       setCelebrate(queue[0]);
       setQueue(q => q.slice(1));
+      haptic([15, 60, 15]);
     }
   }, [queue, celebrate]);
 
@@ -52,7 +54,19 @@ export default function Achievements({ user, profile, onClose }) {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
-        {loading && <p style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "24px 0" }}>Kraunama...</p>}
+        {loading && (
+          <div>
+            {Array.from({ length:4 }).map((_,i) => (
+              <div key={i} style={{ background:"rgba(255,255,255,0.06)", borderRadius:18, padding:16, marginBottom:14 }}>
+                <Skeleton height={14} width={140} radius={6} style={{ marginBottom:6 }} />
+                <Skeleton height={11} width={200} radius={6} style={{ marginBottom:14 }} />
+                <div style={{ display:"flex", justifyContent:"space-around", gap:10 }}>
+                  {Array.from({ length:3 }).map((_,j) => <Skeleton key={j} height={80} width={64} radius={99} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {!loading && state && ACHIEVEMENTS.map(a => {
           const current = state.currentValues[a.key] || 0;

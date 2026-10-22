@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
 import { PK, GOALS, calcMacros, isBirthdayToday } from "./constants";
 import DailyTiles from "./DailyTiles";
 import MotivationalCard from "./MotivationalCard";
 import WorkoutView from "./WorkoutView";
 import BookingClient from "./BookingClient";
-import ClientProgressCompare from "./ClientProgressCompare";
 import PushPermissionPrompt from "./PushNotifications";
 import StreakBadge from "./StreakBadge";
 import TrainingPackages from "./TrainingPackages";
 import Onboarding from "./Onboarding";
-import ClientStats from "./ClientStats";
-import Achievements from "./Achievements";
+import ProgressHub from "./ProgressHub";
+import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 import { LoadingScreen, ConfettiBurst } from "./ui/kit";
-import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, Camera, TrendingUp, Cake, Sparkle, Refresh, Close, Trophy } from "./ui/icons";
+import { WaveHand, Calendar, ChevronRight, Ticket, Dumbbell, BarChart, TrendingUp, Cake, Sparkle, Refresh, Close } from "./ui/icons";
 
 const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.35); } 50% { box-shadow: 0 0 28px rgba(255,215,0,0.6); } }`;
 
@@ -222,10 +221,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const [checkinKey,   setCheckinKey]   = useState(0);
   const [showWorkout,  setShowWorkout]  = useState(false);
   const [showBooking,  setShowBooking]  = useState(false);
-  const [showProgress, setShowProgress] = useState(false);
+  const [showProgressHub, setShowProgressHub] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
-  const [showStats,    setShowStats]    = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [hasStreak, setHasStreak] = useState(false);
@@ -234,18 +231,14 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   const activeTab = showPackages ? "packages"
     : showWorkout ? "workout"
     : showBooking ? "booking"
-    : showProgress ? "progress"
-    : showStats ? "stats"
-    : showAchievements ? "achievements"
+    : showProgressHub ? "progress"
     : null;
 
   function openTab(tab) {
     setShowPackages(tab === "packages");
     setShowWorkout(tab === "workout");
     setShowBooking(tab === "booking");
-    setShowProgress(tab === "progress");
-    setShowStats(tab === "stats");
-    setShowAchievements(tab === "achievements");
+    setShowProgressHub(tab === "progress");
   }
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [nextBooking,   setNextBooking]   = useState(null);
@@ -291,11 +284,15 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
   async function handleRefresh() {
+    haptic();
     setRefreshing(true);
     await loadProfile();
     setRefreshKey(k => k + 1);
     setRefreshing(false);
   }
+
+  const scrollRef = useRef(null);
+  const { pull, refreshing: pullRefreshing, handlers: pullHandlers } = usePullToRefresh(scrollRef, handleRefresh);
 
   if (loading) return <LoadingScreen background={`linear-gradient(160deg,#3a0a20,${PK.dark})`} textColor={PK.blush} />;
 
@@ -307,7 +304,12 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: `linear-gradient(160deg,#3a0a20 0%,${PK.dark} 45%,${PK.mid} 100%)`, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
 
       {/* Scrollinamas turinys — antraštė + content vienoje scroll zonoje */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 200 }}>
+      <div ref={scrollRef} {...pullHandlers} style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 200 }}>
+
+      {/* Potraukio atnaujinti indikatorius — užima vietą (height), ne transform */}
+      <div style={{ height: pull, overflow: "hidden", display: "flex", alignItems: "flex-end", justifyContent: "center", transition: pull === 0 ? "height 0.25s ease" : "none" }}>
+        <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom: 8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
+      </div>
 
       {/* Header — paprastas */}
       <div style={{ padding: "env(safe-area-inset-top, 16px) 20px 14px", paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
@@ -480,9 +482,7 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             { id:"packages", Icon:Ticket,     label:"Paketai",     badge: badges.packages },
             ...(hasActivePlan ? [{ id:"workout", Icon:Dumbbell, label:"Treniruotė", badge:0 }] : []),
             { id:"booking",  Icon:Calendar,   label:"Rezervacija", badge: badges.booking },
-            { id:"progress", Icon:Camera,     label:"Progresas",   badge:0 },
-            { id:"stats",    Icon:TrendingUp, label:"Statistika",  badge:0 },
-            { id:"achievements", Icon:Trophy, label:"Pasiekimai",  badge:0 },
+            { id:"progress", Icon:TrendingUp, label:"Progresas",   badge:0 },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -516,10 +516,8 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
 
       {showWorkout && <WorkoutView user={user} onClose={()=>openTab(null)} />}
       {showBooking && <BookingClient user={user} onClose={()=>openTab(null)} />}
-      {showProgress && <ClientProgressCompare user={user} onClose={()=>openTab(null)} />}
+      {showProgressHub && <ProgressHub user={user} profile={profile} onClose={()=>openTab(null)} />}
       {showPackages && <TrainingPackages user={user} onClose={()=>openTab(null)} />}
-      {showStats && <ClientStats user={user} onClose={()=>openTab(null)} />}
-      {showAchievements && <Achievements user={user} profile={profile} onClose={()=>openTab(null)} />}
       {showOnboarding && (
         <Onboarding user={user} startStep={1} onComplete={async()=>{ await loadProfile(); setShowOnboarding(false); }} />
       )}

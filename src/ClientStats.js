@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { pb } from "./pb";
 import { ChevronLeft, TrendingUp, Scale, BarChart, Ruler, Muscle, Footprints, Droplet, Moon, Clipboard, Salad, Heart, Glass, Dumbbell } from "./ui/icons";
+import { Skeleton } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 
@@ -220,7 +221,15 @@ export default function ClientStats({ user, onClose }) {
           ))}
         </div>
 
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
+        {loading && (
+          <div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+              {Array.from({ length:6 }).map((_,i) => <Skeleton key={i} height={62} radius={16} />)}
+            </div>
+            <Skeleton height={14} width={120} radius={6} style={{ marginBottom:8 }} />
+            <Skeleton height={140} radius={16} />
+          </div>
+        )}
 
         {!loading && avgs && (
           <>

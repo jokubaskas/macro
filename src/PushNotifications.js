@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Bell } from "./ui/icons";
+import { toast } from "./ui/toast";
 
 const VAPID_PUBLIC_KEY = "BDgTfVU4FAYADwAodf4BDUspAz7THr4RmrSO6H6rbkX8yesLVuP8g27a9BaFG_TJ75MSPqYzQh3AYuNU2EdK6HE";
 
@@ -24,15 +25,19 @@ export async function getPushPermissionStatus() {
   return Notification.permission; // "default" | "granted" | "denied"
 }
 
+// Grąžina true/false — UI komponentas (žr. handleEnable žemiau) pats
+// nusprendžia, kokį pranešimą rodyti vartotojui. Ši funkcija taip pat
+// kviečiama TYLIAI fone (žr. PushPermissionPrompt useEffect), tad čia
+// jokių vartotojui rodomų pranešimų nebeturi būti — tik console.error.
 export async function subscribeToPush(userId) {
-  if (!isPushSupported()) { alert("Push nepalaikomas šiame įrenginyje"); return false; }
+  if (!isPushSupported()) { console.error("Push nepalaikomas šiame įrenginyje"); return false; }
 
   try {
     const registration = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") { alert("Leidimas neduotas: " + permission); return false; }
+    if (permission !== "granted") { console.error("Leidimas neduotas:", permission); return false; }
 
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
@@ -47,7 +52,7 @@ export async function subscribeToPush(userId) {
     const existing = await pb.collection("push_subscriptions").getFullList({
       filter: `user_id="${userId}" && endpoint="${subJson.endpoint}"`,
       requestKey: null,
-    }).catch((e) => { alert("PB filter klaida: " + e.message); return []; });
+    }).catch((e) => { console.error("PB filter klaida:", e.message); return []; });
 
     if (existing.length === 0) {
       await pb.collection("push_subscriptions").create({
@@ -55,15 +60,12 @@ export async function subscribeToPush(userId) {
         endpoint: subJson.endpoint,
         keys_p256dh: subJson.keys.p256dh,
         keys_auth: subJson.keys.auth,
-      }).catch((e) => { alert("PB create klaida: " + e.message); });
-    } else {
-      alert("Subscription jau egzistuoja PB");
+      }).catch((e) => { console.error("PB create klaida:", e.message); });
     }
 
-    alert("Sėkmingai užregistruota: " + userId);
     return true;
   } catch (err) {
-    alert("Bendra klaida: " + err.message);
+    console.error("Bendra klaida:", err.message);
     return false;
   }
 }
@@ -130,6 +132,8 @@ export default function PushPermissionPrompt({ userId }) {
     const ok = await subscribeToPush(userId);
     setStatus(ok ? "granted" : "denied");
     setLoading(false);
+    if (ok) toast("Pranešimai įjungti! 🔔", "success");
+    else toast("Nepavyko įjungti pranešimų. Patikrinkite naršyklės leidimus ir bandykite dar kartą.", "error");
   }
 
   if (status === "unsupported" || status === "granted" || status === "checking") return null;

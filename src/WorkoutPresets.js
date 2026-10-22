@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
 import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle } from "./ui/icons";
+import { toast } from "./ui/toast";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -419,7 +420,7 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
         }
       }
       onSaved?.(); onClose();
-    } catch(e) { console.error(e); alert("Klaida išsaugant šabloną"); }
+    } catch(e) { console.error(e); toast("Nepavyko išsaugoti šablono. Patikrinkite interneto ryšį ir bandykite dar kartą.", "error"); }
     setSaving(false);
   }
 
