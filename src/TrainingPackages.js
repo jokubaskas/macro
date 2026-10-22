@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { ProgressBar } from "./ui/kit";
 import { effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
@@ -163,9 +164,10 @@ export default function TrainingPackages({ user, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:500, background:"linear-gradient(160deg,#3a0a20 0%,#6D1B3B 45%,#AD1457 100%)", overflowY:"auto", paddingBottom:80, WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", animation:"fadeInUp 0.32s cubic-bezier(.23,1,.32,1) both" }}>
 
-      {/* Taisyklių popup */}
-      {rulesFor && (
-        <div style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"flex-end" }} onClick={e=>e.target===e.currentTarget&&setRulesFor(null)}>
+      {/* Taisyklių popup — createPortal, kitaip "įstringa" šio komponento
+          šaknies (zIndex:500) sluoksnyje ir rodytųsi UŽ apatinės tab juostos */}
+      {rulesFor && createPortal(
+        <div style={{ position:"fixed", inset:0, zIndex:1200, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"flex-end" }} onClick={e=>e.target===e.currentTarget&&setRulesFor(null)}>
           <div style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"24px 20px 100px", maxHeight:"85vh", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
             <p style={{ fontSize:16, fontWeight:700, color:"#fff", margin:"0 0 16px", display:"flex", alignItems:"center", gap:8 }}><Clipboard size={16} />Taisyklės — {rulesFor.label}</p>
             {RULES.map((r,i) => (
@@ -187,7 +189,8 @@ export default function TrainingPackages({ user, onClose }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", position:"sticky", top:0, zIndex:10, backdropFilter:"blur(10px)" }}>
