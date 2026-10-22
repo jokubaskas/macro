@@ -79,7 +79,7 @@ function downloadIcal(booking, clientName) {
   URL.revokeObjectURL(url);
 }
 
-function CancelButton({ booking, userId, onCancelled }) {
+function CancelButton({ booking, userId, onCancelled, freeCancelsRemaining }) {
   const [open,   setOpen]   = useState(false);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
@@ -88,7 +88,12 @@ function CancelButton({ booking, userId, onCancelled }) {
   // riba pagal datą IR laiką, ne vien kalendorinė diena.
   const hoursUntil = (new Date(booking.date + "T" + booking.start_time + ":00").getTime() - Date.now()) / (1000*60*60);
   const isLate = hoursUntil < 24;
-  const warning = isLate ? "Atsaukiant likus mažiau nei 24 val., pinigai negrąžinami!" : null;
+  const limitReached = !isLate && freeCancelsRemaining != null && freeCancelsRemaining <= 0;
+  const warning = isLate
+    ? "Atsaukiant likus mažiau nei 24 val., pinigai negrąžinami!"
+    : limitReached
+      ? "Šį mėnesį jau išnaudota visų nemokamų atšaukimų riba — kreditas nebus grąžintas."
+      : null;
 
   async function handleCancel() {
     if (!reason.trim()) return;
@@ -114,6 +119,9 @@ function CancelButton({ booking, userId, onCancelled }) {
   return (
     <div style={{marginTop:8,background:"rgba(255,50,50,0.1)",borderRadius:12,padding:12,border:"1px solid rgba(255,100,100,0.3)"}}>
       {warning && <p style={{fontSize:12,color:"#FF8888",fontWeight:700,margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><AlertTriangle size={13} />{warning}</p>}
+      {!warning && freeCancelsRemaining != null && (
+        <p style={{fontSize:11,color:"rgba(255,255,255,0.45)",margin:"0 0 8px"}}>Liko {freeCancelsRemaining} nemokami atšaukimai šį mėnesį.</p>
+      )}
       <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Nurodykite atšaukimo priežastį..." rows={2}
         style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(0,0,0,0.2)",color:"#fff",fontSize:12,fontFamily:"inherit",outline:"none",resize:"none",boxSizing:"border-box",marginBottom:8}}/>
       <div style={{display:"flex",gap:8}}>
@@ -213,6 +221,17 @@ export default function BookingClient({ user, onClose }) {
   }, [user.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Kiek nemokamų (su kredito grąžinimu) atšaukimų klientas dar turi šį
+  // mėnesį — ta pati riba kaip serverio hook'e (bookings.pb.js), tik čia tik
+  // informaciniam rodymui; realų sprendimą visada priima serveris.
+  const MONTHLY_FREE_CANCEL_LIMIT = 3;
+  const monthPrefix = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`;
+  const freeCancelsUsed = myBookings.filter(b =>
+    b.status === "cancelled" && b.cancelled_by === "client" && b.credit_returned === true &&
+    (b.updated || "").slice(0,7) === monthPrefix
+  ).length;
+  const freeCancelsRemaining = Math.max(0, MONTHLY_FREE_CANCEL_LIMIT - freeCancelsUsed);
 
   // Kai pasirenkama data — krauti užimtus ir atsisakytus laikus tai dienai.
   // Naudoja serverio endpoint'ą (ne tiesioginį bookings/recurring_slots
@@ -457,7 +476,7 @@ export default function BookingClient({ user, onClose }) {
                     </button>
                   )}
                   {(b.status==="pending" || b.status==="approved") && (
-                    <CancelButton booking={b} userId={user.id} onCancelled={load} />
+                    <CancelButton booking={b} userId={user.id} onCancelled={load} freeCancelsRemaining={freeCancelsRemaining} />
                   )}
                 </div>
               );
