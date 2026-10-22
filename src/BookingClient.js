@@ -7,6 +7,21 @@ import { ShowMoreButton } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const DOW_LABEL = ["Pirmadienį","Antradienį","Trečiadienį","Ketvirtadienį","Penktadienį","Šeštadienį","Sekmadienį"];
+
+// Rezervacijos taisyklių versija — įrašoma kartu su sutikimu, kad būtų aišku,
+// kurią taisyklių redakciją klientas matė ir su kuria sutiko, jei taisyklės
+// vėliau būtų pakeistos.
+const RULES_VERSION = "2026-10-22";
+const BOOKING_RULES = [
+  "Ši rezervacija yra tik užklausa, ne galutinis patvirtinimas — pasirinktas laikas priskiriamas jums tik tada, kai jį patvirtina trenerė Vilma.",
+  "Trenerė Vilma pasilieka teisę atmesti rezervacijos užklausą (pvz. dėl užimtumo ar kitų priežasčių). Atmetus užklausą, kreditas iš jūsų treniruočių paketo nenuskaičiuojamas.",
+  "Prieš pateikdami rezervaciją, įsitikinkite, kad pasirinkta data ir laikas jums tikrai tinka.",
+  "Patvirtintą rezervaciją galite atšaukti nemokamai (kreditas grąžinamas), jei tai padarote likus daugiau nei 24 val. iki treniruotės. Atšaukus vėliau arba neatvykus, kreditas negrąžinamas.",
+  "Vėluojant atvykti, treniruotės laikas nėra pratęsiamas — ji baigiasi iš anksto suplanuotu laiku.",
+  "Rezervuodami patvirtinate, kad esate sveikas(-a) fizinei veiklai, arba iš anksto informavote trenerę apie turimus sveikatos ribojimus, traumas ar kontraindikacijas (pastabų laukelyje arba asmeniškai).",
+  "Trenerė neatsako už sužalojimus ar pasekmes, kilusias dėl nuslėptos/netikslios informacijos apie sveikatos būklę arba dėl pratimų atlikimo nesilaikant trenerės nurodymų.",
+  "Trenerė pasilieka teisę šias taisykles keisti — aktuali redakcija visada rodoma prieš rezervaciją.",
+];
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
 const STATUS_INFO = {
   pending:   { Icon:Timer,       label:"Laukia patvirtinimo",   bg:"rgba(255,200,0,0.15)",   color:"#FFD700" },
@@ -106,6 +121,31 @@ function CancelButton({ booking, userId, onCancelled }) {
         <button onClick={handleCancel} disabled={!reason.trim()||saving} style={{flex:2,padding:"8px",borderRadius:8,border:"none",background:reason.trim()?"rgba(200,50,50,0.6)":"rgba(255,255,255,0.1)",color:"#fff",fontSize:12,fontWeight:700,cursor:reason.trim()?"pointer":"default",fontFamily:"inherit"}}>
           {saving?"Atšaukiama...":"Patvirtinti atšaukimą"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function BookingRulesModal({ onAccept, onCancel }) {
+  return (
+    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-end" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:480, margin:"0 auto", maxHeight:"85vh", display:"flex", flexDirection:"column", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 60%,#AD1457 100%)", borderRadius:"24px 24px 0 0", padding:"20px 20px max(20px, env(safe-area-inset-bottom))" }}>
+        <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 4px", display:"flex", alignItems:"center", gap:7 }}><AlertTriangle size={16} color="#FFD700" />Rezervacijos taisyklės</p>
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"0 0 14px" }}>Prieš pateikdami rezervaciją, susipažinkite su taisyklėmis.</p>
+        <div style={{ overflowY:"auto", flex:1, marginBottom:14, paddingRight:2 }}>
+          {BOOKING_RULES.map((rule, i) => (
+            <div key={i} style={{ display:"flex", gap:10, marginBottom:12 }}>
+              <span style={{ flexShrink:0, width:20, height:20, borderRadius:"50%", background:"rgba(255,255,255,0.12)", color:"#fff", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>{i+1}</span>
+              <p style={{ fontSize:12.5, color:"rgba(255,255,255,0.85)", margin:0, lineHeight:1.5 }}>{rule}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:10, flexShrink:0 }}>
+          <button onClick={onCancel} style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Atgal</button>
+          <button onClick={onAccept} style={{ flex:2, padding:"13px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <CheckCircle size={14} />Sutinku ir rezervuoju
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -233,6 +273,34 @@ export default function BookingClient({ user, onClose }) {
     return myBookings.some(b => b.date === dateStr && b.status === "approved");
   }
 
+  const [showRules, setShowRules] = useState(false);
+  const [rulesAction, setRulesAction] = useState(null); // "book" | "confirmRecurring"
+
+  function rulesConsent() {
+    return { rules_accepted: true, rules_accepted_at: new Date().toISOString(), rules_version: RULES_VERSION };
+  }
+
+  function requestBook() {
+    if (!selectedSlot || !selectedDate) return;
+    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    setRulesAction("book");
+    setShowRules(true);
+  }
+
+  function requestConfirmRecurring() {
+    if (!myReservedSlot || !selectedDate) return;
+    if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
+    setRulesAction("confirmRecurring");
+    setShowRules(true);
+  }
+
+  function handleAcceptRules() {
+    setShowRules(false);
+    if (rulesAction === "book") handleBook();
+    else if (rulesAction === "confirmRecurring") handleConfirmRecurring();
+    setRulesAction(null);
+  }
+
   async function handleBook() {
     if (!selectedSlot || !selectedDate) return;
     if (!activePackage) { alert("Neturite aktyvaus treniruočių paketo. Pirmiausia įsigykite paketą."); return; }
@@ -245,6 +313,7 @@ export default function BookingClient({ user, onClose }) {
       status:     "pending",
       notes:      notes.trim(),
       package_id: activePackage.id,
+      ...rulesConsent(),
     }).catch(()=>{});
     await incrementPackageCredit(activePackage.id);
     await load();
@@ -266,6 +335,7 @@ export default function BookingClient({ user, onClose }) {
       notes:      "",
       package_id: activePackage.id,
       recurring_slot_id: myReservedSlot.id,
+      ...rulesConsent(),
     }).catch(()=>{});
     await incrementPackageCredit(activePackage.id);
     await load();
@@ -486,7 +556,7 @@ export default function BookingClient({ user, onClose }) {
                   <button onClick={handleDeclineRecurring} disabled={decliningRecurring||confirmingRecurring} style={{flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(255,255,255,0.25)",background:"transparent",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:decliningRecurring?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
                     {decliningRecurring ? "..." : <><Close size={12} />Negaliu šią savaitę</>}
                   </button>
-                  <button onClick={handleConfirmRecurring} disabled={confirmingRecurring||decliningRecurring} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                  <button onClick={requestConfirmRecurring} disabled={confirmingRecurring||decliningRecurring} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#B8860B,#FFD700)",color:"#2d0a1a",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:confirmingRecurring?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
                     {confirmingRecurring ? "Tvirtinama..." : <><CheckCircle size={13} />Patvirtinti</>}
                   </button>
                 </div>
@@ -527,7 +597,7 @@ export default function BookingClient({ user, onClose }) {
                   </div>
                 )}
 
-                <button onClick={handleBook} disabled={!selectedSlot||saving} style={{width:"100%",padding:"14px",borderRadius:14,background:selectedSlot?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:selectedSlot?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:selectedSlot?"pointer":"default",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                <button onClick={requestBook} disabled={!selectedSlot||saving} style={{width:"100%",padding:"14px",borderRadius:14,background:selectedSlot?"linear-gradient(135deg,#6D1B3B,#AD1457)":"rgba(255,255,255,0.1)",color:selectedSlot?"#fff":"rgba(255,255,255,0.3)",border:"none",fontSize:15,fontWeight:700,cursor:selectedSlot?"pointer":"default",fontFamily:"inherit",opacity:saving?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                   {saving?"Siunčiama...":<><Calendar size={14} />Siųsti užklausą</>}
                 </button>
                 <p style={{fontSize:11,color:"rgba(255,255,255,0.35)",textAlign:"center",marginTop:8}}>Trenerė patvirtins arba atmes užklausą</p>
@@ -536,6 +606,12 @@ export default function BookingClient({ user, onClose }) {
           </div>
         )}
       </div>
+      {showRules && (
+        <BookingRulesModal
+          onAccept={handleAcceptRules}
+          onCancel={()=>{ setShowRules(false); setRulesAction(null); }}
+        />
+      )}
     </div>
   );
 }
