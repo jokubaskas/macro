@@ -4,6 +4,7 @@ import { ExerciseSummary } from "./WorkoutPlanBuilder";
 import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle } from "./ui/icons";
 import { toast } from "./ui/toast";
 import { useIsDesktop } from "./ui/responsive";
+import { matchesSearch } from "./ui/search";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -53,7 +54,7 @@ function ExercisePicker({ onAdd, onClose }) {
     setSaving(false);
   }
 
-  const filtered = exercises.filter(e => (filter==="Visi"||e.muscle===filter) && (!search||e.name.toLowerCase().includes(search.toLowerCase())));
+  const filtered = exercises.filter(e => (filter==="Visi"||e.muscle===filter) && matchesSearch(e.name, search));
   const isCardio = selected?.category==="cardio";
   // Bet kuris ne-kardio pratimas gali būti fiksuojamas laiku, ne tik pilvo.
   const isAbs = !isCardio;
