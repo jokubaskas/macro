@@ -22,9 +22,14 @@ export function ExerciseSummary({ ex }) {
   }
   if (ex.duration_sec) {
     return (
-      <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:"#B39DFF", background:"rgba(179,157,255,0.14)", borderRadius:8, padding:"2px 7px" }}>
-        <Timer size={10} />{ex.sets ? `${ex.sets} × ` : ""}{ex.duration_sec}s
-      </span>
+      <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
+        <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:"#B39DFF", background:"rgba(179,157,255,0.14)", borderRadius:8, padding:"2px 7px" }}>
+          <Timer size={10} />{ex.sets ? `${ex.sets} × ` : ""}{ex.duration_sec}s
+        </span>
+        {ex.weight_kg ? (
+          <span style={{ fontSize:10, fontWeight:700, color:"#FFB3C6", background:"rgba(255,179,198,0.14)", borderRadius:7, padding:"2px 6px" }}>{ex.weight_kg}kg</span>
+        ) : null}
+      </div>
     );
   }
   let weights = null;
@@ -153,7 +158,7 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
     if (!selected) return;
     if (isTimedAbs && !form.duration_sec) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
-    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
+    let weight_kg = isCardio ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
     if (!isCardio && !isTimedAbs && perSet && sets) {
       const parsed = setWeights.slice(0,sets).map(w => parseFloat(String(w).replace(",",".")) || 0);
@@ -269,16 +274,22 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
                 <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
               </div>
             ):isTimedAbs?(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-                <div>
-                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
-                  <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+              <>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                  <div>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                    <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+                    <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+                  </div>
                 </div>
-                <div>
-                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
-                  <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+                <div style={{marginBottom:14}}>
+                  <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Svoris / pasipriešinimas (nebūtina)</label>
+                  <input type="text" inputMode="decimal" value={form.weight_kg} onChange={e=>setForm(p=>({...p,weight_kg:e.target.value}))} placeholder="pvz. papildomas svoris, kg" style={inp}/>
                 </div>
-              </div>
+              </>
             ):(
               <>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
@@ -375,7 +386,7 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
   function handleSave() {
     if (isTimedAbs && !form.duration_sec) return;
     const sets = isCardio ? null : (parseInt(form.sets) || null);
-    let weight_kg = (isCardio || isTimedAbs) ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
+    let weight_kg = isCardio ? null : (parseFloat(String(form.weight_kg).replace(",",".")) || null);
     let set_weights = null;
 
     if (!isCardio && !isTimedAbs && perSet && sets) {
@@ -427,16 +438,22 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
             <input type="number" value={form.duration_min} onChange={e=>setForm(f=>({...f,duration_min:e.target.value}))} placeholder="30" style={inp}/>
           </div>
         ) : isTimedAbs ? (
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-            <div>
-              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
-              <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              <div>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Serijos</label>
+                <input type="number" value={form.sets} onChange={e=>setForm(f=>({...f,sets:e.target.value}))} placeholder="3" style={inp}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
+                <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+              </div>
             </div>
-            <div>
-              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Trukmė (sekundės)</label>
-              <input type="number" value={form.duration_sec} onChange={e=>setForm(f=>({...f,duration_sec:e.target.value}))} placeholder="30" style={inp}/>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:11,color:"rgba(255,255,255,0.7)",display:"block",marginBottom:5}}>Svoris / pasipriešinimas (nebūtina)</label>
+              <input type="text" inputMode="decimal" value={form.weight_kg} onChange={e=>setForm(p=>({...p,weight_kg:e.target.value}))} placeholder="pvz. papildomas svoris, kg" style={inp}/>
             </div>
-          </div>
+          </>
         ) : (
           <>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
