@@ -3,6 +3,7 @@ import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
 import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle } from "./ui/icons";
 import { toast } from "./ui/toast";
+import { useIsDesktop } from "./ui/responsive";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -362,6 +363,7 @@ function ExerciseEditModal({ exercise, onSave, onClose }) {
 
 // ── Šablono kūrimo/redagavimo forma ───────────────────────────────────────────
 function PresetEditor({ preset, onClose, onSaved, readOnly }) {
+  const isDesktop = useIsDesktop();
   const isNew = !preset;
   const [name, setName]           = useState(preset?.name || "");
   const [daysCount, setDaysCount] = useState(preset?.days_count || 3);
@@ -425,19 +427,19 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
   }
 
   if (loading) return (
-    <div style={{position:"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <p style={{color:"#fff"}}>Kraunama...</p>
     </div>
   );
 
   if (!days[activeDay]) return (
-    <div style={{position:"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <p style={{color:"#fff"}}>Kraunama...</p>
     </div>
   );
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:1050,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       {showPicker && <ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
 
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
@@ -540,6 +542,7 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
 
 // ── Šablonų sąrašas ────────────────────────────────────────────────────────────
 export default function WorkoutPresets({ onClose }) {
+  const isDesktop = useIsDesktop();
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null=uždaryta, false=naujas, objektas=redaguoti
@@ -574,7 +577,7 @@ export default function WorkoutPresets({ onClose }) {
   }
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Clipboard size={15} />Treniruočių šablonai</h1>

@@ -3,6 +3,7 @@ import { pb } from "./pb";
 import { resolveMacroTargets } from "./macroCalc";
 import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, ChevronRight, BarChart, Users, Glass, Flame } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { useIsDesktop } from "./ui/responsive";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; }
@@ -134,6 +135,7 @@ function ClientRow({ client, stats, onOpenClient }) {
 }
 
 export default function TrainerStats({ onClose, onOpenClient }) {
+  const isDesktop = useIsDesktop();
   const [period, setPeriod]     = useState(7);
   const [loading, setLoading]   = useState(true);
   const [clients, setClients]   = useState([]);
@@ -233,8 +235,8 @@ export default function TrainerStats({ onClose, onOpenClient }) {
   const filteredClients = q ? sortedClients.filter(c => c.name?.toLowerCase().includes(q)) : sortedClients;
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:isDesktop?"20px":"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><BarChart size={15} />Statistika</h1>
       </div>
