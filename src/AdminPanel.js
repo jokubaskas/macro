@@ -885,6 +885,10 @@ export default function AdminPanel({ user, onLogout }) {
     setShowStats(tab === "stats");
     setShowPresets(tab === "presets");
     setShowPackages(tab === "packages");
+    // Pereinant per šoninį meniu į kitą skiltį, uždaryti atidarytą kliento
+    // kortelę (su viduje atidarytais įrankiais) — kitaip ji likdavo rodoma
+    // virš naujos skilties ir uždengdavo ją (desktop/iPad split-pane klaida).
+    setOpenClient(null);
   }
 
   // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI — mobiliuosiuose

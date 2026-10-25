@@ -81,7 +81,7 @@ export async function fetchExerciseHistory(clientId, exerciseName) {
 // "12 min", priklausomai nuo pratimo tipo.
 export function formatLastResult(ex) {
   if (ex.category === "cardio") return `${ex.duration_min || 0} min`;
-  if (ex.duration_sec) return `${ex.sets ? ex.sets + "× " : ""}${ex.duration_sec}s`;
+  if (ex.duration_sec) return `${ex.sets ? ex.sets + "× " : ""}${ex.duration_sec}s${ex.weight_kg ? ` · ${ex.weight_kg}kg` : ""}`;
   return `${maxWeightOf(ex)}kg×${ex.reps || "–"}`;
 }
 
