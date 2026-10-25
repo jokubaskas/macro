@@ -16,6 +16,7 @@ import ClientInfo from "./ClientInfo";
 import ClientReport from "./ClientReport";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 import { useIsDesktop, useIsWide } from "./ui/responsive";
+import { attemptExit } from "./ui/exitGuard";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad, Timer } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
 
@@ -880,15 +881,28 @@ export default function AdminPanel({ user, onLogout }) {
     setRefreshing(false);
   }
 
+  // attemptExit() — jei kuris nors atidarytas ekranas (pvz. gyva treniruotė
+  // su nebaigta sesija) užregistravęs išėjimo sargą, pirma parodomas jo
+  // patvirtinimo langas, o pati navigacija įvyksta tik vartotojui apsisprendus.
   function openAdminTab(tab) {
-    setShowBookings(tab === "bookings");
-    setShowStats(tab === "stats");
-    setShowPresets(tab === "presets");
-    setShowPackages(tab === "packages");
-    // Pereinant per šoninį meniu į kitą skiltį, uždaryti atidarytą kliento
-    // kortelę (su viduje atidarytais įrankiais) — kitaip ji likdavo rodoma
-    // virš naujos skilties ir uždengdavo ją (desktop/iPad split-pane klaida).
-    setOpenClient(null);
+    attemptExit(() => {
+      setShowBookings(tab === "bookings");
+      setShowStats(tab === "stats");
+      setShowPresets(tab === "presets");
+      setShowPackages(tab === "packages");
+      // Pereinant per šoninį meniu į kitą skiltį, uždaryti atidarytą kliento
+      // kortelę (su viduje atidarytais įrankiais) — kitaip ji likdavo rodoma
+      // virš naujos skilties ir uždengdavo ją (desktop/iPad split-pane klaida).
+      setOpenClient(null);
+    });
+  }
+
+  function goToNewClient() {
+    attemptExit(() => setView("new"));
+  }
+
+  function handleLogoutClick() {
+    attemptExit(onLogout);
   }
 
   // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI — mobiliuosiuose
@@ -1019,7 +1033,7 @@ export default function AdminPanel({ user, onLogout }) {
               <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
                 <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
               </button>
-              <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
+              <button onClick={handleLogoutClick} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
             </div>
           </div>
         </div>
@@ -1159,7 +1173,7 @@ export default function AdminPanel({ user, onLogout }) {
               value={dashExtra.weekPackages} label="Šią savaitę parduota paketų" />
           </div>
 
-          <button onClick={() => setView("new")} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <button onClick={goToNewClient} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             + Naujas klientas
           </button>
 
@@ -1254,7 +1268,7 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Kliento profilis — virš kitų overlay langų (700 > 500), kad atidarius klientą
           iš Rezervacijų/Paketų/Statistikos, uždarius jį grįžtume į TĄ PATĮ ekraną su
           išsaugotais filtrais/paieška, o ne į iš naujo užkrautą pradinę būseną. */}
-      {openClient && <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />}
+      {openClient && <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} />}
     </div>
   );
 
@@ -1300,12 +1314,12 @@ export default function AdminPanel({ user, onLogout }) {
           })}
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:8, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.1)" }}>
-          <button onClick={() => setView("new")} style={{ width:"100%", padding:"10px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Naujas klientas</button>
+          <button onClick={goToNewClient} style={{ width:"100%", padding:"10px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Naujas klientas</button>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ flex:"0 0 auto", width:34, height:34, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"rgba(255,255,255,0.85)", cursor:refreshing?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <Refresh size={14} style={{ animation: refreshing?"spin 0.7s linear infinite":"none" }} />
             </button>
-            <button onClick={onLogout} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"8px", color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Atsijungti</button>
+            <button onClick={handleLogoutClick} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"8px", color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Atsijungti</button>
           </div>
         </div>
       </div>
@@ -1486,7 +1500,7 @@ export default function AdminPanel({ user, onLogout }) {
             {/* Kliento info — dešinėje */}
             <div style={{ flex:1, minHeight:0, position:"relative", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
               {openClient ? (
-                <ClientDetail client={openClient} onClose={() => setOpenClient(null)} embedded />
+                <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} embedded />
               ) : (
                 <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:10, color:"rgba(255,255,255,0.3)" }}>
                   <Users size={48} />
@@ -1501,7 +1515,7 @@ export default function AdminPanel({ user, onLogout }) {
             {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
             {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
             {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
-            {openClient && <ClientDetail client={openClient} onClose={() => setOpenClient(null)} embedded />}
+            {openClient && <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} embedded />}
           </div>
         )}
       </div>
