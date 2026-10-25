@@ -15,6 +15,7 @@ import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import ClientReport from "./ClientReport";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { useIsDesktop, useIsWide } from "./ui/responsive";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad, Timer } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
 
@@ -548,7 +549,10 @@ function PlanDayExercises({ dayId }) {
 }
 
 // ── Kliento profilis su kalendoriumi ─────────────────────────────────────────
-function ClientDetail({ client, onClose }) {
+// embedded=true (desktop/iPad split-pane režimas) — rodomas šalia kliento
+// sąrašo, ne per visą ekraną, kad šoninis meniu liktų matomas.
+function ClientDetail({ client, onClose, embedded }) {
+  const isWide = useIsWide();
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
   const [calendarView, setCalendarView] = useState("day"); // "day" | "period"
@@ -647,7 +651,7 @@ function ClientDetail({ client, onClose }) {
   const doneCount = planExercises.filter(ex => workoutLogs[ex.id]?.is_done).length;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1150, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position: embedded ? "absolute" : "fixed", inset: 0, zIndex: embedded ? 700 : 1150, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {planBuilder && (
         <WorkoutPlanBuilder client={client} plan={planBuilder===true?undefined:planBuilder} onClose={()=>setPlanBuilder(null)} onSaved={()=>{ setPlanBuilder(null); reloadPlans(); }} />
       )}
@@ -675,7 +679,7 @@ function ClientDetail({ client, onClose }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+      <div style={{ maxWidth: embedded ? 640 : (isWide ? 720 : 480), margin: "0 auto", padding: "16px" }}>
 
         {/* Veiksmų kortelės */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
@@ -844,6 +848,8 @@ function NewClientForm({ onSave, onCancel }) {
 
 // ── Pagrindinis Admin komponentas ─────────────────────────────────────────────
 export default function AdminPanel({ user, onLogout }) {
+  const isDesktop = useIsDesktop();
+  const isWide = useIsWide();
   const [clients,     setClients]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [view,        setView]        = useState("list");
@@ -981,13 +987,17 @@ export default function AdminPanel({ user, onLogout }) {
         <button onClick={() => setView("list")} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 12px", color: "#fff", fontSize: 14, cursor: "pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>Naujas klientas</h1>
       </div>
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+      <div style={{ maxWidth: isWide ? 640 : 480, margin: "0 auto", padding: "16px" }}>
         <NewClientForm onSave={() => { setView("list"); loadClients(); }} onCancel={() => setView("list")} />
       </div>
     </div>
   );
 
-  return (
+  // Telefone ir iPad portrait režime (<1000px) — ta pati struktūra kaip
+  // visada (bottom tab bar), tik turinio stulpelis šiek tiek platesnis
+  // vidutinio pločio ekranams (isWide, ≥680px) — telefonui (<680px)
+  // visiškai jokio pakeitimo, pikselis tikslus su ankstesne versija.
+  if (!isDesktop) return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {/* Scrollinamas turinys — antraštė + sąrašas vienoje scroll zonoje */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
@@ -1010,7 +1020,7 @@ export default function AdminPanel({ user, onLogout }) {
           </div>
         </div>
 
-        <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px" }}>
+        <div style={{ maxWidth: isWide ? 720 : 480, margin: "0 auto", padding: "16px" }}>
           <PushPermissionPrompt userId={user.id} />
 
           {(() => {
@@ -1241,6 +1251,256 @@ export default function AdminPanel({ user, onLogout }) {
           iš Rezervacijų/Paketų/Statistikos, uždarius jį grįžtume į TĄ PATĮ ekraną su
           išsaugotais filtrais/paieška, o ne į iš naujo užkrautą pradinę būseną. */}
       {openClient && <ClientDetail client={openClient} onClose={() => setOpenClient(null)} />}
+    </div>
+  );
+
+  // ── iPad/kompiuteris (≥1000px) — šoninis meniu + split-pane ────────────────
+  // Sąmoningai NEBENDRINA JSX su mobilia šaka aukščiau (šiek tiek pasikartojimo),
+  // kad mobili versija liktų visiškai izoliuota ir nepaliesta šio pakeitimo.
+  const sidebarTabs = [
+    { id:"clients",  Icon:Users,     label:"Klientai",     badge:0 },
+    { id:"bookings", Icon:Calendar,  label:"Rezervacijos", badge:adminBadges.bookings + notInCalendar.length },
+    { id:"packages", Icon:Ticket,    label:"Paketai",      badge:adminBadges.packages },
+    { id:"stats",    Icon:BarChart,  label:"Statistika",   badge:0 },
+    { id:"presets",  Icon:Clipboard, label:"Šablonai",     badge:0 },
+  ];
+
+  return (
+    <div style={{ height:"100%", display:"flex", background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {/* Šoninis meniu */}
+      <div style={{ width:232, flexShrink:0, display:"flex", flexDirection:"column", background:"rgba(0,0,0,0.25)", borderRight:"1px solid rgba(255,255,255,0.1)", padding:"20px 14px", boxSizing:"border-box" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:26, padding:"0 6px" }}>
+          <img src="/logo.png" alt="Coach Vilma" style={{ width:34, height:34, objectFit:"contain", borderRadius:8 }} />
+          <div>
+            <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>Vilma · Admin</h1>
+            <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>Trenerės panelė</p>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:4, flex:1, minHeight:0, overflowY:"auto" }}>
+          {sidebarTabs.map(tab => {
+            const isActive = activeAdminTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => openAdminTab(tab.id)} style={{
+                display:"flex", alignItems:"center", gap:12, padding:"11px 12px", borderRadius:14, border:"none",
+                background: isActive ? "linear-gradient(135deg,#AD1457,#6D1B3B)" : "transparent",
+                color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+                boxShadow: isActive ? "0 4px 14px rgba(173,20,87,0.35)" : "none",
+              }}>
+                <tab.Icon size={18} color={isActive ? "#fff" : "rgba(255,255,255,0.6)"} strokeWidth={isActive ? 2 : 1.6} />
+                <span style={{ fontSize:13, fontWeight:700, flex:1 }}>{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span style={{ background:"#FF4444", borderRadius:99, minWidth:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, color:"#fff", padding:"0 5px" }}>{tab.badge}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.1)" }}>
+          <button onClick={() => setView("new")} style={{ width:"100%", padding:"10px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Naujas klientas</button>
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ flex:"0 0 auto", width:34, height:34, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"rgba(255,255,255,0.85)", cursor:refreshing?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Refresh size={14} style={{ animation: refreshing?"spin 0.7s linear infinite":"none" }} />
+            </button>
+            <button onClick={onLogout} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"8px", color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Atsijungti</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Turinio sritis */}
+      <div style={{ flex:1, minHeight:0, position:"relative", display:"flex", overflow:"hidden" }}>
+        {activeAdminTab === "clients" ? (
+          <>
+            {/* Klientų sąrašas — kairėje */}
+            <div style={{ width:380, flexShrink:0, borderRight:"1px solid rgba(255,255,255,0.1)", overflowY:"auto", WebkitOverflowScrolling:"touch", padding:20, boxSizing:"border-box" }}>
+              <PushPermissionPrompt userId={user.id} />
+
+              {(() => {
+                const todayBdays = clients.filter(c => daysUntilBirthday(c.dob) === 0);
+                const weekBdays = clients
+                  .map(c => ({ c, d: daysUntilBirthday(c.dob) }))
+                  .filter(x => x.d != null && x.d >= 1 && x.d <= 7)
+                  .sort((a, b) => a.d - b.d);
+                if (!todayBdays.length && !weekBdays.length) return null;
+                return (
+                  <div style={{ background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,110,180,0.08))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFD700", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Cake size={12} />Gimtadieniai
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {todayBdays.map(c => (
+                        <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
+                          <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
+                          <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+                        </button>
+                      ))}
+                      {weekBdays.map(({ c, d }) => (
+                        <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+                          <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
+                          <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {(() => {
+                const upcoming = todaySessions.filter(b => (b.end_time || b.start_time) >= nowTime);
+                const showCard = upcoming.length > 0 || adminBadges.bookings > 0 || adminBadges.packages > 0;
+                if (!showCard) return null;
+                return (
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 18, padding: "14px 16px", marginBottom: 16, border: "1px solid rgba(255,255,255,0.12)" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 10px" }}>Šiandien</p>
+                  {upcoming.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 10px" }}>
+                      {todaySessions.length > 0 ? "Šiandienos treniruotės baigtos" : "Šiandien treniruočių nėra"}
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: (adminBadges.bookings > 0 || adminBadges.packages > 0) ? 10 : 0 }}>
+                      {upcoming.map(b => {
+                        const c = clients.find(cl => cl.id === b.client_id);
+                        const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
+                        return (
+                          <button key={b.id} onClick={() => c && setOpenClient(c)} style={{
+                            display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
+                            background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
+                            border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
+                          }}>
+                            {isOngoing && <Dot color="#7FFFB0" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite", flexShrink:0 }} />}
+                            <span style={{ fontSize: 11, fontWeight: 700, color: isOngoing ? "#7FFFB0" : "rgba(255,255,255,0.5)", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><Timer size={11} />{b.start_time}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c?.name || "Klientas"}</span>
+                            {isOngoing && <span style={{ fontSize:9, fontWeight:800, color:"#7FFFB0", background:"rgba(127,255,176,0.18)", borderRadius:20, padding:"2px 7px", letterSpacing:"0.04em", flexShrink:0 }}>VYKSTA</span>}
+                            {c && <ChevronRight size={13} color="rgba(255,255,255,0.4)" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(adminBadges.bookings > 0 || adminBadges.packages > 0) && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {adminBadges.bookings > 0 && (
+                        <button onClick={() => openAdminTab("bookings")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.08)", color: "#FFD700", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                          <AlertTriangle size={12} />{adminBadges.bookings} rezervacij{adminBadges.bookings === 1 ? "a" : "os"} laukia
+                        </button>
+                      )}
+                      {adminBadges.packages > 0 && (
+                        <button onClick={() => openAdminTab("packages")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.08)", color: "#FFD700", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                          <AlertTriangle size={12} />{adminBadges.packages} paket{adminBadges.packages === 1 ? "as" : "ai"} laukia
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
+
+              {calendarError && (
+                <div style={{ background:"rgba(255,100,100,0.12)", border:"1px solid rgba(255,100,100,0.3)", borderRadius:12, padding:"10px 12px", marginBottom:12, display:"flex", alignItems:"flex-start", gap:8 }}>
+                  <AlertTriangle size={14} color="#FF8888" style={{flexShrink:0,marginTop:1}} />
+                  <p style={{fontSize:12,color:"#FFB3B3",margin:0}}>{calendarError}</p>
+                </div>
+              )}
+
+              {notInCalendar.length > 0 && (
+                <div style={{ background: "rgba(110,198,255,0.08)", border: "1px solid rgba(110,198,255,0.25)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6EC6FF", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Calendar size={11} />Nepridėta į kalendorių ({notInCalendar.length})
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {notInCalendar.slice(0, 5).map(b => {
+                      const c = clients.find(cl => cl.id === b.client_id);
+                      return (
+                        <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "8px 10px" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", margin: "0 0 1px" }}>{c?.name || "Klientas"}</p>
+                            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", margin: 0 }}>{b.date?.slice(0,10)} · {b.start_time}–{b.end_time}</p>
+                          </div>
+                          <button onClick={() => handleAddToCalendar(b)} style={{ flexShrink: 0, background: "#2F8FE0", border: "none", borderRadius: 9, padding: "7px 11px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                            <Calendar size={11} />Pridėti
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {notInCalendar.length > 5 && (
+                    <button onClick={() => openAdminTab("bookings")} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: 10, border: "none", background: "transparent", color: "#6EC6FF", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      +{notInCalendar.length - 5} daugiau → Rezervacijos
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
+                  value={clients.length} label="Klientai iš viso" />
+                <DashStatCard icon={CheckCircle} c1="#7FE3A6" c2="#2FBE84"
+                  value={clients.filter(c => c.onboarding_done).length} label="Anketa baigta"
+                  pct={clients.length ? clients.filter(c => c.onboarding_done).length / clients.length * 100 : null} />
+                <DashStatCard icon={Calendar} c1="#FFC15E" c2="#FF9F43"
+                  value={dashExtra.todayBookings} label="Šiandien rezervacijų" />
+                <DashStatCard icon={Ticket} c1="#FF9FC7" c2="#E91E8C"
+                  value={dashExtra.weekPackages} label="Šią savaitę parduota paketų" />
+              </div>
+
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
+
+              {loading ? (
+                <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "24px 0" }}>Kraunama...</p>
+              ) : clients.length === 0 ? (
+                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
+                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
+                </div>
+              ) : (() => {
+                const q = clientSearch.trim().toLowerCase();
+                const filteredClients = q
+                  ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
+                  : clients;
+                return (
+                  <>
+                    {clients.length > 8 && (
+                      <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
+                    )}
+                    {filteredClients.length === 0 ? (
+                      <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "16px 0", fontSize: 13 }}>Klientų pagal paiešką nerasta</p>
+                    ) : (
+                      <>
+                        {filteredClients.slice(0, visibleClients).map(client => (
+                          <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
+                        ))}
+                        <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Kliento info — dešinėje */}
+            <div style={{ flex:1, minHeight:0, position:"relative", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+              {openClient ? (
+                <ClientDetail client={openClient} onClose={() => setOpenClient(null)} embedded />
+              ) : (
+                <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:10, color:"rgba(255,255,255,0.3)" }}>
+                  <Users size={48} />
+                  <p style={{ fontSize:14 }}>Pasirinkite klientą iš sąrašo kairėje</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div style={{ flex:1, minHeight:0, position:"relative" }}>
+            {showBookings && <BookingAdmin onClose={() => setShowBookings(false)} onOpenClient={setOpenClient} />}
+            {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
+            {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
+            {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
+            {openClient && <ClientDetail client={openClient} onClose={() => setOpenClient(null)} embedded />}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
