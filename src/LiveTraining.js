@@ -68,7 +68,10 @@ function TemplatePickerModal({ onConfirm, onClose }) {
       filter: `day_id="${selectedDay.id}"`, sort: "order_num", requestKey: null,
     }).catch(() => []);
     setStarting(false);
-    onConfirm(exs);
+    onConfirm(exs, {
+      presetName: selectedPreset.name,
+      dayLabel: selectedDay.day_label || `${selectedDay.day_number} diena`,
+    });
   }
 
   return (
@@ -201,9 +204,9 @@ export default function LiveTraining({ client, onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function ensureSession() {
+  async function ensureSession(extra) {
     if (todaySession) return todaySession;
-    const rec = await pb.collection("live_sessions").create({ user_id: client.id, date: today }).catch(() => null);
+    const rec = await pb.collection("live_sessions").create({ user_id: client.id, date: today, ...extra }).catch(() => null);
     if (rec) setTodaySession(rec);
     return rec;
   }
@@ -222,8 +225,10 @@ export default function LiveTraining({ client, onClose }) {
 
   // Perkelia visą pasirinkto šablono dienos pratimų sąrašą į šiandienos gyvą
   // treniruotę — vėliau kiekvieną galima koreguoti pagal realiai atliktą.
-  async function handleUseTemplate(presetExercises) {
-    const session = await ensureSession();
+  // Šablono pavadinimas įrašomas tik pradedant naują treniruotę, kad būtų
+  // aišku, nuo kokio šablono ji pradėta.
+  async function handleUseTemplate(presetExercises, meta) {
+    const session = await ensureSession(meta ? { preset_name: meta.presetName, day_label: meta.dayLabel } : undefined);
     if (!session) { setShowTemplatePicker(false); return; }
     let order = todayExercises.length;
     const created = [];
@@ -324,27 +329,44 @@ export default function LiveTraining({ client, onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>
         ) : (
           <>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, flexWrap:"wrap", gap:6 }}>
-              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
-                Šiandien · {formatDate(today)}
-              </p>
-              {todaySession && (
-                todaySession.completed ? (
-                  <span style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", background:"rgba(127,255,176,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <CheckCircle size={11} />Baigta
-                  </span>
-                ) : (
-                  <span style={{ fontSize:10, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <Dot color="#FFD700" size={7} />Vykdoma
-                  </span>
-                )
+            <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:16, padding:"13px 14px", marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
+                  Šiandien · {formatDate(today)}
+                </p>
+                {todaySession && (
+                  todaySession.completed ? (
+                    <span style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", background:"rgba(127,255,176,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                      <CheckCircle size={11} />Baigta
+                    </span>
+                  ) : (
+                    <span style={{ fontSize:10, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                      <Dot color="#FFD700" size={7} />Vykdoma
+                    </span>
+                  )
+                )}
+              </div>
+              {(todaySession?.preset_name || todayExercises.length > 0) && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10 }}>
+                  {todaySession?.preset_name && (
+                    <span style={{ fontSize:11, fontWeight:700, color:"#fff", background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:20, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>
+                      <Clipboard size={11} />{todaySession.preset_name}{todaySession.day_label ? ` · ${todaySession.day_label}` : ""}
+                    </span>
+                  )}
+                  {todayExercises.length > 0 && (
+                    <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.6)", background:"rgba(255,255,255,0.06)", borderRadius:20, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>
+                      <Dumbbell size={11} />{todayExercises.length} pratimų
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
             {todayExercises.length === 0 ? (
               <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:20, textAlign:"center", border:"2px dashed rgba(255,255,255,0.15)", marginBottom:12 }}>
                 <Dumbbell size={26} color="rgba(255,255,255,0.5)" style={{ marginBottom:8 }} />
-                <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, margin:0 }}>Dar nė vieno pratimo neįrašyta</p>
+                <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, margin:"0 0 4px", fontWeight:600 }}>Dar nė vieno pratimo neįrašyta</p>
+                <p style={{ color:"rgba(255,255,255,0.35)", fontSize:11, margin:0 }}>Pradėk nuo šablono arba pridėk pratimą rankiniu būdu žemiau</p>
               </div>
             ) : (
               <div style={{ marginBottom:12 }}>
