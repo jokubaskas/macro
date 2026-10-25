@@ -3,7 +3,7 @@ import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
-import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 
@@ -15,15 +15,39 @@ function formatDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 }
 
-function ExerciseRow({ ex, onClick, onRemove }) {
+function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf }) {
+  const prev = lastPerf ? lastPerf[ex.exercise_name] : null;
   return (
     <div onClick={onClick} style={{
       background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"11px 14px", marginBottom:8,
       display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default", gap:10,
+      opacity: ex.done ? 0.6 : 1,
     }}>
+      {onToggleDone && (
+        <button onClick={(e)=>{ e.stopPropagation(); onToggleDone(); }} style={{
+          width:26, height:26, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+          border: ex.done ? "none" : "1.5px solid rgba(255,255,255,0.35)",
+          background: ex.done ? "#276749" : "transparent",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          {ex.done && <Check size={13} color="#fff" />}
+        </button>
+      )}
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px" }}>{ex.exercise_name}</p>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px", textDecoration: ex.done ? "line-through" : "none" }}>{ex.exercise_name}</p>
+          {ex.from_preset && (
+            <span style={{ fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.55)", background:"rgba(255,255,255,0.1)", borderRadius:6, padding:"1px 5px", marginBottom:5, display:"inline-flex", alignItems:"center", gap:3 }}>
+              <Clipboard size={8} />šablonas
+            </span>
+          )}
+        </div>
         <ExerciseSummary ex={ex} />
+        {prev && (
+          <p style={{ fontSize:10, color:"rgba(255,215,0,0.6)", margin:"5px 0 0", display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
+            <Timer size={9} />Praeitą kartą: <ExerciseSummary ex={prev} />
+          </p>
+        )}
         {onClick && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>paliesk redaguoti</span>}
       </div>
       {onRemove && (
@@ -68,7 +92,10 @@ function TemplatePickerModal({ onConfirm, onClose }) {
       filter: `day_id="${selectedDay.id}"`, sort: "order_num", requestKey: null,
     }).catch(() => []);
     setStarting(false);
-    onConfirm(exs);
+    onConfirm(exs, {
+      presetName: selectedPreset.name,
+      dayLabel: selectedDay.day_label || `${selectedDay.day_number} diena`,
+    });
   }
 
   return (
@@ -201,9 +228,9 @@ export default function LiveTraining({ client, onClose }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function ensureSession() {
+  async function ensureSession(extra) {
     if (todaySession) return todaySession;
-    const rec = await pb.collection("live_sessions").create({ user_id: client.id, date: today }).catch(() => null);
+    const rec = await pb.collection("live_sessions").create({ user_id: client.id, date: today, ...extra }).catch(() => null);
     if (rec) setTodaySession(rec);
     return rec;
   }
@@ -222,8 +249,10 @@ export default function LiveTraining({ client, onClose }) {
 
   // Perkelia visą pasirinkto šablono dienos pratimų sąrašą į šiandienos gyvą
   // treniruotę — vėliau kiekvieną galima koreguoti pagal realiai atliktą.
-  async function handleUseTemplate(presetExercises) {
-    const session = await ensureSession();
+  // Šablono pavadinimas įrašomas tik pradedant naują treniruotę, kad būtų
+  // aišku, nuo kokio šablono ji pradėta.
+  async function handleUseTemplate(presetExercises, meta) {
+    const session = await ensureSession(meta ? { preset_name: meta.presetName, day_label: meta.dayLabel } : undefined);
     if (!session) { setShowTemplatePicker(false); return; }
     let order = todayExercises.length;
     const created = [];
@@ -231,7 +260,7 @@ export default function LiveTraining({ client, onClose }) {
       const rec = await pb.collection("live_session_exercises").create({
         session_id: session.id, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
         sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
-        order_num: order++,
+        order_num: order++, from_preset: true,
       }).catch(() => null);
       if (rec) created.push(rec);
     }
@@ -251,6 +280,11 @@ export default function LiveTraining({ client, onClose }) {
   async function handleRemoveExercise(id) {
     await pb.collection("live_session_exercises").delete(id).catch(() => {});
     setTodayExercises(prev => prev.filter(e => e.id !== id));
+  }
+
+  async function handleToggleDone(ex) {
+    const rec = await pb.collection("live_session_exercises").update(ex.id, { done: !ex.done }).catch(() => null);
+    if (rec) setTodayExercises(prev => prev.map(e => e.id === rec.id ? rec : e));
   }
 
   async function saveNote() {
@@ -324,34 +358,52 @@ export default function LiveTraining({ client, onClose }) {
           <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>
         ) : (
           <>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, flexWrap:"wrap", gap:6 }}>
-              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
-                Šiandien · {formatDate(today)}
-              </p>
-              {todaySession && (
-                todaySession.completed ? (
-                  <span style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", background:"rgba(127,255,176,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <CheckCircle size={11} />Baigta
-                  </span>
-                ) : (
-                  <span style={{ fontSize:10, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <Dot color="#FFD700" size={7} />Vykdoma
-                  </span>
-                )
+            <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:16, padding:"13px 14px", marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
+                  Šiandien · {formatDate(today)}
+                </p>
+                {todaySession && (
+                  todaySession.completed ? (
+                    <span style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", background:"rgba(127,255,176,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                      <CheckCircle size={11} />Baigta
+                    </span>
+                  ) : (
+                    <span style={{ fontSize:10, fontWeight:700, color:"#FFD700", background:"rgba(255,215,0,0.12)", borderRadius:20, padding:"3px 10px", display:"inline-flex", alignItems:"center", gap:4 }}>
+                      <Dot color="#FFD700" size={7} />Vykdoma
+                    </span>
+                  )
+                )}
+              </div>
+              {(todaySession?.preset_name || todayExercises.length > 0) && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10 }}>
+                  {todaySession?.preset_name && (
+                    <span style={{ fontSize:11, fontWeight:700, color:"#fff", background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:20, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>
+                      <Clipboard size={11} />{todaySession.preset_name}{todaySession.day_label ? ` · ${todaySession.day_label}` : ""}
+                    </span>
+                  )}
+                  {todayExercises.length > 0 && (
+                    <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.6)", background:"rgba(255,255,255,0.06)", borderRadius:20, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>
+                      <Dumbbell size={11} />{todayExercises.filter(e=>e.done).length}/{todayExercises.length} atlikta
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
             {todayExercises.length === 0 ? (
               <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:20, textAlign:"center", border:"2px dashed rgba(255,255,255,0.15)", marginBottom:12 }}>
                 <Dumbbell size={26} color="rgba(255,255,255,0.5)" style={{ marginBottom:8 }} />
-                <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, margin:0 }}>Dar nė vieno pratimo neįrašyta</p>
+                <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, margin:"0 0 4px", fontWeight:600 }}>Dar nė vieno pratimo neįrašyta</p>
+                <p style={{ color:"rgba(255,255,255,0.35)", fontSize:11, margin:0 }}>Pradėk nuo šablono arba pridėk pratimą rankiniu būdu žemiau</p>
               </div>
             ) : (
               <div style={{ marginBottom:12 }}>
                 {todayExercises.map(ex => (
-                  <ExerciseRow key={ex.id} ex={ex}
+                  <ExerciseRow key={ex.id} ex={ex} lastPerf={lastPerf}
                     onClick={() => setEditingExercise(ex)}
-                    onRemove={() => handleRemoveExercise(ex.id)} />
+                    onRemove={() => handleRemoveExercise(ex.id)}
+                    onToggleDone={() => handleToggleDone(ex)} />
                 ))}
               </div>
             )}
