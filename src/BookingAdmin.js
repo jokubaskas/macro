@@ -758,6 +758,33 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     setBookings(prev => prev.filter(b => b.id !== id));
   }
 
+  // Šio mėnesio atšaukimas su grąžintu kreditu skaičiuojamas "liko N nemokamų
+  // atšaukimų" ribai (žr. BookingClient.js ir serverio pb_hooks) tiesiog
+  // peržiūrint esamus bookings įrašus — jei tokį įrašą ištrintume, klientas
+  // netikėtai "atgautų" tą nemokamą atšaukimą. Todėl masinis trynimas šių
+  // konkrečių (ir tik šių) įrašų NELIEČIA, net jei jų data jau praeityje.
+  function isProtectedCancellation(b) {
+    if (!(b.status === "cancelled" && b.cancelled_by === "client" && b.credit_returned === true)) return false;
+    const monthPrefix = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+    return (b.updated || "").slice(0, 7) === monthPrefix;
+  }
+
+  async function handleDeleteAllPast() {
+    const allPast = bookings.filter(b => b.date < today);
+    const toDelete = allPast.filter(b => !isProtectedCancellation(b));
+    const protectedCount = allPast.length - toDelete.length;
+    if (toDelete.length === 0) return;
+    const confirmMsg = `Ištrinti ${toDelete.length} praeities rezervacijos(-ų) įrašą(-us) visam laikui?`
+      + (protectedCount > 0 ? `\n\n${protectedCount} šio mėnesio atšaukimo(-ų) su grąžintu kreditu nebus ištrinta(-i) — jie saugomi, kad nesusigadintų šio mėnesio nemokamų atšaukimų skaičius.` : "");
+    if (!window.confirm(confirmMsg)) return;
+    setActionError("");
+    const results = await Promise.all(toDelete.map(b => pb.collection("bookings").delete(b.id).then(() => b.id).catch(() => null)));
+    const okIds = new Set(results.filter(Boolean));
+    setBookings(prev => prev.filter(b => !okIds.has(b.id)));
+    const failedCount = toDelete.length - okIds.size;
+    if (failedCount > 0) setActionError(`${failedCount} rezervacijos(-ų) nepavyko ištrinti — bandykite dar kartą.`);
+  }
+
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
   if (view === "recurring") return <RecurringSlotsSettings onClose={()=>setView("list")} />;
   if (view === "calendar") return <TrainerCalendar bookings={bookings} clients={clients} onClose={()=>setView("list")} onOpenClient={onOpenClient} />;
@@ -809,6 +836,12 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
         {(hiddenPastCount > 0 || showPast) && (
           <button onClick={()=>{setShowPast(s=>!s);setVisibleCount(8);}} style={{width:"100%",padding:"9px",marginBottom:12,borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.6)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
             {showPast ? "Slėpti praeities įrašus" : `Rodyti praeities įrašus (${hiddenPastCount})`}
+          </button>
+        )}
+
+        {showPast && bookings.some(b => b.date < today) && (
+          <button onClick={handleDeleteAllPast} style={{width:"100%",padding:"9px",marginBottom:12,borderRadius:12,border:"1px solid rgba(255,100,100,0.3)",background:"rgba(255,100,100,0.08)",color:"#FF8888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <Trash size={12} />Ištrinti visas praeities rezervacijas
           </button>
         )}
 
