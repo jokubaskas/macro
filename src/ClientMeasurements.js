@@ -276,7 +276,7 @@ export default function ClientMeasurements({ client, onClose }) {
       </div>
 
       {isDesktop ? (
-        <div style={{ maxWidth:1100, margin:"0 auto", padding:20, display:"grid", gridTemplateColumns:"380px 1fr", gap:24, alignItems:"start" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:20, display:"grid", gridTemplateColumns:"minmax(0,380px) minmax(0,1fr)", gap:24, alignItems:"start" }}>
           <div>{formSection}</div>
           <div>{historySection}</div>
         </div>
