@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
@@ -7,6 +7,7 @@ import ExerciseProgress from "./ExerciseProgress";
 import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer, ArrowUp, ArrowDown } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
+import { setExitGuard, clearExitGuard, attemptExit } from "./ui/exitGuard";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
 
@@ -222,6 +223,21 @@ export default function LiveTraining({ client, onClose }) {
   const [deletingSession, setDeletingSession] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [finishingOnExit, setFinishingOnExit] = useState(false);
+  const pendingProceedRef = useRef(null);
+
+  // Kol treniruotė pradėta, bet nepažymėta baigta, užregistruojame "išėjimo
+  // sargą" — jei PAČIAME šiame ekrane (per "Atgal") ar VISAI KITAME
+  // komponente (pvz. šoninio meniu mygtukas AdminPanel.js), kažkas norės
+  // išeiti iš šio ekrano, pirma parodome šį patvirtinimo langą.
+  useEffect(() => {
+    if (!todaySession || todaySession.completed) return;
+    const guardFn = (proceed) => {
+      pendingProceedRef.current = proceed;
+      setShowExitConfirm(true);
+    };
+    setExitGuard(guardFn);
+    return () => clearExitGuard(guardFn);
+  }, [todaySession]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -340,10 +356,18 @@ export default function LiveTraining({ client, onClose }) {
   // Jei treniruotė pradėta, bet dar nepažymėta baigta, prieš išeinimą
   // paklausiame — kad atsitiktinai nepaliktų nebaigtos be žymės, bet kartu
   // netrukdytų, kai tiesiog norima pertraukti ir vėliau tęsti (tada
-  // tiesiog pasirenkama "Dar ne" ir viskas lieka kaip buvo).
+  // tiesiog pasirenkama "Dar ne" ir viskas lieka kaip buvo). Naudoja tą
+  // pačią attemptExit() sargo logiką kaip ir išėjimas per kitus ekranus
+  // (pvz. šoninio meniu mygtuką), kad elgesys būtų vienodas visur.
   function handleBack() {
-    if (todaySession && !todaySession.completed) { setShowExitConfirm(true); return; }
-    onClose();
+    attemptExit(onClose);
+  }
+
+  function handleExitWithoutFinishing() {
+    setShowExitConfirm(false);
+    const proceed = pendingProceedRef.current || onClose;
+    pendingProceedRef.current = null;
+    proceed();
   }
 
   async function handleFinishAndExit() {
@@ -351,7 +375,9 @@ export default function LiveTraining({ client, onClose }) {
     await toggleCompleted();
     setFinishingOnExit(false);
     setShowExitConfirm(false);
-    onClose();
+    const proceed = pendingProceedRef.current || onClose;
+    pendingProceedRef.current = null;
+    proceed();
   }
 
   // Visiškai atšaukia (ištrina) šiandienos treniruotę — jei pradėta klaidingai
@@ -391,12 +417,12 @@ export default function LiveTraining({ client, onClose }) {
       )}
       {showProgress && <ExerciseProgress client={client} onClose={() => setShowProgress(false)} />}
       {showExitConfirm && createPortal(
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) { setShowExitConfirm(false); pendingProceedRef.current = null; } }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div style={{ maxWidth:360, width:"100%", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:20, padding:"22px 20px", border:"1px solid rgba(255,255,255,0.15)" }}>
             <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>Baigti treniruotę?</p>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.6)", margin:"0 0 18px", lineHeight:1.4 }}>Treniruotė dar nepažymėta kaip baigta. Ar norite ją baigti prieš išeidami?</p>
             <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => { setShowExitConfirm(false); onClose(); }} disabled={finishingOnExit} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Dar ne</button>
+              <button onClick={handleExitWithoutFinishing} disabled={finishingOnExit} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Dar ne</button>
               <button onClick={handleFinishAndExit} disabled={finishingOnExit} style={{ flex:1, padding:"11px", borderRadius:12, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 {finishingOnExit ? "Saugoma..." : "Baigti treniruotę"}
               </button>
