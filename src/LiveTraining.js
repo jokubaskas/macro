@@ -5,6 +5,7 @@ import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
 import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
+import { useIsDesktop } from "./ui/responsive";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
 
@@ -158,6 +159,7 @@ function PastSession({ session, expanded, exercises, onToggle }) {
 }
 
 export default function LiveTraining({ client, onClose }) {
+  const isDesktop = useIsDesktop();
   const today = todayStr();
   const [loading, setLoading] = useState(true);
   const [todaySession, setTodaySession] = useState(null);
@@ -294,7 +296,7 @@ export default function LiveTraining({ client, onClose }) {
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <style>{KEYFRAMES}</style>
 
       {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} lastPerf={lastPerf} />}

@@ -4,6 +4,7 @@ import { GOALS, ACTIVITY } from "./constants";
 import { resolveMacroTargets, daysAgoStr } from "./macroCalc";
 import { STEPS_OPTS, WELLBEING_OPTS } from "./Onboarding";
 import { ChevronLeft, User, Calendar, Ruler, Scale, Target, Edit, Moon, Footprints, Salad, Heart, Clipboard, AlertTriangle, Flame, Muscle, Droplet, Check } from "./ui/icons";
+import { useIsDesktop } from "./ui/responsive";
 
 const GOAL_ICON = { lose: Flame, maintain: Scale, gain: Muscle };
 
@@ -192,6 +193,7 @@ function Section({ title, children, accent }) {
 }
 
 export default function ClientInfo({ client, onClose }) {
+  const isDesktop = useIsDesktop();
   const genderLabel = client.gender === "f" ? "Moteris" : client.gender === "m" ? "Vyras" : null;
   const age = client.dob ? Math.floor((new Date() - new Date(client.dob)) / (365.25*24*60*60*1000)) : null;
   const dobLabel = client.dob ? new Date(client.dob).toLocaleDateString("lt-LT", { year:"numeric", month:"long", day:"numeric" }) : null;
@@ -224,7 +226,7 @@ export default function ClientInfo({ client, onClose }) {
   const healthConcerns = healthItems.filter(h => h.status === true);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
