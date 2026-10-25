@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
@@ -219,6 +220,8 @@ export default function LiveTraining({ client, onClose }) {
   const [lastPerf, setLastPerf] = useState({});
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingSession, setDeletingSession] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [finishingOnExit, setFinishingOnExit] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -334,6 +337,23 @@ export default function LiveTraining({ client, onClose }) {
     if (rec) setTodaySession(rec);
   }
 
+  // Jei treniruotė pradėta, bet dar nepažymėta baigta, prieš išeinimą
+  // paklausiame — kad atsitiktinai nepaliktų nebaigtos be žymės, bet kartu
+  // netrukdytų, kai tiesiog norima pertraukti ir vėliau tęsti (tada
+  // tiesiog pasirenkama "Dar ne" ir viskas lieka kaip buvo).
+  function handleBack() {
+    if (todaySession && !todaySession.completed) { setShowExitConfirm(true); return; }
+    onClose();
+  }
+
+  async function handleFinishAndExit() {
+    setFinishingOnExit(true);
+    await toggleCompleted();
+    setFinishingOnExit(false);
+    setShowExitConfirm(false);
+    onClose();
+  }
+
   // Visiškai atšaukia (ištrina) šiandienos treniruotę — jei pradėta klaidingai
   // arba klientas neatvyko — kartu su visais jos pratimais. Grąžina ekraną į
   // pradinę būseną, tarsi treniruotė dar nebūtų pradėta.
@@ -361,7 +381,7 @@ export default function LiveTraining({ client, onClose }) {
   }
 
   return (
-    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <style>{KEYFRAMES}</style>
 
       {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} lastPerf={lastPerf} />}
@@ -370,9 +390,24 @@ export default function LiveTraining({ client, onClose }) {
         <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} lastPerf={lastPerf} />
       )}
       {showProgress && <ExerciseProgress client={client} onClose={() => setShowProgress(false)} />}
+      {showExitConfirm && createPortal(
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ maxWidth:360, width:"100%", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:20, padding:"22px 20px", border:"1px solid rgba(255,255,255,0.15)" }}>
+            <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>Baigti treniruotę?</p>
+            <p style={{ fontSize:13, color:"rgba(255,255,255,0.6)", margin:"0 0 18px", lineHeight:1.4 }}>Treniruotė dar nepažymėta kaip baigta. Ar norite ją baigti prieš išeidami?</p>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => { setShowExitConfirm(false); onClose(); }} disabled={finishingOnExit} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Dar ne</button>
+              <button onClick={handleFinishAndExit} disabled={finishingOnExit} style={{ flex:1, padding:"11px", borderRadius:12, border:"none", background:"linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                {finishingOnExit ? "Saugoma..." : "Baigti treniruotę"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:20, paddingRight:20, paddingBottom:16, display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
+        <button onClick={handleBack} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div style={{ flex:1, minWidth:0 }}>
           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:7 }}>
             <Dot color="#FF4444" size={8} style={{ animation:"livePulse 1.2s ease-in-out infinite" }} />Gyva treniruotė
