@@ -3,7 +3,7 @@ import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
-import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 
@@ -15,15 +15,39 @@ function formatDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 }
 
-function ExerciseRow({ ex, onClick, onRemove }) {
+function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf }) {
+  const prev = lastPerf ? lastPerf[ex.exercise_name] : null;
   return (
     <div onClick={onClick} style={{
       background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"11px 14px", marginBottom:8,
       display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default", gap:10,
+      opacity: ex.done ? 0.6 : 1,
     }}>
+      {onToggleDone && (
+        <button onClick={(e)=>{ e.stopPropagation(); onToggleDone(); }} style={{
+          width:26, height:26, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+          border: ex.done ? "none" : "1.5px solid rgba(255,255,255,0.35)",
+          background: ex.done ? "#276749" : "transparent",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          {ex.done && <Check size={13} color="#fff" />}
+        </button>
+      )}
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px" }}>{ex.exercise_name}</p>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px", textDecoration: ex.done ? "line-through" : "none" }}>{ex.exercise_name}</p>
+          {ex.from_preset && (
+            <span style={{ fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.55)", background:"rgba(255,255,255,0.1)", borderRadius:6, padding:"1px 5px", marginBottom:5, display:"inline-flex", alignItems:"center", gap:3 }}>
+              <Clipboard size={8} />šablonas
+            </span>
+          )}
+        </div>
         <ExerciseSummary ex={ex} />
+        {prev && (
+          <p style={{ fontSize:10, color:"rgba(255,215,0,0.6)", margin:"5px 0 0", display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
+            <Timer size={9} />Praeitą kartą: <ExerciseSummary ex={prev} />
+          </p>
+        )}
         {onClick && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>paliesk redaguoti</span>}
       </div>
       {onRemove && (
@@ -236,7 +260,7 @@ export default function LiveTraining({ client, onClose }) {
       const rec = await pb.collection("live_session_exercises").create({
         session_id: session.id, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
         sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
-        order_num: order++,
+        order_num: order++, from_preset: true,
       }).catch(() => null);
       if (rec) created.push(rec);
     }
@@ -256,6 +280,11 @@ export default function LiveTraining({ client, onClose }) {
   async function handleRemoveExercise(id) {
     await pb.collection("live_session_exercises").delete(id).catch(() => {});
     setTodayExercises(prev => prev.filter(e => e.id !== id));
+  }
+
+  async function handleToggleDone(ex) {
+    const rec = await pb.collection("live_session_exercises").update(ex.id, { done: !ex.done }).catch(() => null);
+    if (rec) setTodayExercises(prev => prev.map(e => e.id === rec.id ? rec : e));
   }
 
   async function saveNote() {
@@ -355,7 +384,7 @@ export default function LiveTraining({ client, onClose }) {
                   )}
                   {todayExercises.length > 0 && (
                     <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.6)", background:"rgba(255,255,255,0.06)", borderRadius:20, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>
-                      <Dumbbell size={11} />{todayExercises.length} pratimų
+                      <Dumbbell size={11} />{todayExercises.filter(e=>e.done).length}/{todayExercises.length} atlikta
                     </span>
                   )}
                 </div>
@@ -371,9 +400,10 @@ export default function LiveTraining({ client, onClose }) {
             ) : (
               <div style={{ marginBottom:12 }}>
                 {todayExercises.map(ex => (
-                  <ExerciseRow key={ex.id} ex={ex}
+                  <ExerciseRow key={ex.id} ex={ex} lastPerf={lastPerf}
                     onClick={() => setEditingExercise(ex)}
-                    onRemove={() => handleRemoveExercise(ex.id)} />
+                    onRemove={() => handleRemoveExercise(ex.id)}
+                    onToggleDone={() => handleToggleDone(ex)} />
                 ))}
               </div>
             )}
