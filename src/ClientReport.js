@@ -247,8 +247,8 @@ export default function ClientReport({ client, onClose }) {
                 {data.photosInRange.length > 0 && (
                   data.photosInRange.length === 1 ? (
                     <div style={{ position: "relative" }}>
-                      <div style={{ width: "100%", aspectRatio: "3/4", maxHeight: 220, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <img crossOrigin="anonymous" src={photoUrl(data.photosInRange[0]._isReg ? data.photosInRange[0]._record : data.photosInRange[0], data.photosInRange[0].photo_front)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                      <div style={{ width: "100%", maxHeight: 220, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img crossOrigin="anonymous" src={photoUrl(data.photosInRange[0]._isReg ? data.photosInRange[0]._record : data.photosInRange[0], data.photosInRange[0].photo_front)} alt="" style={{ maxWidth: "100%", maxHeight: 220, width: "auto", height: "auto", display: "block" }} />
                       </div>
                       <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", textAlign: "center", margin: "6px 0 0" }}>{fmtShort(data.photosInRange[0].date)}</p>
                     </div>
@@ -256,8 +256,8 @@ export default function ClientReport({ client, onClose }) {
                     <div style={{ position: "relative", display: "flex", gap: 8 }}>
                       {[data.photosInRange[0], data.photosInRange[data.photosInRange.length - 1]].map((p, i) => (
                         <div key={i} style={{ flex: 1 }}>
-                          <div style={{ width: "100%", aspectRatio: "3/4", maxHeight: 170, borderRadius: 14, overflow: "hidden", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <img crossOrigin="anonymous" src={photoUrl(p._isReg ? p._record : p, p.photo_front)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                          <div style={{ width: "100%", maxHeight: 170, borderRadius: 14, overflow: "hidden", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <img crossOrigin="anonymous" src={photoUrl(p._isReg ? p._record : p, p.photo_front)} alt="" style={{ maxWidth: "100%", maxHeight: 170, width: "auto", height: "auto", display: "block" }} />
                           </div>
                           <p style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.6)", textAlign: "center", margin: "5px 0 0" }}>{i === 0 ? "Prieš" : "Dabar"} · {fmtShort(p.date)}</p>
                         </div>
