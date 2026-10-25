@@ -3,7 +3,7 @@ import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
-import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer, ArrowUp, ArrowDown } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 
@@ -15,14 +15,29 @@ function formatDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 }
 
-function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf }) {
+function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, onMoveDown, canMoveUp, canMoveDown }) {
   const prev = lastPerf ? lastPerf[ex.exercise_name] : null;
+  const canReorder = onMoveUp || onMoveDown;
   return (
     <div onClick={onClick} style={{
       background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"11px 14px", marginBottom:8,
       display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default", gap:10,
       opacity: ex.done ? 0.6 : 1,
     }}>
+      {canReorder && (
+        <div style={{ display:"flex", flexDirection:"column", gap:3, flexShrink:0 }}>
+          <button onClick={(e)=>{ e.stopPropagation(); onMoveUp(); }} disabled={!canMoveUp} style={{
+            width:22, height:18, borderRadius:6, border:"none", background:"rgba(255,255,255,0.1)",
+            color: canMoveUp ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
+            cursor: canMoveUp ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center",
+          }}><ArrowUp size={11} /></button>
+          <button onClick={(e)=>{ e.stopPropagation(); onMoveDown(); }} disabled={!canMoveDown} style={{
+            width:22, height:18, borderRadius:6, border:"none", background:"rgba(255,255,255,0.1)",
+            color: canMoveDown ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
+            cursor: canMoveDown ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center",
+          }}><ArrowDown size={11} /></button>
+        </div>
+      )}
       {onToggleDone && (
         <button onClick={(e)=>{ e.stopPropagation(); onToggleDone(); }} style={{
           width:26, height:26, borderRadius:"50%", flexShrink:0, cursor:"pointer",
@@ -282,6 +297,22 @@ export default function LiveTraining({ client, onClose }) {
     setTodayExercises(prev => prev.filter(e => e.id !== id));
   }
 
+  // Sukeičia dviejų pratimų eilės tvarką (ir jų order_num reikšmes PocketBase),
+  // kad vėliau perkrovus puslapį tvarka būtų išsaugota.
+  async function handleMoveExercise(index, direction) {
+    const otherIndex = index + direction;
+    if (otherIndex < 0 || otherIndex >= todayExercises.length) return;
+    const a = todayExercises[index];
+    const b = todayExercises[otherIndex];
+    const reordered = [...todayExercises];
+    [reordered[index], reordered[otherIndex]] = [reordered[otherIndex], reordered[index]];
+    setTodayExercises(reordered);
+    await Promise.all([
+      pb.collection("live_session_exercises").update(a.id, { order_num: b.order_num }).catch(() => {}),
+      pb.collection("live_session_exercises").update(b.id, { order_num: a.order_num }).catch(() => {}),
+    ]);
+  }
+
   async function handleToggleDone(ex) {
     const rec = await pb.collection("live_session_exercises").update(ex.id, { done: !ex.done }).catch(() => null);
     if (rec) setTodayExercises(prev => prev.map(e => e.id === rec.id ? rec : e));
@@ -399,11 +430,15 @@ export default function LiveTraining({ client, onClose }) {
               </div>
             ) : (
               <div style={{ marginBottom:12 }}>
-                {todayExercises.map(ex => (
+                {todayExercises.map((ex, i) => (
                   <ExerciseRow key={ex.id} ex={ex} lastPerf={lastPerf}
                     onClick={() => setEditingExercise(ex)}
                     onRemove={() => handleRemoveExercise(ex.id)}
-                    onToggleDone={() => handleToggleDone(ex)} />
+                    onToggleDone={() => handleToggleDone(ex)}
+                    onMoveUp={() => handleMoveExercise(i, -1)}
+                    onMoveDown={() => handleMoveExercise(i, 1)}
+                    canMoveUp={i > 0}
+                    canMoveDown={i < todayExercises.length - 1} />
                 ))}
               </div>
             )}
