@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { pb } from "./pb";
 import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar, Dumbbell, Heart } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
+import { useIsDesktop, useIsWide } from "./ui/responsive";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
 
@@ -109,6 +110,8 @@ function MiniChart({ data, field }) {
 }
 
 export default function ClientMeasurements({ client, onClose }) {
+  const isDesktop = useIsDesktop();
+  const isWide = useIsWide();
   const [history, setHistory]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -156,9 +159,112 @@ export default function ClientMeasurements({ client, onClose }) {
   // Paskutinis matavimas
   const latest = history.find(h => !h._isReg) || history[0];
 
+  // Kairė kolonė (desktop) / viršus (mobile): naujo matavimo forma + paskutiniai rodikliai.
+  const formSection = (
+    <>
+      {!showForm ? (
+        <button onClick={()=>setShowForm(true)} style={{ width:"100%", padding:"13px", marginBottom:16, borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+          + Įvesti naują matavimą
+        </button>
+      ) : (
+        <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:18, padding:16, marginBottom:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+            <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>Naujas matavimas</p>
+            <button onClick={()=>setShowForm(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"5px 10px", color:"#fff", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center" }}><Close size={12} /></button>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Data</label>
+            <input type="date" value={form.measured_at} onChange={e=>setForm(f=>({...f,measured_at:e.target.value}))} style={inp}/>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+            {FIELDS.map(f => (
+              <div key={f.key} style={{ background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)", borderRadius:14, padding:"9px 12px" }}>
+                <label style={{ fontSize:11, color:"rgba(255,255,255,0.65)", display:"flex", alignItems:"center", gap:6, marginBottom:6, fontWeight:600 }}>
+                  <span style={{ width:20, height:20, borderRadius:"50%", background:`${f.color}2a`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <f.Icon size={11} color={f.color} />
+                  </span>
+                  {f.label}
+                </label>
+                <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+                  <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–"
+                    style={{ border:"none", background:"transparent", color:"#fff", fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none", width:"100%", padding:0 }}/>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{f.unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:4, marginBottom:5 }}><Edit size={11} />Pastabos</label>
+            <textarea value={form.trainer_note} onChange={e=>setForm(f=>({...f,trainer_note:e.target.value}))} placeholder="Pvz. geras progresas, keičiame planą..." rows={2}
+              style={{...inp, resize:"none"}}/>
+          </div>
+          <button onClick={handleSave} disabled={saving} style={{ width:"100%", padding:"12px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            {saving ? "Saugoma..." : <><Save size={15} />Išsaugoti</>}
+          </button>
+        </div>
+      )}
+
+      {latest && !loading && (
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:16 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 12px" }}>
+            Paskutiniai rodikliai · {latest.measured_at?.slice(0,10)} {latest._isReg && "(registracija)"}
+          </p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            {FIELDS.filter(f => latest[f.key]).map(f => (
+              <div key={f.key} style={{ textAlign:"center" }}>
+                <span style={{ width:22, height:22, borderRadius:"50%", background:`${f.color}2a`, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:4 }}>
+                  <f.Icon size={11} color={f.color} />
+                </span>
+                <p style={{ fontSize:18, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{latest[f.key]}</p>
+                <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{f.label}</p>
+                <MiniChart data={[...history].reverse()} field={f.key} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // Dešinė kolona (desktop) / apačia (mobile): istorija.
+  const historySection = (
+    <>
+      <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>Istorija</p>
+
+      {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center" }}>Kraunama...</p>}
+
+      {!loading && history.length === 0 && (
+        <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"16px 0" }}>Matavimų dar nėra</p>
+      )}
+
+      {history.slice(0, visibleCount).map((m, idx) => (
+        <div key={m.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8, borderLeft:`3px solid ${idx===0?"#AD1457":"rgba(255,255,255,0.1)"}` }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:5 }}>
+              <Calendar size={13} />{m.measured_at?.slice(0,10)}
+              {m._isReg && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400, marginLeft:6 }}>(registracija)</span>}
+              {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#FF6EB4", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
+            </p>
+          </div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {FIELDS.filter(f => m[f.key]).map(f => (
+              <span key={f.key} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:f.color, background:`${f.color}1f`, borderRadius:8, padding:"3px 8px" }}>
+                <f.Icon size={10} />{m[f.key]}{f.unit}
+              </span>
+            ))}
+          </div>
+          {m.trainer_note && (
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"8px 0 0", fontStyle:"italic" }}>"{m.trainer_note}"</p>
+          )}
+        </div>
+      ))}
+      <ShowMoreButton remaining={history.length - visibleCount} onClick={() => setVisibleCount(v => v + 8)} />
+    </>
+  );
+
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:650, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:isDesktop?"20px":"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <div>
           <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ruler size={15} />Matavimai</h1>
@@ -169,104 +275,17 @@ export default function ClientMeasurements({ client, onClose }) {
         </div>
       </div>
 
-      <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
-
-        {/* Naujas matavimas */}
-        {!showForm ? (
-          <button onClick={()=>setShowForm(true)} style={{ width:"100%", padding:"13px", marginBottom:16, borderRadius:14, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            + Įvesti naują matavimą
-          </button>
-        ) : (
-          <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:18, padding:16, marginBottom:16 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-              <p style={{ fontSize:14, fontWeight:700, color:"#fff", margin:0 }}>Naujas matavimas</p>
-              <button onClick={()=>setShowForm(false)} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"5px 10px", color:"#fff", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center" }}><Close size={12} /></button>
-            </div>
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"block", marginBottom:5 }}>Data</label>
-              <input type="date" value={form.measured_at} onChange={e=>setForm(f=>({...f,measured_at:e.target.value}))} style={inp}/>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-              {FIELDS.map(f => (
-                <div key={f.key} style={{ background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)", borderRadius:14, padding:"9px 12px" }}>
-                  <label style={{ fontSize:11, color:"rgba(255,255,255,0.65)", display:"flex", alignItems:"center", gap:6, marginBottom:6, fontWeight:600 }}>
-                    <span style={{ width:20, height:20, borderRadius:"50%", background:`${f.color}2a`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <f.Icon size={11} color={f.color} />
-                    </span>
-                    {f.label}
-                  </label>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                    <input type="text" inputMode="decimal" value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder="–"
-                      style={{ border:"none", background:"transparent", color:"#fff", fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none", width:"100%", padding:0 }}/>
-                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{f.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:4, marginBottom:5 }}><Edit size={11} />Pastabos</label>
-              <textarea value={form.trainer_note} onChange={e=>setForm(f=>({...f,trainer_note:e.target.value}))} placeholder="Pvz. geras progresas, keičiame planą..." rows={2}
-                style={{...inp, resize:"none"}}/>
-            </div>
-            <button onClick={handleSave} disabled={saving} style={{ width:"100%", padding:"12px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-              {saving ? "Saugoma..." : <><Save size={15} />Išsaugoti</>}
-            </button>
-          </div>
-        )}
-
-        {/* Paskutiniai rodikliai */}
-        {latest && !loading && (
-          <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", marginBottom:16 }}>
-            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 12px" }}>
-              Paskutiniai rodikliai · {latest.measured_at?.slice(0,10)} {latest._isReg && "(registracija)"}
-            </p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-              {FIELDS.filter(f => latest[f.key]).map(f => (
-                <div key={f.key} style={{ textAlign:"center" }}>
-                  <span style={{ width:22, height:22, borderRadius:"50%", background:`${f.color}2a`, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:4 }}>
-                    <f.Icon size={11} color={f.color} />
-                  </span>
-                  <p style={{ fontSize:18, fontWeight:800, color:"#fff", margin:"0 0 2px" }}>{latest[f.key]}</p>
-                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>{f.label}</p>
-                  <MiniChart data={[...history].reverse()} field={f.key} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Istorija */}
-        <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>Istorija</p>
-
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center" }}>Kraunama...</p>}
-
-        {!loading && history.length === 0 && (
-          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"16px 0" }}>Matavimų dar nėra</p>
-        )}
-
-        {history.slice(0, visibleCount).map((m, idx) => (
-          <div key={m.id} style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px", marginBottom:8, borderLeft:`3px solid ${idx===0?"#AD1457":"rgba(255,255,255,0.1)"}` }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:5 }}>
-                <Calendar size={13} />{m.measured_at?.slice(0,10)}
-                {m._isReg && <span style={{ fontSize:10, color:"rgba(255,255,255,0.4)", fontWeight:400, marginLeft:6 }}>(registracija)</span>}
-                {idx===0 && !m._isReg && <span style={{ fontSize:10, color:"#FF6EB4", fontWeight:600, marginLeft:6 }}>· naujausias</span>}
-              </p>
-            </div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-              {FIELDS.filter(f => m[f.key]).map(f => (
-                <span key={f.key} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, color:f.color, background:`${f.color}1f`, borderRadius:8, padding:"3px 8px" }}>
-                  <f.Icon size={10} />{m[f.key]}{f.unit}
-                </span>
-              ))}
-            </div>
-            {m.trainer_note && (
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:"8px 0 0", fontStyle:"italic" }}>"{m.trainer_note}"</p>
-            )}
-          </div>
-        ))}
-        <ShowMoreButton remaining={history.length - visibleCount} onClick={() => setVisibleCount(v => v + 8)} />
-      </div>
+      {isDesktop ? (
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:20, display:"grid", gridTemplateColumns:"380px 1fr", gap:24, alignItems:"start" }}>
+          <div>{formSection}</div>
+          <div>{historySection}</div>
+        </div>
+      ) : (
+        <div style={{ maxWidth: isWide?640:480, margin:"0 auto", padding:16 }}>
+          {formSection}
+          {historySection}
+        </div>
+      )}
     </div>
   );
 }

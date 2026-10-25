@@ -4,6 +4,7 @@ import {
   ChevronLeft, Calendar, Dumbbell, Footprints, Droplet, Moon,
   Salad, Heart, Glass, Download, Share, Ruler, Scale, Muscle, BarChart,
 } from "./ui/icons";
+import { useIsDesktop } from "./ui/responsive";
 
 const PERIODS = [
   { k: 7,  l: "7 d." },
@@ -65,6 +66,7 @@ function MeasureChip({ f }) {
 }
 
 export default function ClientReport({ client, onClose }) {
+  const isDesktop = useIsDesktop();
   const [periodKey, setPeriodKey] = useState(30);
   const [useCustom, setUseCustom] = useState(false);
   const [customFrom, setCustomFrom] = useState(daysAgoStr(29));
@@ -174,7 +176,7 @@ export default function ClientReport({ client, onClose }) {
   const firstName = (client.name || "").split(" ")[0];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 650, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position: isDesktop?"absolute":"fixed", inset: 0, zIndex: 650, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: "max(env(safe-area-inset-top), 20px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(10px)" }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><ChevronLeft size={14} />Atgal</button>
         <div>

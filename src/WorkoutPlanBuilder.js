@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { pb } from "./pb";
 import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, Clipboard, Timer, PlayCircle, MessageCircle } from "./ui/icons";
 import { toast } from "./ui/toast";
+import { useIsDesktop } from "./ui/responsive";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -489,6 +490,7 @@ export function ExerciseEditModal({ exercise, onSave, onClose, lastPerf = {} }) 
 }
 
 export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
+  const isDesktop = useIsDesktop();
   const isEditing = !!plan;
   const [step, setStep]           = useState(isEditing ? 1 : 0); // 0=šablono pasirinkimas, 1=parametrai, 2=pratimai
   const [presets, setPresets]     = useState([]);
@@ -603,7 +605,7 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
   const canSave = endDate && days.some(d=>d.exercises.length>0);
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:600,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       {showPicker&&<ExercisePicker onAdd={ex=>{setDays(prev=>prev.map((d,i)=>i===activeDay?{...d,exercises:[...d.exercises,ex]}:d));setShowPicker(false);}} onClose={()=>setShowPicker(false)}/>}
 
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>

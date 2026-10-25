@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb, pbFileToken } from "./pb";
 import { ArrowUp, ChevronRight, ArrowDown, Close, ChevronLeft, Camera } from "./ui/icons";
 import ProgressPhotos from "./ProgressPhotos";
+import { useIsDesktop } from "./ui/responsive";
 
 const VIEWS = [
   { key:"photo_front", label:"Priekis", Icon:ArrowUp },
@@ -10,6 +11,7 @@ const VIEWS = [
 ];
 
 export default function ProgressCompare({ client, onClose }) {
+  const isDesktop = useIsDesktop();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idxA, setIdxA]       = useState(null); // senesnė (kairė)
@@ -67,7 +69,7 @@ export default function ProgressCompare({ client, onClose }) {
   const [preview, setPreview] = useState(null);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:600, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {showUpload && (
         <ProgressPhotos user={client} onClose={() => { setShowUpload(false); load(); }} canEdit />
       )}
