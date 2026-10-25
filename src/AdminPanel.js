@@ -905,6 +905,13 @@ export default function AdminPanel({ user, onLogout }) {
     attemptExit(onLogout);
   }
 
+  // Bendras "atidaryti/uždaryti klientą" veiksmas (c=null uždaro) — naudojamas
+  // visur, kur paspaudus kliento kortelę/eilutę pereinama prie jo (ar grįžtama
+  // į sąrašą), kad tai irgi eitų per attemptExit() sargą.
+  function openClientSafe(c) {
+    attemptExit(() => setOpenClient(c));
+  }
+
   // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI — mobiliuosiuose
   // .ics atsisiuntimas dažnai atidaro sisteminį "Pridėti į kalendorių" langą
   // ir nustumia programėlę į foną, o tai gali nutraukti tuo metu dar
@@ -1055,7 +1062,7 @@ export default function AdminPanel({ user, onLogout }) {
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {todayBdays.map(c => (
-                    <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
+                    <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
                       <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
                       <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
@@ -1063,7 +1070,7 @@ export default function AdminPanel({ user, onLogout }) {
                     </button>
                   ))}
                   {weekBdays.map(({ c, d }) => (
-                    <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+                    <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
                       <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
                       <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
                       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
@@ -1092,7 +1099,7 @@ export default function AdminPanel({ user, onLogout }) {
                     const c = clients.find(cl => cl.id === b.client_id);
                     const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
                     return (
-                      <button key={b.id} onClick={() => c && setOpenClient(c)} style={{
+                      <button key={b.id} onClick={() => c && openClientSafe(c)} style={{
                         display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
                         background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
                         border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
@@ -1200,7 +1207,7 @@ export default function AdminPanel({ user, onLogout }) {
                 ) : (
                   <>
                     {filteredClients.slice(0, visibleClients).map(client => (
-                      <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
+                      <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => openClientSafe(client)} />
                     ))}
                     <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
                   </>
@@ -1268,7 +1275,7 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Kliento profilis — virš kitų overlay langų (700 > 500), kad atidarius klientą
           iš Rezervacijų/Paketų/Statistikos, uždarius jį grįžtume į TĄ PATĮ ekraną su
           išsaugotais filtrais/paieška, o ne į iš naujo užkrautą pradinę būseną. */}
-      {openClient && <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} />}
+      {openClient && <ClientDetail client={openClient} onClose={() => openClientSafe(null)} />}
     </div>
   );
 
@@ -1346,7 +1353,7 @@ export default function AdminPanel({ user, onLogout }) {
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {todayBdays.map(c => (
-                        <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
+                        <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
                           <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
                           <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
                           <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
@@ -1354,7 +1361,7 @@ export default function AdminPanel({ user, onLogout }) {
                         </button>
                       ))}
                       {weekBdays.map(({ c, d }) => (
-                        <button key={c.id} onClick={() => setOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+                        <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
                           <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
                           <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
                           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
@@ -1383,7 +1390,7 @@ export default function AdminPanel({ user, onLogout }) {
                         const c = clients.find(cl => cl.id === b.client_id);
                         const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
                         return (
-                          <button key={b.id} onClick={() => c && setOpenClient(c)} style={{
+                          <button key={b.id} onClick={() => c && openClientSafe(c)} style={{
                             display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
                             background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
                             border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
@@ -1487,7 +1494,7 @@ export default function AdminPanel({ user, onLogout }) {
                     ) : (
                       <>
                         {filteredClients.slice(0, visibleClients).map(client => (
-                          <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => setOpenClient(client)} />
+                          <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => openClientSafe(client)} />
                         ))}
                         <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
                       </>
@@ -1500,7 +1507,7 @@ export default function AdminPanel({ user, onLogout }) {
             {/* Kliento info — dešinėje */}
             <div style={{ flex:1, minHeight:0, position:"relative", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
               {openClient ? (
-                <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} embedded />
+                <ClientDetail client={openClient} onClose={() => openClientSafe(null)} embedded />
               ) : (
                 <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:10, color:"rgba(255,255,255,0.3)" }}>
                   <Users size={48} />
@@ -1515,7 +1522,7 @@ export default function AdminPanel({ user, onLogout }) {
             {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
             {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
             {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
-            {openClient && <ClientDetail client={openClient} onClose={() => attemptExit(() => setOpenClient(null))} embedded />}
+            {openClient && <ClientDetail client={openClient} onClose={() => openClientSafe(null)} embedded />}
           </div>
         )}
       </div>
