@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { fetchProgressOverview, fetchExerciseHistory, fetchMuscleBalance, fetchWeeklyWorkSummary, maxWeightOf, volumeOf, e1rmOf, formatLastResult, metricOf } from "./exerciseStats";
 import { SearchInput } from "./ui/kit";
 import { ChevronLeft, Close, TrendingUp, Flame, Dumbbell, Walk, AlertTriangle, Calendar, BarChart } from "./ui/icons";
+import { matchesSearch } from "./ui/search";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const KEYFRAMES = `
@@ -250,7 +251,7 @@ function ExerciseHistoryView({ clientId }) {
 
   const muscles = [...new Set(names.map(n => n.muscle).filter(Boolean))].sort((a,b) => a.localeCompare(b));
   const filtered = names.filter(n =>
-    (!search || n.name.toLowerCase().includes(search.toLowerCase())) &&
+    matchesSearch(n.name, search) &&
     (!muscleFilter || n.muscle === muscleFilter)
   );
   function openExercise(name, muscle) { setSelName(name); setSelMuscle(muscle); }

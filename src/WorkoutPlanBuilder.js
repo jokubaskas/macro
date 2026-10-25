@@ -3,6 +3,7 @@ import { pb } from "./pb";
 import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, Clipboard, Timer, PlayCircle, MessageCircle } from "./ui/icons";
 import { toast } from "./ui/toast";
 import { useIsDesktop } from "./ui/responsive";
+import { matchesSearch } from "./ui/search";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -146,7 +147,7 @@ export function ExercisePicker({ onAdd, onClose, lastPerf = {} }) {
 
   const filtered = exercises.filter(e =>
     (filter==="Visi" || e.muscle===filter) &&
-    (!search || e.name.toLowerCase().includes(search.toLowerCase()))
+    matchesSearch(e.name, search)
   );
   const isCardio = selected?.category==="cardio";
   // Bet kuris ne-kardio pratimas gali būti fiksuojamas laiku (ne vien kartojimais) —
