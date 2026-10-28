@@ -4,7 +4,7 @@
 // planuojamas (target_*), ir realiai atliktas (actual_*) reikšmes.
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, Check, Timer, Edit, Dumbbell } from "./ui/icons";
+import { ChevronLeft, Check, Timer, Edit, Dumbbell, Close } from "./ui/icons";
 import { useIsDesktop } from "./ui/responsive";
 import { toast } from "./ui/toast";
 import { haptic } from "./ui/pullToRefresh";
@@ -120,6 +120,22 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
     setEditingDoneId(null);
   }
 
+  // Leidžia grąžinti klaidingai pažymėtą seriją atgal į "neatlikta" (pvz.
+  // paspausta per klaidą arba su neteisingomis reikšmėmis) — kitaip vienintelis
+  // būdas pataisyti būtų ištrinti visą pratimą ir pridėti iš naujo.
+  async function resetSet(set) {
+    setSavingId(set.id);
+    const rec = await pb.collection("live_session_sets").update(set.id, { done: false, done_at: null }).catch(() => null);
+    setSavingId(null);
+    if (!rec) return;
+    setSets(prev => {
+      const next = prev.map(s => s.id === rec.id ? rec : s);
+      const done = next.length > 0 && next.every(s => s.done);
+      onExerciseDoneChange?.(exercise.id, done);
+      return next;
+    });
+  }
+
   async function addExtraSet() {
     setAddingSet(true);
     const last = sorted[sorted.length - 1];
@@ -182,9 +198,14 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Serija {set.set_number}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {set.done && !isEditingDone && (
-                        <button onClick={() => setEditingDoneId(set.id)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
-                          <Edit size={10} />redaguoti
-                        </button>
+                        <>
+                          <button onClick={() => setEditingDoneId(set.id)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
+                            <Edit size={10} />redaguoti
+                          </button>
+                          <button onClick={() => resetSet(set)} disabled={savingId === set.id} style={{ background: "none", border: "none", color: "rgba(255,136,136,0.6)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
+                            <Close size={10} />žymėti neatlikta
+                          </button>
+                        </>
                       )}
                       {set.done && (
                         <span style={{ fontSize: 10, fontWeight: 700, color: "#7FFFB0", display: "flex", alignItems: "center", gap: 3 }}><Check size={11} />Atlikta</span>
