@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { PK, GOALS, daysUntilBirthday } from "./constants";
 import { effectiveDeadline, fetchAllDayVacations, daysUntil as pkgDaysUntil } from "./packageDeadline";
@@ -17,6 +18,7 @@ import ClientReport from "./ClientReport";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 import { useIsDesktop, useIsWide } from "./ui/responsive";
 import { attemptExit } from "./ui/exitGuard";
+import { subscribeLiveSession, getActiveLiveSession, setActiveLiveSession } from "./ui/liveSessionStore";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad, Timer } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
 
@@ -28,6 +30,36 @@ const BDAY_KEYFRAMES = `
 
 const TRAFFIC_LABEL = { 1: "Blogai", 2: "Vidutiniškai", 3: "Gerai" };
 const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3: ["#5CE3A6", "#2FBE84"] };
+
+// Nuolat matomas (visose skiltyse, per portal tiesiai į document.body)
+// indikatorius, kai kažkuriam klientui yra pradėta, bet dar nebaigta gyva
+// treniruotė — kad trenerė galėtų bet kada vienu paspaudimu grįžti į ją,
+// neieškodama kliento iš naujo. Jo būsena ateina iš ui/liveSessionStore.js,
+// kurią atnaujina LiveTraining.js.
+function LiveSessionBanner({ info, onClick }) {
+  const isDesktop = useIsDesktop();
+  if (!info) return null;
+  return createPortal(
+    <button onClick={onClick} style={{
+      position: "fixed", left: "50%", transform: "translateX(-50%)",
+      // Mobiliuosiuose reikia pakilti virš apatinės tabų juostos (ji visada
+      // rodoma, ~84px aukščio su savo saugiu kraštu); kompiuteryje/iPade
+      // apatinės juostos nėra, tad užtenka mažo atstumo nuo krašto.
+      bottom: isDesktop ? "max(16px, calc(env(safe-area-inset-bottom) + 10px))" : "max(84px, calc(env(safe-area-inset-bottom) + 70px))",
+      zIndex: 1250, display: "flex", alignItems: "center", gap: 9,
+      background: "linear-gradient(135deg,#AD1457,#E91E8C)", border: "none", borderRadius: 30,
+      padding: "11px 16px 11px 14px", color: "#fff", cursor: "pointer", fontFamily: "inherit",
+      boxShadow: "0 8px 24px rgba(173,20,87,0.5)", maxWidth: "calc(100vw - 32px)",
+    }}>
+      <Dot color="#fff" size={8} style={{ animation: "livePulse 1.2s ease-in-out infinite", flexShrink: 0 }} />
+      <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        Treniruotė vyksta · {info.clientName}
+      </span>
+      <ChevronRight size={14} style={{ flexShrink: 0 }} />
+    </button>,
+    document.body
+  );
+}
 
 function ProgressRing({ pct, c1, c2, hit, size = 40 }) {
   const r = (size - 6) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
@@ -552,7 +584,7 @@ function PlanDayExercises({ dayId }) {
 // ── Kliento profilis su kalendoriumi ─────────────────────────────────────────
 // embedded=true (desktop/iPad split-pane režimas) — rodomas šalia kliento
 // sąrašo, ne per visą ekraną, kad šoninis meniu liktų matomas.
-function ClientDetail({ client, onClose, embedded }) {
+function ClientDetail({ client, onClose, embedded, autoOpenLiveTraining }) {
   const isWide = useIsWide();
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [checkinDates, setCheckinDates] = useState([]);
@@ -560,7 +592,11 @@ function ClientDetail({ client, onClose, embedded }) {
   const [planBuilder, setPlanBuilder] = useState(null); // null=uždaryta, true=naujas, objektas=redaguoti esamą
   const [showProgressCompare, setShowProgressCompare] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
-  const [showLiveTraining, setShowLiveTraining] = useState(false);
+  // Pradinė reikšmė tik iš autoOpenLiveTraining props — šis komponentas
+  // sąmoningai priverstinai perkuriamas (key pasikeičia) kaskart, kai reikia
+  // iš karto atidaryti gyvą treniruotę (žr. openClientLive() AdminPanel.js),
+  // todėl šis useState visada "pagaus" naują props reikšmę iš naujo.
+  const [showLiveTraining, setShowLiveTraining] = useState(!!autoOpenLiveTraining);
   const [showClientInfo, setShowClientInfo] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [allPlans, setAllPlans]           = useState([]);
@@ -874,6 +910,24 @@ export default function AdminPanel({ user, onLogout }) {
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
   const [refreshing, setRefreshing] = useState(false);
+  const [liveSessionInfo, setLiveSessionInfo] = useState(() => getActiveLiveSession());
+  const [pendingAutoOpenLiveTraining, setPendingAutoOpenLiveTraining] = useState(false);
+  const [clientDetailNonce, setClientDetailNonce] = useState(0);
+
+  useEffect(() => subscribeLiveSession(setLiveSessionInfo), []);
+
+  // Atkuria indikatorių po puslapio perkrovimo — JS atmintyje saugoma būsena
+  // tada dingsta, bet pati sesija duombazėje lieka. Patikrinama vieną kartą,
+  // ar šiandien yra pradėta, bet nebaigta gyva treniruotė, kad ir kuriam
+  // klientui — jei LiveTraining.js jos dar nespėjo pati pranešti.
+  useEffect(() => {
+    pb.collection("live_sessions").getFirstListItem(`date="${todayStr()}" && completed=false`, { requestKey: null })
+      .then(async sess => {
+        const c = await pb.collection("users").getOne(sess.user_id, { requestKey: null }).catch(() => null);
+        if (c) setActiveLiveSession({ clientId: c.id, clientName: c.name });
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -907,9 +961,30 @@ export default function AdminPanel({ user, onLogout }) {
 
   // Bendras "atidaryti/uždaryti klientą" veiksmas (c=null uždaro) — naudojamas
   // visur, kur paspaudus kliento kortelę/eilutę pereinama prie jo (ar grįžtama
-  // į sąrašą), kad tai irgi eitų per attemptExit() sargą.
+  // į sąrašą), kad tai irgi eitų per attemptExit() sargą. Visada aiškiai
+  // išjungia "iš karto atidaryti gyvą treniruotę" ketinimą — jį įjungia tik
+  // openClientLive() žemiau, kitaip jis liktų "įstrigęs" kitiems klientams.
   function openClientSafe(c) {
-    attemptExit(() => setOpenClient(c));
+    attemptExit(() => { setPendingAutoOpenLiveTraining(false); setOpenClient(c); });
+  }
+
+  // Atidaro klientą TIESIOG jo gyvoje treniruotėje — naudojama paspaudus
+  // nuolatinį "Treniruotė vyksta" indikatorių arba šiandien vykstančios
+  // (dabar laiku sutampančios) rezervacijos eilutę. nonce priverčia
+  // ClientDetail iš naujo sumontuoti (ir pačiam perskaityti autoOpen props),
+  // net jei tas pats klientas jau atidarytas kitame įrankyje.
+  function openClientLive(c) {
+    attemptExit(() => {
+      setPendingAutoOpenLiveTraining(true);
+      setClientDetailNonce(n => n + 1);
+      setOpenClient(c);
+    });
+  }
+
+  function goToLiveSessionBanner() {
+    if (!liveSessionInfo) return;
+    const c = clients.find(cl => cl.id === liveSessionInfo.clientId);
+    if (c) openClientLive(c);
   }
 
   // PocketBase įrašymas PIRMIAU, failo atsisiuntimas PASKUI — mobiliuosiuose
@@ -1099,7 +1174,7 @@ export default function AdminPanel({ user, onLogout }) {
                     const c = clients.find(cl => cl.id === b.client_id);
                     const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
                     return (
-                      <button key={b.id} onClick={() => c && openClientSafe(c)} style={{
+                      <button key={b.id} onClick={() => c && (isOngoing ? openClientLive(c) : openClientSafe(c))} style={{
                         display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
                         background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
                         border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
@@ -1275,7 +1350,8 @@ export default function AdminPanel({ user, onLogout }) {
       {/* Kliento profilis — virš kitų overlay langų (700 > 500), kad atidarius klientą
           iš Rezervacijų/Paketų/Statistikos, uždarius jį grįžtume į TĄ PATĮ ekraną su
           išsaugotais filtrais/paieška, o ne į iš naujo užkrautą pradinę būseną. */}
-      {openClient && <ClientDetail client={openClient} onClose={() => openClientSafe(null)} />}
+      {openClient && <ClientDetail key={`${openClient.id}-${clientDetailNonce}`} client={openClient} onClose={() => openClientSafe(null)} autoOpenLiveTraining={pendingAutoOpenLiveTraining} />}
+      <LiveSessionBanner info={liveSessionInfo} onClick={goToLiveSessionBanner} />
     </div>
   );
 
@@ -1390,7 +1466,7 @@ export default function AdminPanel({ user, onLogout }) {
                         const c = clients.find(cl => cl.id === b.client_id);
                         const isOngoing = b.start_time <= nowTime && nowTime <= (b.end_time || b.start_time);
                         return (
-                          <button key={b.id} onClick={() => c && openClientSafe(c)} style={{
+                          <button key={b.id} onClick={() => c && (isOngoing ? openClientLive(c) : openClientSafe(c))} style={{
                             display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "9px 12px", cursor: c ? "pointer" : "default", fontFamily: "inherit", textAlign: "left", width: "100%",
                             background: isOngoing ? "rgba(127,255,176,0.14)" : "rgba(255,255,255,0.06)",
                             border: isOngoing ? "1px solid rgba(127,255,176,0.4)" : "1px solid transparent",
@@ -1507,7 +1583,7 @@ export default function AdminPanel({ user, onLogout }) {
             {/* Kliento info — dešinėje */}
             <div style={{ flex:1, minHeight:0, position:"relative", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
               {openClient ? (
-                <ClientDetail client={openClient} onClose={() => openClientSafe(null)} embedded />
+                <ClientDetail key={`${openClient.id}-${clientDetailNonce}`} client={openClient} onClose={() => openClientSafe(null)} autoOpenLiveTraining={pendingAutoOpenLiveTraining} embedded />
               ) : (
                 <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:10, color:"rgba(255,255,255,0.3)" }}>
                   <Users size={48} />
@@ -1522,10 +1598,11 @@ export default function AdminPanel({ user, onLogout }) {
             {showStats    && <TrainerStats onClose={() => setShowStats(false)} onOpenClient={setOpenClient} />}
             {showPresets  && <WorkoutPresets onClose={() => setShowPresets(false)} />}
             {showPackages && <PackageAdmin onClose={() => setShowPackages(false)} onOpenClient={setOpenClient} />}
-            {openClient && <ClientDetail client={openClient} onClose={() => openClientSafe(null)} embedded />}
+            {openClient && <ClientDetail key={`${openClient.id}-${clientDetailNonce}`} client={openClient} onClose={() => openClientSafe(null)} autoOpenLiveTraining={pendingAutoOpenLiveTraining} embedded />}
           </div>
         )}
       </div>
+      <LiveSessionBanner info={liveSessionInfo} onClick={goToLiveSessionBanner} />
     </div>
   );
 }

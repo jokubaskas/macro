@@ -4,7 +4,7 @@
 // planuojamas (target_*), ir realiai atliktas (actual_*) reikšmes.
 import { useState, useEffect } from "react";
 import { pb } from "./pb";
-import { ChevronLeft, Check, Timer, Edit, Dumbbell } from "./ui/icons";
+import { ChevronLeft, Check, Timer, Edit, Dumbbell, Close } from "./ui/icons";
 import { useIsDesktop } from "./ui/responsive";
 import { toast } from "./ui/toast";
 import { haptic } from "./ui/pullToRefresh";
@@ -25,7 +25,6 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
   const [sets, setSets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState({});
-  const [skippedRestIds, setSkippedRestIds] = useState(() => new Set());
   const [editingDoneId, setEditingDoneId] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [addingSet, setAddingSet] = useState(false);
@@ -68,6 +67,30 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
     await pb.collection("live_session_sets").update(set.id, { [numericField]: parsed }).catch(() => {});
   }
 
+  // Po kiekvieno "Atlikta"/redagavimo/atšaukimo pratimo bendri laukai
+  // (live_session_exercises.sets/reps/weight_kg/set_weights/duration_sec)
+  // perrašomi pagal REALIAI atliktas reikšmes — kitaip jie liktų tokie,
+  // kokie buvo planuoti kuriant pratimą, ir "Praeitą kartą" palyginimas,
+  // Pratimų progreso ekranas bei savaitės statistika (visi skaito šiuos
+  // bendrus laukus, ne atskiras serijas) rodytų planą, ne realybę.
+  async function syncExerciseAggregate(allSets) {
+    const doneSets = allSets.filter(s => s.done).sort((a, b) => a.set_number - b.set_number);
+    if (doneSets.length === 0) return;
+    const last = doneSets[doneSets.length - 1];
+    const payload = { sets: doneSets.length };
+    if (isTimed) {
+      payload.duration_sec = last.actual_duration_sec || null;
+      payload.weight_kg = last.actual_weight_kg || null;
+    } else {
+      const weights = doneSets.map(s => s.actual_weight_kg || 0);
+      const hasWeight = weights.some(w => w > 0);
+      payload.set_weights = hasWeight ? JSON.stringify(weights) : null;
+      payload.weight_kg = hasWeight ? Math.max(...weights) : null;
+      payload.reps = last.actual_reps || null;
+    }
+    await pb.collection("live_session_exercises").update(exercise.id, payload).catch(() => {});
+  }
+
   const sorted = [...sets].sort((a, b) => a.set_number - b.set_number);
   const activeIdx = sorted.findIndex(s => !s.done);
   const allDone = activeIdx === -1 && sorted.length > 0;
@@ -75,8 +98,17 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
   const prevSet = activeIdx > 0 ? sorted[activeIdx - 1] : null;
   const restSeconds = prevSet?.rest_seconds ?? DEFAULT_REST_SECONDS;
   const restUntil = prevSet?.done_at ? new Date(prevSet.done_at).getTime() + restSeconds * 1000 : 0;
-  const isResting = !!prevSet && !skippedRestIds.has(prevSet.id) && nowTick < restUntil;
+  const isResting = !!prevSet && nowTick < restUntil;
   const remainingRest = isResting ? Math.ceil((restUntil - nowTick) / 1000) : 0;
+
+  // Poilsio praleidimas tiesiog nunulina TOS serijos poilsio trukmę
+  // duombazėje (ne tik lokaliai) — taip, uždarius ir vėl atsidarius šį
+  // pratimą prieš pasibaigiant realiam laikui, laikmatis nebeatsistato.
+  async function skipRest() {
+    if (!prevSet) return;
+    setSets(prev => prev.map(s => s.id === prevSet.id ? { ...s, rest_seconds: 0 } : s));
+    await pb.collection("live_session_sets").update(prevSet.id, { rest_seconds: 0 }).catch(() => {});
+  }
 
   async function markDone(set) {
     setSavingId(set.id);
@@ -99,6 +131,7 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
       const next = prev.map(s => s.id === rec.id ? rec : s);
       const done = next.length > 0 && next.every(s => s.done);
       onExerciseDoneChange?.(exercise.id, done);
+      syncExerciseAggregate(next);
       return next;
     });
   }
@@ -116,8 +149,29 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
         };
     const rec = await pb.collection("live_session_sets").update(set.id, payload).catch(() => null);
     setSavingId(null);
-    if (rec) setSets(prev => prev.map(s => s.id === rec.id ? rec : s));
+    if (rec) setSets(prev => {
+      const next = prev.map(s => s.id === rec.id ? rec : s);
+      syncExerciseAggregate(next);
+      return next;
+    });
     setEditingDoneId(null);
+  }
+
+  // Leidžia grąžinti klaidingai pažymėtą seriją atgal į "neatlikta" (pvz.
+  // paspausta per klaidą arba su neteisingomis reikšmėmis) — kitaip vienintelis
+  // būdas pataisyti būtų ištrinti visą pratimą ir pridėti iš naujo.
+  async function resetSet(set) {
+    setSavingId(set.id);
+    const rec = await pb.collection("live_session_sets").update(set.id, { done: false, done_at: null }).catch(() => null);
+    setSavingId(null);
+    if (!rec) return;
+    setSets(prev => {
+      const next = prev.map(s => s.id === rec.id ? rec : s);
+      const done = next.length > 0 && next.every(s => s.done);
+      onExerciseDoneChange?.(exercise.id, done);
+      syncExerciseAggregate(next);
+      return next;
+    });
   }
 
   async function addExtraSet() {
@@ -140,6 +194,11 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
           <h1 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{exercise.exercise_name}</h1>
           <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", margin: 0 }}>{exercise.muscle}</p>
         </div>
+        {sorted.length > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: allDone ? "#7FFFB0" : "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.08)", borderRadius: 20, padding: "5px 11px", flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>
+            <Dumbbell size={11} />{sorted.filter(s => s.done).length}/{sorted.length}
+          </span>
+        )}
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
@@ -160,7 +219,7 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
               <div style={{ background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, textAlign: "center" }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "#FFD700", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>Poilsis</p>
                 <p style={{ fontSize: 34, fontWeight: 800, color: "#fff", margin: "0 0 12px", fontVariantNumeric: "tabular-nums" }}>{fmtTime(remainingRest)}</p>
-                <button onClick={() => setSkippedRestIds(prev => new Set(prev).add(prevSet.id))} style={{ padding: "9px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={skipRest} style={{ padding: "9px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   Praleisti poilsį
                 </button>
               </div>
@@ -182,9 +241,14 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Serija {set.set_number}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {set.done && !isEditingDone && (
-                        <button onClick={() => setEditingDoneId(set.id)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
-                          <Edit size={10} />redaguoti
-                        </button>
+                        <>
+                          <button onClick={() => setEditingDoneId(set.id)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
+                            <Edit size={10} />redaguoti
+                          </button>
+                          <button onClick={() => resetSet(set)} disabled={savingId === set.id} style={{ background: "none", border: "none", color: "rgba(255,136,136,0.6)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
+                            <Close size={10} />žymėti neatlikta
+                          </button>
+                        </>
                       )}
                       {set.done && (
                         <span style={{ fontSize: 10, fontWeight: 700, color: "#7FFFB0", display: "flex", alignItems: "center", gap: 3 }}><Check size={11} />Atlikta</span>

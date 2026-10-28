@@ -5,10 +5,11 @@ import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPla
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
 import SetExecution, { DEFAULT_REST_SECONDS } from "./SetExecution";
-import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer, ArrowUp, ArrowDown } from "./ui/icons";
+import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer, ArrowUp, ArrowDown, PlayCircle } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 import { setExitGuard, clearExitGuard, attemptExit } from "./ui/exitGuard";
+import { setActiveLiveSession, clearActiveLiveSessionIfMatches } from "./ui/liveSessionStore";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
 
@@ -45,9 +46,9 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
       {setsProgress ? (
         <div style={{
           width:26, height:26, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-          border: isDone ? "none" : "1.5px solid rgba(255,255,255,0.35)", background: isDone ? "#276749" : "transparent",
+          background: isDone ? "#276749" : setsProgress.done > 0 ? "rgba(255,215,0,0.15)" : "rgba(173,20,87,0.25)",
         }}>
-          {isDone && <Check size={13} color="#fff" />}
+          {isDone ? <Check size={13} color="#fff" /> : setsProgress.done > 0 ? <Dumbbell size={12} color="#FFD700" /> : <PlayCircle size={14} color="#fff" />}
         </div>
       ) : onToggleDone && (
         <button onClick={(e)=>{ e.stopPropagation(); onToggleDone(); }} style={{
@@ -69,8 +70,12 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
           )}
         </div>
         {setsProgress ? (
-          <p style={{ fontSize:11, fontWeight:700, color: isDone ? "#7FFFB0" : "rgba(255,255,255,0.6)", margin:0, display:"flex", alignItems:"center", gap:5 }}>
-            <Dumbbell size={10} />{setsProgress.done}/{setsProgress.total} serijų{isDone ? " atlikta" : " · paliesk tęsti"}
+          <p style={{ fontSize:11, fontWeight:700, color: isDone ? "#7FFFB0" : setsProgress.done > 0 ? "#FFD700" : "#fff", margin:0, display:"flex", alignItems:"center", gap:5 }}>
+            {isDone
+              ? `Visos ${setsProgress.total} serijos atliktos`
+              : setsProgress.done > 0
+                ? `Tęsti pratimą · ${setsProgress.done}/${setsProgress.total} serijų`
+                : "Pradėti pratimą"}
           </p>
         ) : (
           <ExerciseSummary ex={ex} />
@@ -247,14 +252,17 @@ export default function LiveTraining({ client, onClose }) {
   // komponente (pvz. šoninio meniu mygtukas AdminPanel.js), kažkas norės
   // išeiti iš šio ekrano, pirma parodome šį patvirtinimo langą.
   useEffect(() => {
-    if (!todaySession || todaySession.completed) return;
-    const guardFn = (proceed) => {
-      pendingProceedRef.current = proceed;
-      setShowExitConfirm(true);
-    };
-    setExitGuard(guardFn);
-    return () => clearExitGuard(guardFn);
-  }, [todaySession]);
+    if (todaySession && !todaySession.completed) {
+      setActiveLiveSession({ clientId: client.id, clientName: client.name });
+      const guardFn = (proceed) => {
+        pendingProceedRef.current = proceed;
+        setShowExitConfirm(true);
+      };
+      setExitGuard(guardFn);
+      return () => clearExitGuard(guardFn);
+    }
+    clearActiveLiveSessionIfMatches(client.id);
+  }, [todaySession, client.id, client.name]);
 
   const load = useCallback(async () => {
     setLoading(true);
