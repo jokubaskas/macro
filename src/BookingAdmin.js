@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
 import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, ChevronRight, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
 import { SearchInput, ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
+import { toast } from "./ui/toast";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
@@ -96,9 +98,16 @@ export function downloadIcal(booking, clientName) {
   const dt = booking.date.replace(/-/g,"");
   const startDt = dt + "T" + booking.start_time.replace(":","") + "00";
   const endDt   = dt + "T" + booking.end_time.replace(":","") + "00";
+  const nowDt = new Date().toISOString().replace(/[-:]/g,"").split(".")[0] + "Z";
   const ical = [
     "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CoachVilma//LT",
     "BEGIN:VEVENT",
+    // Pastovus UID (pagal rezervacijos id) — jei ta pati rezervacija vėliau
+    // perkeliama į kitą laiką ir .ics atsisiunčiamas iš naujo, kalendoriaus
+    // programėlė (Google/Apple/Outlook) atpažins tą patį įvykį pagal UID ir
+    // atnaujins jo laiką, o ne sukurs antrą, dubliuotą įrašą.
+    `UID:${booking.id}@coachvilma.app`,
+    `DTSTAMP:${nowDt}`,
     `DTSTART:${startDt}`,`DTEND:${endDt}`,
     `SUMMARY:Treniruotė – ${clientName} (${booking.start_time}–${booking.end_time})`,
     `LOCATION:Gym+ Dariaus ir Girėno g. 2\\, Vilnius\\, 02158 Vilniaus m. sav.`,
@@ -129,6 +138,179 @@ function generateSlots(start, end, duration) {
     cur += 60;
   }
   return slots;
+}
+
+// ── Rezervacijos perkėlimas į kitą laisvą laiką ──────────────────────────────
+// Naudoja tą pačią laisvų laikų skaičiavimo logiką kaip TrainerCalendar
+// žemiau (grafikas, išimtys/atostogos, dar neatsakyti klientų pastovūs
+// laikai), bet iš "užimtų" sąrašo IŠSKIRIA pačią perkeliamą rezervaciją —
+// jos senas laikas automatiškai tampa laisvas, nes būtent jį ir perkeliame
+// (vienu PocketBase update() atnaujinama tas pats įrašas, be atskiro
+// trynimo/kūrimo — klientas niekada nekabo rezervuotas dviem laikais iš karto).
+function RescheduleModal({ booking, clientName, onClose, onRescheduled }) {
+  const isDesktop = useIsDesktop();
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date(booking.date + "T12:00:00");
+    return { y: d.getFullYear(), m: d.getMonth() };
+  });
+  const [selectedDate, setSelectedDate] = useState(booking.date);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [schedule, setSchedule] = useState([]);
+  const [exceptions, setExceptions] = useState([]);
+  const [recurringSlots, setRecurringSlots] = useState([]);
+  const [otherBookings, setOtherBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const today = todayStr();
+
+  useEffect(() => {
+    Promise.all([
+      pb.collection("trainer_schedule").getFullList({ filter:"is_active=true", requestKey:null }).catch(()=>[]),
+      pb.collection("schedule_exceptions").getFullList({ requestKey:null }).catch(()=>[]),
+      pb.collection("recurring_slots").getFullList({ filter:"is_active=true", requestKey:null }).catch(()=>[]),
+      pb.collection("bookings").getFullList({ filter:`(status="approved" || status="pending") && id!="${booking.id}"`, requestKey:null }).catch(()=>[]),
+    ]).then(([sch, exc, rec, bk]) => {
+      setSchedule(sch); setExceptions(exc); setRecurringSlots(rec); setOtherBookings(bk); setLoading(false);
+    });
+  }, [booking.id]);
+
+  const daysInMonth = new Date(calMonth.y, calMonth.m+1, 0).getDate();
+  const firstDay = new Date(calMonth.y, calMonth.m, 1).getDay();
+  const offset = firstDay===0 ? 6 : firstDay-1;
+
+  function isSlotBlocked(dateStr, slotStart, slotEnd) {
+    const slotS = timeToMin(slotStart), slotE = timeToMin(slotEnd);
+    return exceptions.some(ex => {
+      const exEnd = ex.end_date || ex.date;
+      if (dateStr < ex.date || dateStr > exEnd) return false;
+      if (ex.all_day) return true;
+      const exS = timeToMin(ex.start_time), exE = timeToMin(ex.end_time);
+      return slotS < exE && slotE > exS;
+    });
+  }
+  function heldByRecurring(dateStr, slotStart) {
+    if (!isRecurringHoldActive(dateStr)) return false;
+    const rec = recurringSlots.find(r => r.day_of_week === dowOf(dateStr) && r.start_time === slotStart);
+    if (!rec) return false;
+    return !otherBookings.some(b => b.date === dateStr && b.start_time === slotStart);
+  }
+
+  const vacation = exceptions.find(ex => ex.all_day && selectedDate >= ex.date && selectedDate <= (ex.end_date||ex.date));
+  const daySchedule = schedule.find(s => s.day_of_week === dowOf(selectedDate));
+  const takenStarts = new Set(otherBookings.filter(b => b.date===selectedDate).map(b=>b.start_time));
+  const freeSlots = (daySchedule && !vacation)
+    ? generateSlots(daySchedule.start_time, daySchedule.end_time, daySchedule.slot_duration)
+        .filter(s => !takenStarts.has(s.start) && !isSlotBlocked(selectedDate, s.start, s.end) && !heldByRecurring(selectedDate, s.start))
+    : [];
+
+  const isSameAsOriginal = selectedDate === booking.date && selectedSlot?.start === booking.start_time;
+
+  async function handleConfirm() {
+    if (!selectedSlot || isSameAsOriginal) return;
+    setSaving(true);
+    const rec = await pb.collection("bookings").update(booking.id, {
+      date: selectedDate, start_time: selectedSlot.start, end_time: selectedSlot.end,
+      added_to_calendar: false,
+    }).catch(() => null);
+    if (!rec) {
+      setSaving(false);
+      toast("Nepavyko perkelti rezervacijos — patikrinkite interneto ryšį ir bandykite dar kartą.", "error");
+      return;
+    }
+    let finalRec = rec;
+    // Patvirtintai rezervacijai iškart atsisiunčiamas atnaujintas .ics —
+    // tas pats UID kaip anksčiau (žr. downloadIcal), tad kalendoriaus
+    // programėlė atnaujins jau esantį įvykį, o ne sukurs antrą.
+    if (booking.status === "approved") {
+      downloadIcal(rec, clientName);
+      finalRec = await pb.collection("bookings").update(booking.id, { added_to_calendar: true }).catch(() => rec);
+    }
+    setSaving(false);
+    toast(`Rezervacija perkelta į ${selectedDate} ${selectedSlot.start}`, "success");
+    onRescheduled(finalRec);
+  }
+
+  return createPortal(
+    <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{ position:"fixed", inset:0, zIndex:1150, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:isDesktop?"center":"flex-end", justifyContent:"center" }}>
+      <div style={{ width:"100%", maxWidth:480, maxHeight:isDesktop?"85vh":"88vh", margin:isDesktop?0:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:isDesktop?20:"24px 24px 0 0", padding:"20px 16px", overflowY:"auto", WebkitOverflowScrolling:"touch", boxSizing:"border-box" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <div>
+            <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>Perkelti rezervaciją</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:"2px 0 0" }}>{clientName} · dabar: {booking.date} {booking.start_time}–{booking.end_time}</p>
+          </div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", cursor:"pointer", flexShrink:0 }}><Close size={14} /></button>
+        </div>
+
+        {loading ? (
+          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>
+        ) : (
+          <>
+            <div style={{ background:"rgba(0,0,0,0.2)", borderRadius:16, padding:14, marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <button onClick={()=>setCalMonth(p=>{ const d=new Date(p.y,p.m-1,1); return {y:d.getFullYear(),m:d.getMonth()}; })} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>◀</button>
+                <span style={{ color:"#fff", fontWeight:700, fontSize:13 }}>{MONTHS[calMonth.m]} {calMonth.y}</span>
+                <button onClick={()=>setCalMonth(p=>{ const d=new Date(p.y,p.m+1,1); return {y:d.getFullYear(),m:d.getMonth()}; })} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", cursor:"pointer", fontSize:14 }}>▶</button>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3, marginBottom:6 }}>
+                {["P","A","T","K","P","Š","S"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.35)" }}>{d}</div>)}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
+                {Array(offset).fill(null).map((_,i)=><div key={"e"+i}/>)}
+                {Array(daysInMonth).fill(null).map((_,i)=>{
+                  const d=i+1;
+                  const ds=`${calMonth.y}-${String(calMonth.m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+                  const isSel = selectedDate===ds;
+                  const isToday = ds===today;
+                  const isPast = ds<today;
+                  const isOriginal = ds===booking.date;
+                  return (
+                    <button key={d} disabled={isPast} onClick={()=>{setSelectedDate(ds); setSelectedSlot(null);}} style={{
+                      aspectRatio:"1", borderRadius:8,
+                      border: isSel ? "2px solid rgba(255,255,255,0.9)" : isOriginal ? "1.5px dashed rgba(255,215,0,0.6)" : isToday ? "1.5px solid rgba(255,255,255,0.5)" : "none",
+                      background: isSel ? "rgba(255,255,255,0.25)" : "transparent",
+                      color: isPast ? "rgba(255,255,255,0.15)" : "#fff",
+                      fontWeight: isSel?700:400, fontSize:12, cursor: isPast?"default":"pointer", fontFamily:"inherit",
+                    }}>{d}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>
+              Laisvi laikai · {selectedDate}
+            </p>
+            {vacation ? (
+              <p style={{ color:"rgba(255,255,255,0.35)", fontSize:13, textAlign:"center", padding:"16px 0" }}>Šią dieną nedirbama{vacation.reason ? ` — ${vacation.reason}` : ""}</p>
+            ) : !daySchedule ? (
+              <p style={{ color:"rgba(255,255,255,0.35)", fontSize:13, textAlign:"center", padding:"16px 0" }}>Šią savaitės dieną pagal grafiką nedirbama</p>
+            ) : freeSlots.length === 0 ? (
+              <p style={{ color:"rgba(255,255,255,0.35)", fontSize:13, textAlign:"center", padding:"16px 0" }}>Laisvų laikų šią dieną nėra</p>
+            ) : (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:16 }}>
+                {freeSlots.map(s => (
+                  <button key={s.start} onClick={()=>setSelectedSlot(s)} style={{
+                    padding:"9px 14px", borderRadius:12, border:"none",
+                    background: selectedSlot?.start===s.start ? "#AD1457" : "rgba(255,255,255,0.1)",
+                    color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                  }}>{s.start}</button>
+                ))}
+              </div>
+            )}
+
+            <button onClick={handleConfirm} disabled={!selectedSlot || isSameAsOriginal || saving} style={{
+              width:"100%", padding:13, borderRadius:14, border:"none",
+              background: (!selectedSlot || isSameAsOriginal) ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#6D1B3B,#AD1457)",
+              color: (!selectedSlot || isSameAsOriginal) ? "rgba(255,255,255,0.35)" : "#fff",
+              fontSize:14, fontWeight:700, cursor: (!selectedSlot || isSameAsOriginal) ? "default" : "pointer", fontFamily:"inherit",
+            }}>
+              {saving ? "Perkeliama..." : selectedSlot ? `Perkelti į ${selectedDate} ${selectedSlot.start}` : "Pasirinkite laisvą laiką"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 const inp = { padding:"9px 8px", borderRadius:10, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", WebkitAppearance:"none" };
@@ -691,6 +873,7 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   const [visibleCount, setVisibleCount] = useState(8);
   const [showPast, setShowPast]   = useState(false);
   const [actionError, setActionError] = useState("");
+  const [reschedulingBooking, setReschedulingBooking] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -761,6 +944,11 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     setBookings(prev => prev.filter(b => b.id !== id));
   }
 
+  function handleRescheduled(updatedBooking) {
+    setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+    setReschedulingBooking(null);
+  }
+
   // Šio mėnesio atšaukimas su grąžintu kreditu skaičiuojamas "liko N nemokamų
   // atšaukimų" ribai (žr. BookingClient.js ir serverio pb_hooks) tiesiog
   // peržiūrint esamus bookings įrašus — jei tokį įrašą ištrintume, klientas
@@ -809,6 +997,15 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
         <button onClick={()=>setView("recurring")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Repeat size={12} />Įprasti</button>
         <button onClick={()=>setView("schedule")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><Settings size={12} />Darbo laikas</button>
       </div>
+
+      {reschedulingBooking && (
+        <RescheduleModal
+          booking={reschedulingBooking}
+          clientName={clients[reschedulingBooking.client_id]?.name || "Klientas"}
+          onClose={() => setReschedulingBooking(null)}
+          onRescheduled={handleRescheduled}
+        />
+      )}
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
         {actionError && (
@@ -907,6 +1104,11 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
                   )}
                   <AdminCancelButton booking={b} clientName={client?.name||"Klientas"} onCancelled={load} />
                 </div>
+              )}
+              {(b.status==="pending" || b.status==="approved") && (
+                <button onClick={()=>setReschedulingBooking(b)} style={{width:"100%",marginTop:8,padding:"9px",borderRadius:10,border:"1px solid rgba(110,198,255,0.4)",background:"rgba(110,198,255,0.1)",color:"#6EC6FF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  <Calendar size={12} />Perkelti į kitą laiką
+                </button>
               )}
               {b.date < today && (
                 <button onClick={()=>handleDelete(b.id)} style={{width:"100%",marginTop:8,padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.04)",color:"rgba(255,255,255,0.45)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
