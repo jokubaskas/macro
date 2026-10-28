@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot,
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 import { setExitGuard, clearExitGuard, attemptExit } from "./ui/exitGuard";
+import { setActiveLiveSession, clearActiveLiveSessionIfMatches } from "./ui/liveSessionStore";
 
 const KEYFRAMES = `@keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }`;
 
@@ -251,14 +252,17 @@ export default function LiveTraining({ client, onClose }) {
   // komponente (pvz. šoninio meniu mygtukas AdminPanel.js), kažkas norės
   // išeiti iš šio ekrano, pirma parodome šį patvirtinimo langą.
   useEffect(() => {
-    if (!todaySession || todaySession.completed) return;
-    const guardFn = (proceed) => {
-      pendingProceedRef.current = proceed;
-      setShowExitConfirm(true);
-    };
-    setExitGuard(guardFn);
-    return () => clearExitGuard(guardFn);
-  }, [todaySession]);
+    if (todaySession && !todaySession.completed) {
+      setActiveLiveSession({ clientId: client.id, clientName: client.name });
+      const guardFn = (proceed) => {
+        pendingProceedRef.current = proceed;
+        setShowExitConfirm(true);
+      };
+      setExitGuard(guardFn);
+      return () => clearExitGuard(guardFn);
+    }
+    clearActiveLiveSessionIfMatches(client.id);
+  }, [todaySession, client.id, client.name]);
 
   const load = useCallback(async () => {
     setLoading(true);
