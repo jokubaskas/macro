@@ -308,13 +308,17 @@ export default function LiveTraining({ client, onClose }) {
     }
     const creates = [];
     for (let i = 0; i < n; i++) {
+      // Būtina skirtinga requestKey kiekvienam — kitaip PocketBase SDK
+      // laiko šiuos N vienu metu siunčiamus create() į TĄ PAČIĄ kolekciją
+      // dublikatais ir automatiškai atšaukia visus ankstesnius, paliekant
+      // tik paskutinį (būtent todėl kurdavosi tik "paskutinė" serija).
       creates.push(pb.collection("live_session_sets").create({
         exercise_id: exerciseId, set_number: i + 1,
         target_reps: exData.duration_sec ? null : (exData.reps || null),
         target_weight_kg: weights ? (weights[i] ?? weights[weights.length - 1] ?? null) : (exData.weight_kg || null),
         target_duration_sec: exData.duration_sec || null,
         rest_seconds: DEFAULT_REST_SECONDS,
-      }).catch(() => null));
+      }, { requestKey: `create-set-${exerciseId}-${i}` }).catch(() => null));
     }
     const created = (await Promise.all(creates)).filter(Boolean);
     if (created.length) setSetsByExercise(prev => ({ ...prev, [exerciseId]: created }));
@@ -377,7 +381,10 @@ export default function LiveTraining({ client, onClose }) {
 
   async function handleRemoveExercise(id) {
     const exSets = setsByExercise[id] || [];
-    await Promise.all(exSets.map(s => pb.collection("live_session_sets").delete(s.id).catch(() => {})));
+    // Skirtingas requestKey kiekvienam delete() — kitaip SDK vienu metu
+    // siunčiamus trynimus į tą pačią kolekciją atšaukia kaip dublikatus,
+    // ištrina tik dalį serijų, liktų "našlaičiai".
+    await Promise.all(exSets.map(s => pb.collection("live_session_sets").delete(s.id, { requestKey: `del-set-${s.id}` }).catch(() => {})));
     await pb.collection("live_session_exercises").delete(id).catch(() => {});
     setTodayExercises(prev => prev.filter(e => e.id !== id));
     setSetsByExercise(prev => { const n = { ...prev }; delete n[id]; return n; });
@@ -393,9 +400,12 @@ export default function LiveTraining({ client, onClose }) {
     const reordered = [...todayExercises];
     [reordered[index], reordered[otherIndex]] = [reordered[otherIndex], reordered[index]];
     setTodayExercises(reordered);
+    // requestKey skirtingi, kitaip SDK vienu metu siunčiamus update() į tą
+    // pačią kolekciją laiko dublikatais ir atšaukia pirmąjį — tik vienas
+    // pratimas iš dviejų realiai pakeistų savo order_num.
     await Promise.all([
-      pb.collection("live_session_exercises").update(a.id, { order_num: b.order_num }).catch(() => {}),
-      pb.collection("live_session_exercises").update(b.id, { order_num: a.order_num }).catch(() => {}),
+      pb.collection("live_session_exercises").update(a.id, { order_num: b.order_num }, { requestKey: `move-${a.id}` }).catch(() => {}),
+      pb.collection("live_session_exercises").update(b.id, { order_num: a.order_num }, { requestKey: `move-${b.id}` }).catch(() => {}),
     ]);
   }
 
@@ -453,9 +463,11 @@ export default function LiveTraining({ client, onClose }) {
   async function handleDeleteSession() {
     if (!todaySession) return;
     setDeletingSession(true);
+    // Skirtingas requestKey kiekvienam delete() — ta pati priežastis kaip
+    // handleRemoveExercise() aukščiau.
     const allSets = Object.values(setsByExercise).flat();
-    await Promise.all(allSets.map(s => pb.collection("live_session_sets").delete(s.id).catch(() => {})));
-    await Promise.all(todayExercises.map(ex => pb.collection("live_session_exercises").delete(ex.id).catch(() => {})));
+    await Promise.all(allSets.map(s => pb.collection("live_session_sets").delete(s.id, { requestKey: `del-set-${s.id}` }).catch(() => {})));
+    await Promise.all(todayExercises.map(ex => pb.collection("live_session_exercises").delete(ex.id, { requestKey: `del-ex-${ex.id}` }).catch(() => {})));
     await pb.collection("live_sessions").delete(todaySession.id).catch(() => {});
     setTodaySession(null);
     setTodayExercises([]);

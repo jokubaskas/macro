@@ -103,7 +103,11 @@ export async function evaluateAchievements(userId, profile) {
   });
 
   if (toCreate.length) {
-    await Promise.all(toCreate.map(rec => pb.collection("achievements").create(rec).catch(() => {})));
+    // Skirtingas requestKey kiekvienam — kitaip PocketBase SDK vienu metu
+    // siunčiamus create() į tą pačią kolekciją laiko dublikatais ir
+    // automatiškai atšaukia ankstesnius (jei vienu metu pelnomi keli
+    // medaliai, išliktų įrašytas tik paskutinis).
+    await Promise.all(toCreate.map(rec => pb.collection("achievements").create(rec, { requestKey: `achv-${rec.badge_key}-${rec.tier}` }).catch(() => {})));
   }
 
   const earnedSet = new Set([...existingSet, ...toCreate.map(c => `${c.badge_key}:${c.tier}`)]);

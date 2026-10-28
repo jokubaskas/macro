@@ -745,7 +745,10 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   async function handleMarkAllAdded() {
     setActionError("");
     const toMark = bookings.filter(b => b.status==="approved" && !b.added_to_calendar);
-    const results = await Promise.all(toMark.map(b => pb.collection("bookings").update(b.id, { added_to_calendar:true }).then(()=>b.id).catch(()=>null)));
+    // Skirtingas requestKey kiekvienam — kitaip PocketBase SDK vienu metu
+    // siunčiamus update() į tą pačią kolekciją laiko dublikatais ir
+    // automatiškai atšaukia ankstesnius, paliekant tik paskutinį.
+    const results = await Promise.all(toMark.map(b => pb.collection("bookings").update(b.id, { added_to_calendar:true }, { requestKey: `mark-added-${b.id}` }).then(()=>b.id).catch(()=>null)));
     const okIds = new Set(results.filter(Boolean));
     setBookings(prev => prev.map(b => okIds.has(b.id) ? {...b,added_to_calendar:true} : b));
     const failedCount = toMark.length - okIds.size;
@@ -778,7 +781,8 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
       + (protectedCount > 0 ? `\n\n${protectedCount} šio mėnesio atšaukimo(-ų) su grąžintu kreditu nebus ištrinta(-i) — jie saugomi, kad nesusigadintų šio mėnesio nemokamų atšaukimų skaičius.` : "");
     if (!window.confirm(confirmMsg)) return;
     setActionError("");
-    const results = await Promise.all(toDelete.map(b => pb.collection("bookings").delete(b.id).then(() => b.id).catch(() => null)));
+    // Skirtingas requestKey kiekvienam — ta pati priežastis kaip aukščiau.
+    const results = await Promise.all(toDelete.map(b => pb.collection("bookings").delete(b.id, { requestKey: `del-booking-${b.id}` }).then(() => b.id).catch(() => null)));
     const okIds = new Set(results.filter(Boolean));
     setBookings(prev => prev.filter(b => !okIds.has(b.id)));
     const failedCount = toDelete.length - okIds.size;
