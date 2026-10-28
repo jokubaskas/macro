@@ -4,6 +4,7 @@ import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
+import SetExecution, { DEFAULT_REST_SECONDS } from "./SetExecution";
 import { ChevronLeft, ChevronRight, Dumbbell, Close, Edit, Save, Clipboard, Dot, CheckCircle, TrendingUp, Check, Timer, ArrowUp, ArrowDown } from "./ui/icons";
 import { ShowMoreButton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
@@ -17,14 +18,15 @@ function formatDate(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("lt-LT", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 }
 
-function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, onMoveDown, canMoveUp, canMoveDown }) {
+function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, onMoveDown, canMoveUp, canMoveDown, setsProgress }) {
   const prev = lastPerf ? lastPerf[ex.exercise_name] : null;
   const canReorder = onMoveUp || onMoveDown;
+  const isDone = setsProgress ? setsProgress.done === setsProgress.total : ex.done;
   return (
     <div onClick={onClick} style={{
       background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"11px 14px", marginBottom:8,
       display:"flex", justifyContent:"space-between", alignItems:"center", cursor: onClick ? "pointer" : "default", gap:10,
-      opacity: ex.done ? 0.6 : 1,
+      opacity: isDone ? 0.6 : 1,
     }}>
       {canReorder && (
         <div style={{ display:"flex", flexDirection:"column", gap:3, flexShrink:0 }}>
@@ -40,7 +42,14 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
           }}><ArrowDown size={11} /></button>
         </div>
       )}
-      {onToggleDone && (
+      {setsProgress ? (
+        <div style={{
+          width:26, height:26, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+          border: isDone ? "none" : "1.5px solid rgba(255,255,255,0.35)", background: isDone ? "#276749" : "transparent",
+        }}>
+          {isDone && <Check size={13} color="#fff" />}
+        </div>
+      ) : onToggleDone && (
         <button onClick={(e)=>{ e.stopPropagation(); onToggleDone(); }} style={{
           width:26, height:26, borderRadius:"50%", flexShrink:0, cursor:"pointer",
           border: ex.done ? "none" : "1.5px solid rgba(255,255,255,0.35)",
@@ -52,20 +61,26 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
       )}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-          <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px", textDecoration: ex.done ? "line-through" : "none" }}>{ex.exercise_name}</p>
+          <p style={{ fontSize:13, fontWeight:600, color:"#fff", margin:"0 0 5px", textDecoration: isDone ? "line-through" : "none" }}>{ex.exercise_name}</p>
           {ex.from_preset && (
             <span style={{ fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.55)", background:"rgba(255,255,255,0.1)", borderRadius:6, padding:"1px 5px", marginBottom:5, display:"inline-flex", alignItems:"center", gap:3 }}>
               <Clipboard size={8} />šablonas
             </span>
           )}
         </div>
-        <ExerciseSummary ex={ex} />
+        {setsProgress ? (
+          <p style={{ fontSize:11, fontWeight:700, color: isDone ? "#7FFFB0" : "rgba(255,255,255,0.6)", margin:0, display:"flex", alignItems:"center", gap:5 }}>
+            <Dumbbell size={10} />{setsProgress.done}/{setsProgress.total} serijų{isDone ? " atlikta" : " · paliesk tęsti"}
+          </p>
+        ) : (
+          <ExerciseSummary ex={ex} />
+        )}
         {prev && (
           <p style={{ fontSize:10, color:"rgba(255,215,0,0.6)", margin:"5px 0 0", display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
             <Timer size={9} />Praeitą kartą: <ExerciseSummary ex={prev} />
           </p>
         )}
-        {onClick && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>paliesk redaguoti</span>}
+        {onClick && !setsProgress && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>paliesk redaguoti</span>}
       </div>
       {onRemove && (
         <button onClick={(e)=>{ e.stopPropagation(); onRemove(); }} style={{ background:"rgba(255,100,100,0.15)", border:"1px solid rgba(255,100,100,0.3)", borderRadius:8, padding:"6px 10px", color:"#FF8888", cursor:"pointer", flexShrink:0 }}>
@@ -223,6 +238,8 @@ export default function LiveTraining({ client, onClose }) {
   const [deletingSession, setDeletingSession] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [finishingOnExit, setFinishingOnExit] = useState(false);
+  const [setsByExercise, setSetsByExercise] = useState({});
+  const [executingExercise, setExecutingExercise] = useState(null);
   const pendingProceedRef = useRef(null);
 
   // Kol treniruotė pradėta, bet nepažymėta baigta, užregistruojame "išėjimo
@@ -253,12 +270,48 @@ export default function LiveTraining({ client, onClose }) {
         filter: `session_id="${todayRec.id}"`, sort: "order_num", requestKey: null,
       }).catch(() => []);
       setTodayExercises(exs);
+      if (exs.length) {
+        const filter = exs.map(e => `exercise_id="${e.id}"`).join(" || ");
+        const allSets = await pb.collection("live_session_sets").getFullList({ filter, requestKey: null }).catch(() => []);
+        const grouped = {};
+        allSets.forEach(s => { (grouped[s.exercise_id] ||= []).push(s); });
+        setSetsByExercise(grouped);
+      } else {
+        setSetsByExercise({});
+      }
     } else {
       setTodayExercises([]);
+      setSetsByExercise({});
     }
     fetchLastPerformanceMap(client.id, todayRec ? [todayRec.id] : []).then(setLastPerf);
     setLoading(false);
   }, [client.id, today]);
+
+  // Sukuria serijų (live_session_sets) įrašus naujai pridėtam pratimui —
+  // kiekvienai planuotai serijai po atskirą įrašą su "planas" reikšmėmis,
+  // kurias vėliau treniruotės metu galima koreguoti atskirai nuo realiai
+  // atliktų. Kardio pratimams serijos netaikomos (naudojama duration_min).
+  async function createSetsForExercise(exerciseId, exData) {
+    if (exData.category === "cardio") return [];
+    const n = exData.sets || 1;
+    let weights = null;
+    if (exData.set_weights) {
+      try { weights = JSON.parse(exData.set_weights).map(Number); } catch { /* naudoti weight_kg žemiau */ }
+    }
+    const creates = [];
+    for (let i = 0; i < n; i++) {
+      creates.push(pb.collection("live_session_sets").create({
+        exercise_id: exerciseId, set_number: i + 1,
+        target_reps: exData.duration_sec ? null : (exData.reps || null),
+        target_weight_kg: weights ? (weights[i] ?? weights[weights.length - 1] ?? null) : (exData.weight_kg || null),
+        target_duration_sec: exData.duration_sec || null,
+        rest_seconds: DEFAULT_REST_SECONDS,
+      }).catch(() => null));
+    }
+    const created = (await Promise.all(creates)).filter(Boolean);
+    if (created.length) setSetsByExercise(prev => ({ ...prev, [exerciseId]: created }));
+    return created;
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -277,7 +330,10 @@ export default function LiveTraining({ client, onClose }) {
       sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
       order_num: todayExercises.length,
     }).catch(() => null);
-    if (rec) setTodayExercises(prev => [...prev, rec]);
+    if (rec) {
+      setTodayExercises(prev => [...prev, rec]);
+      await createSetsForExercise(rec.id, rec);
+    }
     setShowPicker(false);
   }
 
@@ -296,7 +352,7 @@ export default function LiveTraining({ client, onClose }) {
         sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, set_weights: ex.set_weights, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
         order_num: order++, from_preset: true,
       }).catch(() => null);
-      if (rec) created.push(rec);
+      if (rec) { created.push(rec); await createSetsForExercise(rec.id, rec); }
     }
     setTodayExercises(prev => [...prev, ...created]);
     setShowTemplatePicker(false);
@@ -312,8 +368,11 @@ export default function LiveTraining({ client, onClose }) {
   }
 
   async function handleRemoveExercise(id) {
+    const exSets = setsByExercise[id] || [];
+    await Promise.all(exSets.map(s => pb.collection("live_session_sets").delete(s.id).catch(() => {})));
     await pb.collection("live_session_exercises").delete(id).catch(() => {});
     setTodayExercises(prev => prev.filter(e => e.id !== id));
+    setSetsByExercise(prev => { const n = { ...prev }; delete n[id]; return n; });
   }
 
   // Sukeičia dviejų pratimų eilės tvarką (ir jų order_num reikšmes PocketBase),
@@ -386,13 +445,32 @@ export default function LiveTraining({ client, onClose }) {
   async function handleDeleteSession() {
     if (!todaySession) return;
     setDeletingSession(true);
+    const allSets = Object.values(setsByExercise).flat();
+    await Promise.all(allSets.map(s => pb.collection("live_session_sets").delete(s.id).catch(() => {})));
     await Promise.all(todayExercises.map(ex => pb.collection("live_session_exercises").delete(ex.id).catch(() => {})));
     await pb.collection("live_sessions").delete(todaySession.id).catch(() => {});
     setTodaySession(null);
     setTodayExercises([]);
+    setSetsByExercise({});
     setNote("");
     setConfirmingDelete(false);
     setDeletingSession(false);
+  }
+
+  // Serijos pažymimos/redaguojamos SetExecution ekrane — po kiekvieno
+  // pakeitimo sinchronizuojame pratimo bendrą "atlikta" būseną (naudojama
+  // viršutinėje suvestinėje ir pratimų sąraše).
+  async function handleSetsProgressChange(exerciseId, allDone) {
+    setTodayExercises(prev => prev.map(e => e.id === exerciseId ? { ...e, done: allDone } : e));
+    await pb.collection("live_session_exercises").update(exerciseId, { done: allDone }).catch(() => {});
+  }
+
+  async function closeExecution() {
+    const exId = executingExercise?.id;
+    setExecutingExercise(null);
+    if (!exId) return;
+    const sets = await pb.collection("live_session_sets").getFullList({ filter: `exercise_id="${exId}"`, requestKey: null }).catch(() => []);
+    setSetsByExercise(prev => ({ ...prev, [exId]: sets }));
   }
 
   async function togglePast(session) {
@@ -416,6 +494,9 @@ export default function LiveTraining({ client, onClose }) {
         <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} lastPerf={lastPerf} />
       )}
       {showProgress && <ExerciseProgress client={client} onClose={() => setShowProgress(false)} />}
+      {executingExercise && (
+        <SetExecution key={executingExercise.id} exercise={executingExercise} onClose={closeExecution} onExerciseDoneChange={handleSetsProgressChange} />
+      )}
       {showExitConfirm && createPortal(
         <div onClick={(e) => { if (e.target === e.currentTarget) { setShowExitConfirm(false); pendingProceedRef.current = null; } }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div style={{ maxWidth:360, width:"100%", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:20, padding:"22px 20px", border:"1px solid rgba(255,255,255,0.15)" }}>
@@ -491,16 +572,21 @@ export default function LiveTraining({ client, onClose }) {
               </div>
             ) : (
               <div style={{ marginBottom:12 }}>
-                {todayExercises.map((ex, i) => (
-                  <ExerciseRow key={ex.id} ex={ex} lastPerf={lastPerf}
-                    onClick={() => setEditingExercise(ex)}
-                    onRemove={() => handleRemoveExercise(ex.id)}
-                    onToggleDone={() => handleToggleDone(ex)}
-                    onMoveUp={() => handleMoveExercise(i, -1)}
-                    onMoveDown={() => handleMoveExercise(i, 1)}
-                    canMoveUp={i > 0}
-                    canMoveDown={i < todayExercises.length - 1} />
-                ))}
+                {todayExercises.map((ex, i) => {
+                  const exSets = setsByExercise[ex.id];
+                  const hasSets = exSets && exSets.length > 0;
+                  return (
+                    <ExerciseRow key={ex.id} ex={ex} lastPerf={lastPerf}
+                      setsProgress={hasSets ? { done: exSets.filter(s => s.done).length, total: exSets.length } : null}
+                      onClick={() => hasSets ? setExecutingExercise(ex) : setEditingExercise(ex)}
+                      onRemove={() => handleRemoveExercise(ex.id)}
+                      onToggleDone={hasSets ? undefined : () => handleToggleDone(ex)}
+                      onMoveUp={() => handleMoveExercise(i, -1)}
+                      onMoveDown={() => handleMoveExercise(i, 1)}
+                      canMoveUp={i > 0}
+                      canMoveDown={i < todayExercises.length - 1} />
+                  );
+                })}
               </div>
             )}
 
