@@ -49,7 +49,10 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
     const k = draftKey(set.id, field);
     if (k in drafts) return drafts[k];
     let v = set[numericField];
-    if (v == null && fallbackToTarget) v = set[numericField.replace("actual_", "target_")];
+    // PocketBase tušt(ą) Number lauką grąžina kaip 0, ne null — todėl čia
+    // tikriname "tuščia" reikšmė (0 arba null/undefined), o ne tik null,
+    // kitaip pasiūlymas iš plano niekada nesuveikdavo naujoms serijoms.
+    if (!v && fallbackToTarget) v = set[numericField.replace("actual_", "target_")];
     return v != null ? String(v) : "";
   }
   function setDraft(set, field, value) {
