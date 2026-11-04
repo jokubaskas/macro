@@ -520,6 +520,7 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
   const [days, setDays]           = useState([]);
   const [activeDay, setActiveDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
+  const [presetPick, setPresetPick] = useState(null); // {preset, days, selectedDay} — kai šablonas turi >1 dieną, leidžia pasirinkti tik vieną
   const [editingExercise, setEditingExercise] = useState(null); // {dayIdx, exIdx, exercise}
   const [saving, setSaving]       = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEditing);
@@ -553,10 +554,21 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
     return () => { cancelled = true; };
   }, [isEditing, plan?.id]);
 
-  async function loadFromPreset(preset) {
+  // Paspaudus šabloną — jei jis turi daugiau nei 1 dieną, paklausti ar
+  // priskirti visas, ar tik vieną konkrečią (pvz. online treniruotei).
+  async function openPreset(preset) {
+    const dbDays = await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${preset.id}"`, sort:"day_number", requestKey:null }).catch(()=>[]);
+    if (dbDays.length <= 1) {
+      loadFromPreset(preset, dbDays);
+    } else {
+      setPresetPick({ preset, days: dbDays, selectedDay: null });
+    }
+  }
+
+  async function loadFromPreset(preset, dbDaysParam) {
     setPlanName(preset.name);
-    setDaysCount(preset.days_count);
-    const dbDays = await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${preset.id}"`, sort:"day_number", requestKey:null });
+    const dbDays = dbDaysParam || await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${preset.id}"`, sort:"day_number", requestKey:null });
+    setDaysCount(dbDays.length);
     const fullDays = await Promise.all(dbDays.map(async d => {
       const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
       return { day_number:d.day_number, day_label:d.day_label, exercises: exs.map(e=>({
@@ -566,7 +578,24 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
       })) };
     }));
     setDays(fullDays);
+    setPresetPick(null);
     setStep(1); // pirma nustatyti galiojimo datą, tada pratimai jau bus įkelti iš šablono
+  }
+
+  // Priskirti klientui TIK vieną pasirinktą šablono dieną (ne visą planą) —
+  // rezultate bus vienos dienos planas, pažymėtas kaip day_number:1.
+  async function loadFromPresetSingleDay(preset, day) {
+    const label = day.day_label || `${day.day_number} diena`;
+    setPlanName(`${preset.name} – ${label}`);
+    setDaysCount(1);
+    const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${day.id}"`, sort:"order_num", requestKey:null }).catch(()=>[]);
+    setDays([{ day_number:1, day_label:label, exercises: exs.map(e=>({
+      exercise_name:e.exercise_name, category:e.category, muscle:e.muscle,
+      sets:e.sets, reps:e.reps, weight_kg:e.weight_kg, duration_min:e.duration_min, duration_sec:e.duration_sec,
+      set_weights:e.set_weights||null, trainer_note:e.trainer_note||null
+    })) }]);
+    setPresetPick(null);
+    setStep(1);
   }
 
   function startFromScratch() {
@@ -660,7 +689,7 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
               <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Šablonų dar nesukurta. Sukurkite juos "Šablonai" skiltyje.</p>
             )}
             {presets.map(p => (
-              <button key={p.id} onClick={()=>loadFromPreset(p)} style={{width:"100%",padding:"14px 16px",marginBottom:8,borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <button key={p.id} onClick={()=>openPreset(p)} style={{width:"100%",padding:"14px 16px",marginBottom:8,borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <p style={{fontSize:14,fontWeight:700,margin:"0 0 2px",display:"flex",alignItems:"center",gap:6}}><Clipboard size={14} />{p.name}</p>
                   <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",margin:0}}>{p.days_count} d./sav.</p>
@@ -668,6 +697,33 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
                 <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
               </button>
             ))}
+
+            {presetPick && (
+              <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end"}} onClick={e=>e.target===e.currentTarget&&setPresetPick(null)}>
+                <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)",borderRadius:"24px 24px 0 0",padding:"20px 16px 40px",maxHeight:"90vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                    <p style={{fontSize:15,fontWeight:700,color:"#fff",margin:0}}>{presetPick.preset.name}</p>
+                    <button onClick={()=>setPresetPick(null)} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center"}}><Close size={14} /></button>
+                  </div>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",margin:"0 0 12px"}}>Priskirti visas {presetPick.days.length} dienas, ar tik vieną konkrečią (pvz. online treniruotei)?</p>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+                    {presetPick.days.map(d => (
+                      <button key={d.id} onClick={()=>setPresetPick(pp=>({...pp,selectedDay:d}))} style={{padding:"8px 14px",borderRadius:20,border:"none",background:presetPick.selectedDay?.id===d.id?"#AD1457":"rgba(255,255,255,0.12)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                        {d.day_label || `${d.day_number} diena`}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>loadFromPreset(presetPick.preset, presetPick.days)} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid rgba(255,255,255,0.3)",background:"transparent",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600}}>
+                      Visos dienos
+                    </button>
+                    <button onClick={()=>presetPick.selectedDay && loadFromPresetSingleDay(presetPick.preset, presetPick.selectedDay)} disabled={!presetPick.selectedDay} style={{flex:2,padding:"12px",borderRadius:12,background:"linear-gradient(135deg,#6D1B3B,#AD1457)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:presetPick.selectedDay?"pointer":"default",fontFamily:"inherit",opacity:presetPick.selectedDay?1:0.5}}>
+                      Priskirti tik šią dieną
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {step===1&&(
