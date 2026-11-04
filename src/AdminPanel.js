@@ -39,23 +39,42 @@ const TRAFFIC_COLOR = { 1: ["#FF7A6E", "#E14A45"], 2: ["#FFC15E", "#F2A63D"], 3:
 function LiveSessionBanner({ info, onClick }) {
   const isDesktop = useIsDesktop();
   if (!info) return null;
+
+  // Kompiuteryje/iPade nėra apatinės tabų juostos, tad plati piliulė apačioje
+  // nieko neuždengia — paliekama kaip buvo.
+  if (isDesktop) {
+    return createPortal(
+      <button onClick={onClick} style={{
+        position: "fixed", left: "50%", transform: "translateX(-50%)",
+        bottom: "max(16px, calc(env(safe-area-inset-bottom) + 10px))",
+        zIndex: 1250, display: "flex", alignItems: "center", gap: 9,
+        background: "linear-gradient(135deg,#AD1457,#E91E8C)", border: "none", borderRadius: 30,
+        padding: "11px 16px 11px 14px", color: "#fff", cursor: "pointer", fontFamily: "inherit",
+        boxShadow: "0 8px 24px rgba(173,20,87,0.5)", maxWidth: "calc(100vw - 32px)",
+      }}>
+        <Dot color="#fff" size={8} style={{ animation: "livePulse 1.2s ease-in-out infinite", flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          Treniruotė vyksta · {info.clientName}
+        </span>
+        <ChevronRight size={14} style={{ flexShrink: 0 }} />
+      </button>,
+      document.body
+    );
+  }
+
+  // Telefone plati piliulė apačioje uždengia apatinę tabų juostą — vietoj jos
+  // mažas burbuliukas viršutiniame dešiniame kampe, žemiau ekrano antraštės
+  // (kad nesikirstų su jos mygtukais), bet aukščiau bet kokio turinio.
   return createPortal(
-    <button onClick={onClick} style={{
-      position: "fixed", left: "50%", transform: "translateX(-50%)",
-      // Mobiliuosiuose reikia pakilti virš apatinės tabų juostos (ji visada
-      // rodoma, ~84px aukščio su savo saugiu kraštu); kompiuteryje/iPade
-      // apatinės juostos nėra, tad užtenka mažo atstumo nuo krašto.
-      bottom: isDesktop ? "max(16px, calc(env(safe-area-inset-bottom) + 10px))" : "max(84px, calc(env(safe-area-inset-bottom) + 70px))",
-      zIndex: 1250, display: "flex", alignItems: "center", gap: 9,
-      background: "linear-gradient(135deg,#AD1457,#E91E8C)", border: "none", borderRadius: 30,
-      padding: "11px 16px 11px 14px", color: "#fff", cursor: "pointer", fontFamily: "inherit",
-      boxShadow: "0 8px 24px rgba(173,20,87,0.5)", maxWidth: "calc(100vw - 32px)",
+    <button onClick={onClick} title={`Treniruotė vyksta · ${info.clientName}`} style={{
+      position: "fixed", top: "max(78px, calc(env(safe-area-inset-top) + 72px))", right: 14,
+      zIndex: 1250, width: 48, height: 48, borderRadius: "50%", padding: 0,
+      background: "linear-gradient(135deg,#AD1457,#E91E8C)", border: "2px solid rgba(255,255,255,0.35)",
+      display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontFamily: "inherit",
+      boxShadow: "0 6px 18px rgba(173,20,87,0.55)", flexShrink: 0,
     }}>
-      <Dot color="#fff" size={8} style={{ animation: "livePulse 1.2s ease-in-out infinite", flexShrink: 0 }} />
-      <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-        Treniruotė vyksta · {info.clientName}
-      </span>
-      <ChevronRight size={14} style={{ flexShrink: 0 }} />
+      <Dumbbell size={19} color="#fff" />
+      <Dot color="#fff" size={10} style={{ position: "absolute", top: -2, right: -2, animation: "livePulse 1.2s ease-in-out infinite", filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
     </button>,
     document.body
   );
