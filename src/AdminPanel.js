@@ -174,32 +174,75 @@ function ProgressRing({ pct, c1, c2, hit, size = 40 }) {
   );
 }
 
-function DashStatCard({ icon: Icon, value, label, c1, c2, pct }) {
-  const hit = pct != null && pct >= 100;
+// "Bento" išdėstymas: viena, šiuo metu aktualiausia metrika (šiandienos
+// rezervacijos) rodoma kaip didesnė "hero" kortelė, likusios — kompaktiškos,
+// mažesnės, 3 stulpelių eilutėje. Naudojama tiek mobile, tiek desktop.
+function DashboardStatsSection({ clients, dashExtra }) {
+  const onboardedPct = clients.length ? clients.filter(c => c.onboarding_done).length / clients.length * 100 : null;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <DashHeroCard icon={Calendar} c1="#FFC15E" c2="#FF9F43"
+        value={dashExtra.todayBookings} label="Šiandien rezervacijų" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0" compact
+          value={clients.length} label="Klientai" />
+        <DashStatCard icon={CheckCircle} c1="#7FE3A6" c2="#2FBE84" compact
+          value={clients.filter(c => c.onboarding_done).length} label="Anketa baigta" pct={onboardedPct} />
+        <DashStatCard icon={Ticket} c1="#FF9FC7" c2="#E91E8C" compact
+          value={dashExtra.weekPackages} label="Paketai / sav." />
+      </div>
+    </div>
+  );
+}
+
+function DashHeroCard({ icon: Icon, value, label, c1, c2 }) {
   return (
     <div style={{
-      position:"relative", overflow:"hidden", borderRadius:16, padding:"14px 12px",
+      position:"relative", overflow:"hidden", borderRadius:20, padding:"18px 18px", marginBottom:10,
+      background:`linear-gradient(145deg, ${c1}30, ${c2}16)`,
+      border:`1px solid ${c1}45`,
+    }}>
+      <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, borderRadius:"50%", background:`radial-gradient(circle, ${c1}40, transparent 70%)` }} />
+      <div style={{ position:"relative", display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:48, height:48, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${c1}40, ${c2}28)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <Icon size={22} color={c1} />
+        </div>
+        <div>
+          <div style={{ fontSize:34, fontWeight:800, color:"#fff", lineHeight:1 }}>{value}</div>
+          <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", marginTop:4 }}>{label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashStatCard({ icon: Icon, value, label, c1, c2, pct, compact }) {
+  const hit = pct != null && pct >= 100;
+  const iconSize = compact ? 26 : 32;
+  return (
+    <div style={{
+      position:"relative", overflow:"hidden", borderRadius: compact ? 14 : 16, padding: compact ? "10px 8px" : "14px 12px",
       background:`linear-gradient(145deg, ${c1}26, ${c2}12)`,
       border:`1px solid ${c1}3d`,
-      display:"flex", alignItems:"center", gap:10,
+      display: compact ? "flex" : "flex", flexDirection: compact ? "column" : "row", alignItems: compact ? "flex-start" : "center", gap: compact ? 6 : 10,
     }}>
       <div style={{
         position:"absolute", top:-26, right:-26, width:70, height:70, borderRadius:"50%",
         background:`radial-gradient(circle, ${c1}3d, transparent 70%)`,
       }} />
       <div style={{
-        position:"relative", width:32, height:32, borderRadius:"50%", flexShrink:0,
+        position:"relative", width:iconSize, height:iconSize, borderRadius:"50%", flexShrink:0,
         background:`linear-gradient(135deg, ${c1}33, ${c2}22)`,
         display:"flex", alignItems:"center", justifyContent:"center",
         boxShadow: hit ? `0 0 0 3px ${c1}33` : "none",
       }}>
-        <Icon size={16} color={c1} />
+        <Icon size={compact ? 13 : 16} color={c1} />
       </div>
       <div style={{ position:"relative", flex:1, minWidth:0 }}>
-        <div style={{ fontSize:20, fontWeight:800, color:"#fff" }}>{value}</div>
-        <div style={{ fontSize:10, color:"rgba(255,255,255,0.55)", lineHeight:1.25 }}>{label}</div>
+        <div style={{ fontSize: compact ? 16 : 20, fontWeight:800, color:"#fff" }}>{value}</div>
+        <div style={{ fontSize: compact ? 9 : 10, color:"rgba(255,255,255,0.55)", lineHeight:1.25 }}>{label}</div>
       </div>
-      {pct != null && <ProgressRing pct={pct} c1={c1} c2={c2} hit={hit} />}
+      {pct != null && !compact && <ProgressRing pct={pct} c1={c1} c2={c2} hit={hit} />}
     </div>
   );
 }
@@ -1310,17 +1353,7 @@ export default function AdminPanel({ user, onLogout }) {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
-              value={clients.length} label="Klientai iš viso" />
-            <DashStatCard icon={CheckCircle} c1="#7FE3A6" c2="#2FBE84"
-              value={clients.filter(c => c.onboarding_done).length} label="Anketa baigta"
-              pct={clients.length ? clients.filter(c => c.onboarding_done).length / clients.length * 100 : null} />
-            <DashStatCard icon={Calendar} c1="#FFC15E" c2="#FF9F43"
-              value={dashExtra.todayBookings} label="Šiandien rezervacijų" />
-            <DashStatCard icon={Ticket} c1="#FF9FC7" c2="#E91E8C"
-              value={dashExtra.weekPackages} label="Šią savaitę parduota paketų" />
-          </div>
+          <DashboardStatsSection clients={clients} dashExtra={dashExtra} />
 
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 
@@ -1539,17 +1572,7 @@ export default function AdminPanel({ user, onLogout }) {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-                <DashStatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
-                  value={clients.length} label="Klientai iš viso" />
-                <DashStatCard icon={CheckCircle} c1="#7FE3A6" c2="#2FBE84"
-                  value={clients.filter(c => c.onboarding_done).length} label="Anketa baigta"
-                  pct={clients.length ? clients.filter(c => c.onboarding_done).length / clients.length * 100 : null} />
-                <DashStatCard icon={Calendar} c1="#FFC15E" c2="#FF9F43"
-                  value={dashExtra.todayBookings} label="Šiandien rezervacijų" />
-                <DashStatCard icon={Ticket} c1="#FF9FC7" c2="#E91E8C"
-                  value={dashExtra.weekPackages} label="Šią savaitę parduota paketų" />
-              </div>
+              <DashboardStatsSection clients={clients} dashExtra={dashExtra} />
 
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 

@@ -18,7 +18,6 @@ const BDAY_KEYFRAMES = `@keyframes bdayBannerGlow { 0%, 100% { box-shadow: 0 0 1
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
-function Sep() { return <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />; }
 
 // ── Savaitės apžvalgos kortelė ────────────────────────────────────────────────
 function DayDot({ done, isToday }) {
@@ -311,9 +310,15 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
         <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom: 8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
       </div>
 
-      {/* Header — paprastas */}
+      {/* Header — "stiklinė" (glass) hero kortelė su blur, kad sveikinimas
+          aiškiai išsiskirtų kaip pirmas dalykas, kurį klientas pamato. */}
       <div style={{ padding: "env(safe-area-inset-top, 16px) 20px 14px", paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
-        <div style={{ display: "flex", flexWrap: "nowrap", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8 }}>
+        <div style={{
+          display: "flex", flexWrap: "nowrap", justifyContent: "space-between", alignItems: "center", gap: 8,
+          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 20,
+          padding: "12px 14px", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, overflow: "hidden" }}>
             <img src="/logo.png" alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8, flexShrink: 0 }} />
             <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -338,7 +343,6 @@ export default function ClientView({ user, onLogout, selectedDate: propDate, onD
             <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>Išeiti</button>
           </div>
         </div>
-        <Sep />
       </div>
 
       {/* Content */}

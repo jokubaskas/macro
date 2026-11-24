@@ -1,7 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { pb } from "./pb";
-import { ProgressBar } from "./ui/kit";
+function ProgressRing({ pct, c1, size = 56 }) {
+  const r = (size - 7) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
+  const dash = (Math.min(100, Math.max(0, pct)) / 100) * C;
+  return (
+    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:"rotate(-90deg)" }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="6" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={c1} strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C - dash}
+          style={{ transition:"stroke-dashoffset 0.7s cubic-bezier(.23,1,.32,1)", filter:`drop-shadow(0 0 5px ${c1}80)` }} />
+      </svg>
+      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:c1, transform:"rotate(0deg)" }}>
+        {Math.round(pct)}%
+      </div>
+    </div>
+  );
+}
 import { effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
 import {
   ChevronLeft, ChevronRight, Ticket, Dumbbell, Flame, Muscle, Salad, Laptop, MapPin, Timer,
@@ -217,10 +233,11 @@ export default function TrainingPackages({ user, onClose }) {
         {/* Aktyvus paketas */}
         {hasActive && (
           <div style={{ background:"rgba(127,255,176,0.1)", border:"1.5px solid rgba(127,255,176,0.3)", borderRadius:18, padding:"16px", marginBottom:16 }}>
-            <p style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 6px", display:"flex", alignItems:"center", gap:5 }}><CheckCircle size={11} />Aktyvus paketas</p>
-            <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 6px" }}>{totalRemaining} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {totalCredits} treniruočių liko</span></p>
-            <ProgressBar pct={(totalRemaining/totalCredits)*100} height={6}
-              fill="linear-gradient(90deg,#2FBE84,#7FFFB0)" glow="#7FFFB099" />
+            <p style={{ fontSize:10, fontWeight:700, color:"#7FFFB0", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px", display:"flex", alignItems:"center", gap:5 }}><CheckCircle size={11} />Aktyvus paketas</p>
+            <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+              <ProgressRing pct={(totalRemaining/totalCredits)*100} c1="#7FFFB0" />
+              <p style={{ fontSize:22, fontWeight:800, color:"#fff", margin:0 }}>{totalRemaining} <span style={{ fontSize:13, fontWeight:400, color:"rgba(255,255,255,0.5)" }}>/ {totalCredits} treniruočių liko</span></p>
+            </div>
             {nearestDeadline && (() => {
               const d = daysUntil(nearestDeadline);
               return (
