@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
+import { toast } from "./ui/toast";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
 import SetExecution, { DEFAULT_REST_SECONDS } from "./SetExecution";
@@ -97,19 +98,35 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
 }
 
 // ── Šablono pasirinkimas (gyvai treniruotei pradėti) ─────────────────────────
-function TemplatePickerModal({ onConfirm, onClose }) {
+function TemplatePickerModal({ clientId, onConfirm, onClose }) {
   const [presets, setPresets]           = useState([]);
+  const [clientTemplates, setClientTemplates] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [selectedPreset, setSelectedPreset] = useState(null);
   const [days, setDays]                 = useState([]);
   const [loadingDays, setLoadingDays]   = useState(false);
   const [selectedDay, setSelectedDay]   = useState(null);
   const [starting, setStarting]         = useState(false);
+  const [startingTemplateId, setStartingTemplateId] = useState(null);
 
   useEffect(() => {
-    pb.collection("workout_presets").getFullList({ sort:"name", requestKey:null })
-      .then(setPresets).catch(()=>[]).finally(()=>setLoading(false));
-  }, []);
+    Promise.all([
+      pb.collection("workout_presets").getFullList({ sort:"name", requestKey:null }).catch(()=>[]),
+      pb.collection("client_templates").getFullList({ filter:`client_id="${clientId}"`, sort:"-updated", requestKey:null }).catch(()=>[]),
+    ]).then(([p, ct]) => { setPresets(p); setClientTemplates(ct); }).finally(()=>setLoading(false));
+  }, [clientId]);
+
+  // Kliento šablonas visada "plokščias" (vienas treniruotės sąrašas, be
+  // dienų) — jis jau yra sukoreguotas tai konkrečiai klientei, tad iškart
+  // paleidžiama, nepereinant per dienos pasirinkimą.
+  async function useClientTemplate(t) {
+    setStartingTemplateId(t.id);
+    const exs = await pb.collection("client_template_exercises").getFullList({
+      filter: `template_id="${t.id}"`, sort: "order_num", requestKey: null,
+    }).catch(() => []);
+    setStartingTemplateId(null);
+    onConfirm(exs, { presetName: t.name, dayLabel: null });
+  }
 
   async function openPreset(preset) {
     setSelectedPreset(preset);
@@ -146,16 +163,37 @@ function TemplatePickerModal({ onConfirm, onClose }) {
         {!selectedPreset ? (
           loading ? (
             <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>
-          ) : presets.length === 0 ? (
-            <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Šablonų dar nėra — sukurk juos "Šablonai" skiltyje.</p>
           ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {presets.map(p => (
-                <button key={p.id} onClick={()=>openPreset(p)} style={{ padding:"13px 14px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
-                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{p.days_count} d.</span>
-                </button>
-              ))}
+            <div>
+              {clientTemplates.length > 0 && (
+                <div style={{ marginBottom:18 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>Šios klientės šablonai</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {clientTemplates.map(t => (
+                      <button key={t.id} onClick={()=>useClientTemplate(t)} disabled={!!startingTemplateId} style={{ padding:"13px 14px", background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.25)", borderRadius:12, color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <span style={{ fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><Dumbbell size={13} />{t.name}</span>
+                        <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{startingTemplateId===t.id ? "Kraunama..." : "Naudoti"}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {clientTemplates.length > 0 && (
+                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>Visi šablonai</p>
+              )}
+              {presets.length === 0 ? (
+                <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Šablonų dar nėra — sukurk juos "Šablonai" skiltyje.</p>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {presets.map(p => (
+                    <button key={p.id} onClick={()=>openPreset(p)} style={{ padding:"13px 14px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
+                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{p.days_count} d.</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         ) : (
@@ -182,6 +220,91 @@ function TemplatePickerModal({ onConfirm, onClose }) {
               </>
             )}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Dabartinio pratimų sąrašo išsaugojimas kaip šios klientės šablono ───────
+// Tyčia be automatinio saugojimo — treneris pats nusprendžia, kada šiandienos
+// (galbūt vienkartiniai) pakeitimai verti tapti nuolatiniu klientės šablonu.
+function SaveClientTemplateModal({ clientId, exercises, defaultName, onClose, onSaved }) {
+  const [existing, setExisting] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState(defaultName || "");
+  const [savingId, setSavingId] = useState(null); // "new" arba esamo šablono id
+
+  useEffect(() => {
+    pb.collection("client_templates").getFullList({ filter:`client_id="${clientId}"`, sort:"name", requestKey:null })
+      .then(setExisting).catch(()=>[]).finally(()=>setLoading(false));
+  }, [clientId]);
+
+  async function writeExercises(templateId) {
+    for (let i = 0; i < exercises.length; i++) {
+      const ex = exercises[i];
+      await pb.collection("client_template_exercises").create({
+        template_id: templateId, exercise_name: ex.exercise_name, category: ex.category, muscle: ex.muscle,
+        sets: ex.sets, reps: ex.reps, weight_kg: ex.weight_kg, duration_min: ex.duration_min, duration_sec: ex.duration_sec,
+        set_weights: ex.set_weights || null, trainer_note: ex.trainer_note || null, order_num: i,
+      }, { requestKey: `ct-ex-${templateId}-${i}` }).catch(() => {});
+    }
+  }
+
+  async function saveAsNew() {
+    if (!newName.trim()) return;
+    setSavingId("new");
+    const t = await pb.collection("client_templates").create({ client_id: clientId, name: newName.trim() }).catch(() => null);
+    if (t) await writeExercises(t.id);
+    setSavingId(null);
+    if (t) { toast(`Išsaugota kaip "${t.name}"`, "success"); onSaved?.(); onClose(); }
+    else toast("Nepavyko išsaugoti šablono.", "error");
+  }
+
+  async function overwrite(t) {
+    setSavingId(t.id);
+    const oldExs = await pb.collection("client_template_exercises").getFullList({ filter:`template_id="${t.id}"`, requestKey:null }).catch(()=>[]);
+    await Promise.all(oldExs.map(oe => pb.collection("client_template_exercises").delete(oe.id, { requestKey:`ct-del-${oe.id}` }).catch(()=>{})));
+    await writeExercises(t.id);
+    await pb.collection("client_templates").update(t.id, {}).catch(()=>{}); // atnaujina "updated", kad rikiuotųsi viršuje
+    setSavingId(null);
+    toast(`Atnaujintas "${t.name}" šablonas`, "success");
+    onSaved?.(); onClose();
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"flex-end" }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ width:"100%", maxWidth:480, margin:"0 auto", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:"24px 24px 0 0", padding:"20px 16px 40px", maxHeight:"90vh", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0 }}>Išsaugoti kaip šablonas</p>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", cursor:"pointer", display:"flex", alignItems:"center" }}><Close size={14} /></button>
+        </div>
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:"0 0 16px" }}>Šis pratimų sąrašas (su visais svoriais/kiekiais) bus išsaugotas šiai klientei — kitą kartą galėsite jį tiesiog pasirinkti.</p>
+
+        {loading ? (
+          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"12px 0" }}>Kraunama...</p>
+        ) : (
+          <>
+            {existing.length > 0 && (
+              <div style={{ marginBottom:18 }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>Atnaujinti esamą</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {existing.map(t => (
+                    <button key={t.id} onClick={()=>overwrite(t)} disabled={!!savingId} style={{ padding:"12px 14px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, color:"#fff", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{t.name}</span>
+                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{savingId===t.id ? "Saugoma..." : "Atnaujinti"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px" }}>Arba išsaugoti kaip naują</p>
+            <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Šablono pavadinimas" style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", marginBottom:12 }} />
+            <button onClick={saveAsNew} disabled={!newName.trim() || !!savingId} style={{ width:"100%", padding:"13px", borderRadius:12, background: newName.trim() ? "linear-gradient(135deg,#6D1B3B,#AD1457)" : "rgba(255,255,255,0.1)", color: newName.trim() ? "#fff" : "rgba(255,255,255,0.35)", border:"none", fontSize:14, fontWeight:700, cursor: newName.trim() ? "pointer" : "default", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              <Save size={14} />{savingId==="new" ? "Saugoma..." : "Išsaugoti kaip naują šabloną"}
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -233,6 +356,7 @@ export default function LiveTraining({ client, onClose }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
   const [note, setNote] = useState("");
@@ -509,7 +633,11 @@ export default function LiveTraining({ client, onClose }) {
       <style>{KEYFRAMES}</style>
 
       {showPicker && <ExercisePicker onAdd={handleAddExercise} onClose={() => setShowPicker(false)} lastPerf={lastPerf} />}
-      {showTemplatePicker && <TemplatePickerModal onConfirm={handleUseTemplate} onClose={() => setShowTemplatePicker(false)} />}
+      {showTemplatePicker && <TemplatePickerModal clientId={client.id} onConfirm={handleUseTemplate} onClose={() => setShowTemplatePicker(false)} />}
+      {showSaveTemplate && (
+        <SaveClientTemplateModal clientId={client.id} exercises={todayExercises} defaultName={todaySession?.preset_name ? `${todaySession.preset_name}${todaySession.day_label ? ` – ${todaySession.day_label}` : ""}` : client.name}
+          onClose={() => setShowSaveTemplate(false)} onSaved={() => {}} />
+      )}
       {editingExercise && (
         <ExerciseEditModal exercise={editingExercise} onClose={() => setEditingExercise(null)} onSave={handleUpdateExercise} lastPerf={lastPerf} />
       )}
@@ -618,6 +746,12 @@ export default function LiveTraining({ client, onClose }) {
                 + Pridėti pratimą
               </button>
             </div>
+
+            {todayExercises.length > 0 && (
+              <button onClick={() => setShowSaveTemplate(true)} style={{ width:"100%", padding:11, borderRadius:14, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.15)", color:"rgba(255,255,255,0.8)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <Save size={13} />Išsaugoti kaip šios klientės šabloną
+              </button>
+            )}
 
             <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:11, color:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", gap:5, marginBottom:6 }}><Edit size={11} />Pastabos apie treniruotę</label>
