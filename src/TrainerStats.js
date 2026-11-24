@@ -47,6 +47,28 @@ function ProgressRing({ pct, c1, c2, hit, size = 46 }) {
   );
 }
 
+function StatHeroCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
+  const hit = pct != null && pct >= 100;
+  return (
+    <div style={{
+      position:"relative", overflow:"hidden", borderRadius:20, padding:"18px 18px", marginBottom:10,
+      background:`linear-gradient(145deg, ${c1}30, ${c2}16)`,
+      border:`1px solid ${c1}45`,
+      display:"flex", alignItems:"center", gap:14,
+    }}>
+      <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, borderRadius:"50%", background:`radial-gradient(circle, ${c1}40, transparent 70%)` }} />
+      <div style={{ position:"relative", width:48, height:48, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${c1}40, ${c2}28)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <Icon size={22} color={c1} />
+      </div>
+      <div style={{ position:"relative", flex:1, minWidth:0 }}>
+        <div style={{ fontSize:34, fontWeight:800, color:"#fff", lineHeight:1 }}>{value}</div>
+        <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", marginTop:4 }}>{label}{sub ? ` · ${sub}` : ""}</div>
+      </div>
+      {pct != null && <ProgressRing pct={pct} c1={c1} c2={c2} hit={hit} size={52} />}
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
   const hit = pct != null && pct >= 100;
   return (
@@ -254,8 +276,13 @@ export default function TrainerStats({ onClose, onOpenClient }) {
 
         {loading && (
           <>
+            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:20, padding:18, marginBottom:10 }}>
+              <Skeleton width={48} height={48} radius={24} style={{ marginBottom:12 }} />
+              <Skeleton width="40%" height={28} style={{ marginBottom:6 }} />
+              <Skeleton width="60%" height={11} />
+            </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-              {[0,1,2,3,4].map(i => (
+              {[0,1,2,3].map(i => (
                 <div key={i} style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:14 }}>
                   <Skeleton width={28} height={28} radius={14} style={{ marginBottom:10 }} />
                   <Skeleton width="50%" height={16} style={{ marginBottom:6 }} />
@@ -270,10 +297,10 @@ export default function TrainerStats({ onClose, onOpenClient }) {
         {!loading && overview && (
           <>
             {/* Bendra apžvalga */}
+            <StatHeroCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
+              value={overview.activeClients} label="Aktyvūs klientai" sub={`iš ${overview.totalClients} viso`}
+              pct={overview.totalClients ? overview.activeClients / overview.totalClients * 100 : null} />
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-              <StatCard icon={Users} c1="#6EC6FF" c2="#2F8FE0"
-                value={overview.activeClients} label="Aktyvūs klientai" sub={`iš ${overview.totalClients} viso`}
-                pct={overview.totalClients ? overview.activeClients / overview.totalClients * 100 : null} />
               <StatCard icon={Clipboard} c1="#FF9FC7" c2="#E91E8C"
                 value={overview.totalCheckins} label="Check-in'ų" sub={`per ${period} d.`} />
               <StatCard icon={Salad} c1="#7FE3A6" c2="#2FBE84"

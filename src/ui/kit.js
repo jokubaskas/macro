@@ -12,8 +12,22 @@ export const GLOBAL_KEYFRAMES = `
 @keyframes confettiBurst { 0% { transform: translate(0,0) rotate(0deg); opacity:1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0; } }
 @keyframes skeletonShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
-button, .tap { transition: transform .12s ease-out, filter .12s ease-out; }
+button, .tap { transition: transform .15s cubic-bezier(.34,1.56,.64,1), filter .15s ease-out; }
 button:active, .tap:active { transform: scale(0.96); filter: brightness(0.95); }
+
+/* Labai subtilus "grain" sluoksnis virš visų gradientinių fonų — be jo
+   plokšti gradientai atrodo pigiau; su juo (tik ~3.5% opacity, overlay
+   blend) atsiranda švelni, "premium" tekstūra, bet jokiam turiniui ir
+   paspaudimams netrukdo (pointer-events:none, fiksuotas virš viso turinio). */
+body::before {
+  content:"";
+  position:fixed; inset:0; z-index:9998;
+  pointer-events:none;
+  opacity:0.035;
+  mix-blend-mode:overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
 `;
 
 // Gradientinė / vientisos spalvos progreso juosta su švelniu švytėjimu ir

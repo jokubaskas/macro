@@ -134,6 +134,28 @@ function ProgressRing({ pct, c1, c2, hit, size = 46 }) {
   );
 }
 
+function StatHeroCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
+  const hit = pct != null && pct >= 100;
+  return (
+    <div style={{
+      position:"relative", overflow:"hidden", borderRadius:20, padding:"18px 18px", marginBottom:10,
+      background:`linear-gradient(145deg, ${c1}30, ${c2}16)`,
+      border:`1px solid ${c1}45`,
+      display:"flex", alignItems:"center", gap:14,
+    }}>
+      <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, borderRadius:"50%", background:`radial-gradient(circle, ${c1}40, transparent 70%)` }} />
+      <div style={{ position:"relative", width:48, height:48, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${c1}40, ${c2}28)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <Icon size={22} color={c1} />
+      </div>
+      <div style={{ position:"relative", flex:1, minWidth:0 }}>
+        <div style={{ fontSize:34, fontWeight:800, color:"#fff", lineHeight:1 }}>{value}</div>
+        <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", marginTop:4 }}>{label}{sub ? ` · ${sub}` : ""}</div>
+      </div>
+      {pct != null && <ProgressRing pct={pct} c1={c1} c2={c2} hit={hit} size={52} />}
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, value, label, sub, c1, c2, pct }) {
   const hit = pct != null && pct >= 100;
   return (
@@ -234,6 +256,9 @@ export default function ClientStats({ user, onClose }) {
         {!loading && avgs && (
           <>
             <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Vidurkiai ({period} d.)</p>
+            <StatHeroCard icon={Clipboard} c1="#FF9FC7" c2="#E91E8C"
+              value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`}
+              pct={Math.min(100, avgs.checkinDays/period*100)} />
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
               <StatCard icon={Footprints} c1="#FFC15E" c2="#FF9F43"
                 value={avgs.avgSteps ? avgs.avgSteps.toLocaleString() : "–"} label="Vid. žingsniai"
@@ -245,9 +270,6 @@ export default function ClientStats({ user, onClose }) {
               <StatCard icon={Moon} c1="#B39DFF" c2="#8B6FE8"
                 value={avgs.avgSleep ? avgs.avgSleep.toFixed(1)+"h" : "–"} label="Vid. miegas"
                 pct={avgs.avgSleep ? Math.min(100, avgs.avgSleep/8*100) : null} />
-              <StatCard icon={Clipboard} c1="#FF9FC7" c2="#E91E8C"
-                value={avgs.checkinDays} label="Check-in'ų" sub={`iš ${period} d.`}
-                pct={Math.min(100, avgs.checkinDays/period*100)} />
               <StatCard icon={Salad} c1="#7FE3A6" c2="#2FBE84"
                 value={avgs.avgNutrition ? avgs.avgNutrition.toFixed(1) : "–"} label="Vid. mityba" sub="iš 3.0"
                 pct={avgs.avgNutrition ? avgs.avgNutrition/3*100 : null} />

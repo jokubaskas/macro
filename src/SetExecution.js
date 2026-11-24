@@ -8,7 +8,8 @@ import { ChevronLeft, Check, Timer, Edit, Dumbbell, Close } from "./ui/icons";
 import { useIsDesktop } from "./ui/responsive";
 import { toast } from "./ui/toast";
 import { haptic } from "./ui/pullToRefresh";
-import { SkeletonList } from "./ui/kit";
+import { SkeletonList, ConfettiBurst } from "./ui/kit";
+import { maxWeightOf } from "./exerciseStats";
 
 export const DEFAULT_REST_SECONDS = 90;
 
@@ -21,7 +22,7 @@ function fmtTime(totalSec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function SetExecution({ exercise, onClose, onExerciseDoneChange }) {
+export default function SetExecution({ exercise, lastPerf, onClose, onExerciseDoneChange }) {
   const isDesktop = useIsDesktop();
   const [sets, setSets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
   const [savingId, setSavingId] = useState(null);
   const [addingSet, setAddingSet] = useState(false);
   const [nowTick, setNowTick] = useState(Date.now());
+  const [showPR, setShowPR] = useState(false);
 
   const isTimed = !!exercise.duration_sec;
 
@@ -128,6 +130,7 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
     setSavingId(null);
     if (!rec) { toast("Nepavyko išsaugoti serijos.", "error"); return; }
     haptic(15);
+    checkNewRecord(rec);
     setSets(prev => {
       const next = prev.map(s => s.id === rec.id ? rec : s);
       const done = next.length > 0 && next.every(s => s.done);
@@ -135,6 +138,28 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
       syncExerciseAggregate(next);
       return next;
     });
+  }
+
+  // Jei ši serija pranoksta praeitą kartą šiam pratimui pasiektą geriausią
+  // rezultatą (svorį arba, kardio atveju, trukmę) — trumpa šventė ekrane.
+  // Lyginama tik su PRAEITOS treniruotės rezultatu (lastPerf), ne su
+  // ankstesnėmis šios pačios sesijos serijomis, kad "rekordas" reikštų
+  // realų progresą, ne vien geriausią seriją iš kelių šiandien.
+  function checkNewRecord(rec) {
+    const prev = lastPerf?.[exercise.exercise_name];
+    if (!prev) return;
+    let isPR = false;
+    if (isTimed) {
+      isPR = !!(rec.actual_duration_sec && prev.duration_sec && rec.actual_duration_sec > prev.duration_sec);
+    } else {
+      const prevBest = maxWeightOf(prev);
+      isPR = !!(rec.actual_weight_kg && prevBest && rec.actual_weight_kg > prevBest);
+    }
+    if (!isPR) return;
+    haptic(30);
+    toast(`🎉 Naujas asmeninis rekordas — ${exercise.exercise_name}!`, "success");
+    setShowPR(true);
+    setTimeout(() => setShowPR(false), 1400);
   }
 
   async function saveEditedDone(set) {
@@ -189,6 +214,11 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
 
   return (
     <div style={{ position: isDesktop ? "absolute" : "fixed", inset: 0, zIndex: 900, background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {showPR && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1400, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "relative" }}><ConfettiBurst count={16} /></div>
+        </div>
+      )}
       <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: isDesktop ? "20px" : "max(env(safe-area-inset-top), 20px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 14px", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><ChevronLeft size={14} />Atgal</button>
         <div style={{ flex: 1, minWidth: 0 }}>

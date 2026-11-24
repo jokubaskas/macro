@@ -6,6 +6,21 @@ import { SearchInput, ShowMoreButton, Skeleton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 
+function ProgressRing({ pct, c1, size = 34 }) {
+  const r = (size - 5) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
+  const dash = (Math.min(100, Math.max(0, pct)) / 100) * C;
+  return (
+    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:"rotate(-90deg)" }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="3.5" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={c1} strokeWidth="3.5" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C - dash}
+          style={{ transition:"stroke-dashoffset 0.7s cubic-bezier(.23,1,.32,1)" }} />
+      </svg>
+    </div>
+  );
+}
+
 const PACKAGES = {
   "1":  { label:"1 treniruotė",  total:1  },
   "8":  { label:"8 treniruotės", total:8  },
@@ -178,13 +193,13 @@ export default function PackageAdmin({ onClose, onOpenClient }) {
                   )}
                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:0 }}>{item.count} {item.count===1?"paketas":"paketai"}</p>
                 </div>
-                <div style={{ textAlign:"right" }}>
-                  <p style={{ fontSize:18, fontWeight:800, color:left>0?"#7FFFB0":"rgba(255,255,255,0.3)", margin:0 }}>{left}/{item.credits_total}</p>
-                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>liko treniruočių</p>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ textAlign:"right" }}>
+                    <p style={{ fontSize:18, fontWeight:800, color:left>0?"#7FFFB0":"rgba(255,255,255,0.3)", margin:0 }}>{left}/{item.credits_total}</p>
+                    <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)", margin:0 }}>liko treniruočių</p>
+                  </div>
+                  <ProgressRing pct={item.credits_total ? left/item.credits_total*100 : 0} c1={left>0?"#7FFFB0":"rgba(255,255,255,0.3)"} />
                 </div>
-              </div>
-              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:5, marginBottom: item.nearestDeadline ? 8 : 0 }}>
-                <div style={{ width:`${item.credits_total ? left/item.credits_total*100 : 0}%`, height:"100%", borderRadius:99, background:"#7FFFB0" }} />
               </div>
               {item.nearestDeadline && (
                 <p style={{ fontSize:11, color: soon ? "#FFD700" : "rgba(255,255,255,0.5)", fontWeight: soon ? 700 : 400, margin:0, display:"flex", alignItems:"center", gap:5 }}>

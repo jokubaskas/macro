@@ -644,7 +644,7 @@ export default function LiveTraining({ client, onClose }) {
       )}
       {showProgress && <ExerciseProgress client={client} onClose={() => setShowProgress(false)} />}
       {executingExercise && (
-        <SetExecution key={executingExercise.id} exercise={executingExercise} onClose={closeExecution} onExerciseDoneChange={handleSetsProgressChange} />
+        <SetExecution key={executingExercise.id} exercise={executingExercise} lastPerf={lastPerf} onClose={closeExecution} onExerciseDoneChange={handleSetsProgressChange} />
       )}
       {showExitConfirm && createPortal(
         <div onClick={(e) => { if (e.target === e.currentTarget) { setShowExitConfirm(false); pendingProceedRef.current = null; } }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>

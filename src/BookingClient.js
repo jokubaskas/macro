@@ -150,13 +150,13 @@ function BookingRulesModal({ onAccept, onCancel }) {
   // (zIndex:500) sluoksnyje ir visada rodytųsi UŽ apatinės tab juostos
   // (zIndex:1000), kad ir koks aukštas būtų jo paties zIndex.
   return createPortal(
-    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:1200, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:16, boxSizing:"border-box" }}>
+    <div onClick={onCancel} style={{ position:"fixed", inset:0, zIndex:1200, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
       <style>{RULES_SCROLL_STYLE}</style>
       <div onClick={e=>e.stopPropagation()} style={{
-        width:"100%", maxWidth:480, maxHeight:"min(680px, 100%)", minHeight:0,
+        width:"100%", maxWidth:480, maxHeight:"88vh", minHeight:0,
         display:"flex", flexDirection:"column", overflow:"hidden",
-        background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 60%,#AD1457 100%)", borderRadius:20,
-        boxShadow:"0 20px 60px rgba(0,0,0,0.5)",
+        background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 60%,#AD1457 100%)", borderRadius:"24px 24px 0 0",
+        boxShadow:"0 -20px 60px rgba(0,0,0,0.5)",
       }}>
         <div style={{ padding:"20px 20px 14px", flexShrink:0 }}>
           <p style={{ fontSize:16, fontWeight:800, color:"#fff", margin:"0 0 4px", display:"flex", alignItems:"center", gap:7 }}><AlertTriangle size={16} color="#FFD700" />Rezervacijos taisyklės</p>
