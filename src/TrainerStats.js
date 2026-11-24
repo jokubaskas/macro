@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { pb } from "./pb";
 import { resolveMacroTargets } from "./macroCalc";
 import { Clipboard, Salad, Heart, Moon, Droplet, Footprints, ChevronLeft, ChevronRight, BarChart, Users, Glass, Flame } from "./ui/icons";
-import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { SearchInput, ShowMoreButton, Skeleton, SkeletonList } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -252,7 +252,20 @@ export default function TrainerStats({ onClose, onOpenClient }) {
           ))}
         </div>
 
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
+        {loading && (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+              {[0,1,2,3,4].map(i => (
+                <div key={i} style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:14 }}>
+                  <Skeleton width={28} height={28} radius={14} style={{ marginBottom:10 }} />
+                  <Skeleton width="50%" height={16} style={{ marginBottom:6 }} />
+                  <Skeleton width="70%" height={10} />
+                </div>
+              ))}
+            </div>
+            <SkeletonList rows={3} lines={[["45%",14],["30%",11]]} />
+          </>
+        )}
 
         {!loading && overview && (
           <>

@@ -118,6 +118,44 @@ function BirthdaysCard({ clients, onOpenClient }) {
   );
 }
 
+// Kliento sąrašo skiltis — naudojama tiek mobiliame, tiek desktop split-pane
+// išdėstyme. Paieška visada matoma; pats sąrašas (gali būti ilgas) rodomas
+// tik kai ieškoma arba trenerė aiškiai paspaudžia "Rodyti visus" — treneris
+// praktiškai visada tiesiog ieško konkrečios klientės, tad nereikia versti
+// scrollinti per visus kaskart atidarant pagrindinį langą.
+function ClientListSection({ clients, loading, pkgSummary, clientSearch, setClientSearch, visibleClients, setVisibleClients, showAllClients, setShowAllClients, onOpenClient }) {
+  if (loading) return <SkeletonList rows={4} />;
+  if (clients.length === 0) return (
+    <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
+      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
+    </div>
+  );
+  const q = clientSearch.trim().toLowerCase();
+  const filteredClients = q
+    ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
+    : clients;
+  const revealList = !!q || showAllClients;
+  return (
+    <>
+      <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
+      {!revealList ? (
+        <button onClick={() => setShowAllClients(true)} style={{ width:"100%", padding:"12px", borderRadius:14, border:"1.5px dashed rgba(255,255,255,0.25)", background:"rgba(255,255,255,0.05)", color:"rgba(255,255,255,0.7)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+          Rodyti visus klientus ({clients.length})
+        </button>
+      ) : filteredClients.length === 0 ? (
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "16px 0", fontSize: 13 }}>Klientų pagal paiešką nerasta</p>
+      ) : (
+        <>
+          {filteredClients.slice(0, visibleClients).map(client => (
+            <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => onOpenClient(client)} />
+          ))}
+          <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
+        </>
+      )}
+    </>
+  );
+}
+
 function ProgressRing({ pct, c1, c2, hit, size = 40 }) {
   const r = (size - 6) / 2, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
   const dash = (Math.min(100, Math.max(0, pct)) / 100) * C;
@@ -966,7 +1004,7 @@ export default function AdminPanel({ user, onLogout }) {
   }, []);
   const [clientSearch, setClientSearch] = useState("");
   const [visibleClients, setVisibleClients] = useState(8);
-  const [refreshing, setRefreshing] = useState(false);
+  const [showAllClients, setShowAllClients] = useState(false);
   const [liveSessionInfo, setLiveSessionInfo] = useState(() => getActiveLiveSession());
   const [pendingAutoOpenLiveTraining, setPendingAutoOpenLiveTraining] = useState(false);
   const [clientDetailNonce, setClientDetailNonce] = useState(0);
@@ -988,9 +1026,7 @@ export default function AdminPanel({ user, onLogout }) {
 
   async function handleRefresh() {
     haptic();
-    setRefreshing(true);
     await loadClients();
-    setRefreshing(false);
   }
 
   const scrollRef = useRef(null);
@@ -1177,9 +1213,7 @@ export default function AdminPanel({ user, onLogout }) {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: refreshing ? "default" : "pointer" }}>
-                <Refresh size={15} style={{ animation: refreshing ? "spin 0.7s linear infinite" : "none", transformOrigin: "center" }} />
-              </button>
+              <button onClick={goToNewClient} aria-label="Naujas klientas" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", cursor: "pointer", fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
               <button onClick={handleLogoutClick} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "7px 12px", color: "rgba(255,255,255,0.7)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Atsijungti</button>
             </div>
           </div>
@@ -1288,41 +1322,13 @@ export default function AdminPanel({ user, onLogout }) {
               value={dashExtra.weekPackages} label="Šią savaitę parduota paketų" />
           </div>
 
-          <button onClick={goToNewClient} style={{ width: "100%", padding: "14px 0", marginBottom: 16, background: "linear-gradient(135deg,#6D1B3B,#AD1457)", color: "#fff", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            + Naujas klientas
-          </button>
-
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 
-          {loading ? (
-            <SkeletonList rows={4} />
-          ) : clients.length === 0 ? (
-            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
-            </div>
-          ) : (() => {
-            const q = clientSearch.trim().toLowerCase();
-            const filteredClients = q
-              ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
-              : clients;
-            return (
-              <>
-                {clients.length > 8 && (
-                  <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
-                )}
-                {filteredClients.length === 0 ? (
-                  <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "16px 0", fontSize: 13 }}>Klientų pagal paiešką nerasta</p>
-                ) : (
-                  <>
-                    {filteredClients.slice(0, visibleClients).map(client => (
-                      <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => openClientSafe(client)} />
-                    ))}
-                    <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
-                  </>
-                )}
-              </>
-            );
-          })()}
+          <ClientListSection clients={clients} loading={loading} pkgSummary={pkgSummary}
+            clientSearch={clientSearch} setClientSearch={setClientSearch}
+            visibleClients={visibleClients} setVisibleClients={setVisibleClients}
+            showAllClients={showAllClients} setShowAllClients={setShowAllClients}
+            onOpenClient={openClientSafe} />
         </div>
       </div>
 
@@ -1430,11 +1436,8 @@ export default function AdminPanel({ user, onLogout }) {
           })}
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:8, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.1)" }}>
-          <button onClick={goToNewClient} style={{ width:"100%", padding:"10px", borderRadius:12, background:"linear-gradient(135deg,#6D1B3B,#AD1457)", border:"none", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Naujas klientas</button>
           <div style={{ display:"flex", gap:6 }}>
-            <button onClick={handleRefresh} disabled={refreshing} aria-label="Atnaujinti" style={{ flex:"0 0 auto", width:34, height:34, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"rgba(255,255,255,0.85)", cursor:refreshing?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Refresh size={14} style={{ animation: refreshing?"spin 0.7s linear infinite":"none" }} />
-            </button>
+            <button onClick={goToNewClient} aria-label="Naujas klientas" style={{ flex:"0 0 auto", width:34, height:34, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"rgba(255,255,255,0.85)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, lineHeight:1 }}>+</button>
             <button onClick={handleLogoutClick} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"8px", color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Atsijungti</button>
           </div>
         </div>
@@ -1550,35 +1553,11 @@ export default function AdminPanel({ user, onLogout }) {
 
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 
-              {loading ? (
-                <SkeletonList rows={4} />
-              ) : clients.length === 0 ? (
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
-                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
-                </div>
-              ) : (() => {
-                const q = clientSearch.trim().toLowerCase();
-                const filteredClients = q
-                  ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
-                  : clients;
-                return (
-                  <>
-                    {clients.length > 8 && (
-                      <SearchInput value={clientSearch} onChange={v => { setClientSearch(v); setVisibleClients(8); }} placeholder="Ieškoti kliento pagal vardą..." />
-                    )}
-                    {filteredClients.length === 0 ? (
-                      <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "16px 0", fontSize: 13 }}>Klientų pagal paiešką nerasta</p>
-                    ) : (
-                      <>
-                        {filteredClients.slice(0, visibleClients).map(client => (
-                          <ClientCard key={client.id} client={client} pkgInfo={pkgSummary[client.id]} onOpen={() => openClientSafe(client)} />
-                        ))}
-                        <ShowMoreButton remaining={filteredClients.length - visibleClients} onClick={() => setVisibleClients(v => v + 8)} />
-                      </>
-                    )}
-                  </>
-                );
-              })()}
+              <ClientListSection clients={clients} loading={loading} pkgSummary={pkgSummary}
+                clientSearch={clientSearch} setClientSearch={setClientSearch}
+                visibleClients={visibleClients} setVisibleClients={setVisibleClients}
+                showAllClients={showAllClients} setShowAllClients={setShowAllClients}
+                onOpenClient={openClientSafe} />
             </div>
 
             {/* Kliento info — dešinėje */}
