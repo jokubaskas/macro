@@ -1,6 +1,7 @@
 // Bendri, pakartotinai naudojami UI mikro-animacijų elementai — vieninga
 // vizualinė kalba visame appe (be jokios išorinės animacijos bibliotekos).
 
+import { createPortal } from "react-dom";
 import { Search } from "./icons";
 
 export const GLOBAL_KEYFRAMES = `
@@ -50,6 +51,24 @@ export function Skeleton({ width = "100%", height = 14, radius = 8, style }) {
   );
 }
 
+// Kelių vienodo pavidalo "kortelių" skeleton eilučių sąrašas — pakeičia
+// statinį "Kraunama..." tekstą sąrašo ekranuose vieninga, judančia placeholder
+// vizualizacija. `lines` nurodo kiekvienos kortelės eilučių (width,height) porų
+// sąrašą — pagal nutylėjimą imituoja "pavadinimas + antraštė" kortelę.
+export function SkeletonList({ rows = 3, lines = [["55%", 14], ["30%", 11]], gap = 10 }) {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px" }}>
+          {lines.map(([w, h], j) => (
+            <Skeleton key={j} width={w} height={h} style={{ marginBottom: j < lines.length - 1 ? 8 : 0 }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Vieningas kraunamo ekrano vaizdas — kvėpuojantis logotipas vietoj statinio teksto.
 export function LoadingScreen({ background, textColor, minHeight = "100vh" }) {
   return (
@@ -91,6 +110,27 @@ export function SearchInput({ value, onChange, placeholder = "Ieškoti..." }) {
           color:"#fff", fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box",
         }} />
     </div>
+  );
+}
+
+// Vieningas patvirtinimo modalas vietoj naršyklės standartinio window.confirm()
+// langelio (kuris "išlenda" iš appo stiliaus) — naudojamas visiems
+// destruktyviems veiksmams (trynimui ir pan.).
+export function ConfirmModal({ title = "Ar tikrai?", message, confirmLabel = "Ištrinti", cancelLabel = "Atšaukti", danger = true, confirming = false, onConfirm, onClose }) {
+  return createPortal(
+    <div onClick={(e) => { if (e.target === e.currentTarget && !confirming) onClose(); }} style={{ position:"fixed", inset:0, zIndex:1300, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div style={{ maxWidth:360, width:"100%", background:"linear-gradient(160deg,#2d0a1a,#6D1B3B)", borderRadius:20, padding:"22px 20px", border:"1px solid rgba(255,255,255,0.15)" }}>
+        <p style={{ fontSize:15, fontWeight:700, color:"#fff", margin:"0 0 8px" }}>{title}</p>
+        {message && <p style={{ fontSize:13, color:"rgba(255,255,255,0.6)", margin:"0 0 18px", lineHeight:1.4, whiteSpace:"pre-line" }}>{message}</p>}
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={onClose} disabled={confirming} style={{ flex:1, padding:"11px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.25)", background:"transparent", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{cancelLabel}</button>
+          <button onClick={onConfirm} disabled={confirming} style={{ flex:1, padding:"11px", borderRadius:12, border:"none", background: danger ? "linear-gradient(135deg,#8B1A1A,#C0392B)" : "linear-gradient(135deg,#1a4731,#276749)", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:confirming?0.7:1 }}>
+            {confirming ? "Vykdoma..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 

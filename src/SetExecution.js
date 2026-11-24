@@ -8,6 +8,7 @@ import { ChevronLeft, Check, Timer, Edit, Dumbbell, Close } from "./ui/icons";
 import { useIsDesktop } from "./ui/responsive";
 import { toast } from "./ui/toast";
 import { haptic } from "./ui/pullToRefresh";
+import { SkeletonList } from "./ui/kit";
 
 export const DEFAULT_REST_SECONDS = 90;
 
@@ -203,7 +204,7 @@ export default function SetExecution({ exercise, onClose, onExerciseDoneChange }
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
         {loading ? (
-          <p style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "24px 0" }}>Kraunama...</p>
+          <SkeletonList rows={3} lines={[["45%",14]]} gap={8} />
         ) : sorted.length === 0 ? (
           <p style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "24px 0" }}>Šiam pratimui serijų nėra.</p>
         ) : (

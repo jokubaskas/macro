@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { PK, GOALS, daysUntilBirthday } from "./constants";
@@ -15,9 +15,10 @@ import ClientMeasurements from "./ClientMeasurements";
 import LiveTraining from "./LiveTraining";
 import ClientInfo from "./ClientInfo";
 import ClientReport from "./ClientReport";
-import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { SearchInput, ShowMoreButton, SkeletonList } from "./ui/kit";
 import { useIsDesktop, useIsWide } from "./ui/responsive";
 import { attemptExit } from "./ui/exitGuard";
+import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 import { subscribeLiveSession, getActiveLiveSession, setActiveLiveSession } from "./ui/liveSessionStore";
 import { Clipboard, Footprints, Moon, Droplet, CheckCircle, Heart, AlertTriangle, Ban, Dot, Ruler, Camera, Dumbbell, ChevronLeft, ChevronRight, Users, Calendar, Ticket, BarChart, Cake, Refresh, Glass, Flame, Muscle, Salad, Timer } from "./ui/icons";
 import { resolveMacroTargets } from "./macroCalc";
@@ -77,6 +78,43 @@ function LiveSessionBanner({ info, onClick }) {
       <Dot color="#fff" size={10} style={{ position: "absolute", top: -2, right: -2, animation: "livePulse 1.2s ease-in-out infinite", filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
     </button>,
     document.body
+  );
+}
+
+// Gimtadienių kortelė (šiandien + artėjantys per 7 d.) — naudojama tiek
+// mobiliame, tiek desktop split-pane išdėstyme, kad nereikėtų laikyti dviejų
+// identiškų kopijų sinchronizuotų.
+function BirthdaysCard({ clients, onOpenClient }) {
+  const todayBdays = clients.filter(c => daysUntilBirthday(c.dob) === 0);
+  const weekBdays = clients
+    .map(c => ({ c, d: daysUntilBirthday(c.dob) }))
+    .filter(x => x.d != null && x.d >= 1 && x.d <= 7)
+    .sort((a, b) => a.d - b.d);
+  if (!todayBdays.length && !weekBdays.length) return null;
+  return (
+    <div style={{ background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,110,180,0.08))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFD700", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+        <Cake size={12} />Gimtadieniai
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {todayBdays.map(c => (
+          <button key={c.id} onClick={() => onOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
+            <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
+            <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+          </button>
+        ))}
+        {weekBdays.map(({ c, d }) => (
+          <button key={c.id} onClick={() => onOpenClient(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
+            <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
+            <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -949,10 +987,14 @@ export default function AdminPanel({ user, onLogout }) {
   }, []);
 
   async function handleRefresh() {
+    haptic();
     setRefreshing(true);
     await loadClients();
     setRefreshing(false);
   }
+
+  const scrollRef = useRef(null);
+  const { pull, refreshing: pullRefreshing, handlers: pullHandlers } = usePullToRefresh(scrollRef, handleRefresh);
 
   // attemptExit() — jei kuris nors atidarytas ekranas (pvz. gyva treniruotė
   // su nebaigta sesija) užregistravęs išėjimo sargą, pirma parodomas jo
@@ -1119,7 +1161,11 @@ export default function AdminPanel({ user, onLogout }) {
   if (!isDesktop) return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       {/* Scrollinamas turinys — antraštė + sąrašas vienoje scroll zonoje */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
+      <div ref={scrollRef} {...pullHandlers} style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
+        {/* Potraukio atnaujinti indikatorius — užima vietą (height), ne transform */}
+        <div style={{ height: pull, overflow: "hidden", display: "flex", alignItems: "flex-end", justifyContent: "center", transition: pull === 0 ? "height 0.25s ease" : "none" }}>
+          <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom: 8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
+        </div>
         {/* Header — paprastas */}
         <div style={{ background: "rgba(0,0,0,0.2)", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingTop: "max(env(safe-area-inset-top), 16px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1142,39 +1188,7 @@ export default function AdminPanel({ user, onLogout }) {
         <div style={{ maxWidth: isWide ? 720 : 480, margin: "0 auto", padding: "16px" }}>
           <PushPermissionPrompt userId={user.id} />
 
-          {(() => {
-            const todayBdays = clients.filter(c => daysUntilBirthday(c.dob) === 0);
-            const weekBdays = clients
-              .map(c => ({ c, d: daysUntilBirthday(c.dob) }))
-              .filter(x => x.d != null && x.d >= 1 && x.d <= 7)
-              .sort((a, b) => a.d - b.d);
-            if (!todayBdays.length && !weekBdays.length) return null;
-            return (
-              <div style={{ background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,110,180,0.08))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFD700", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <Cake size={12} />Gimtadieniai
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {todayBdays.map(c => (
-                    <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
-                      <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
-                      <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
-                    </button>
-                  ))}
-                  {weekBdays.map(({ c, d }) => (
-                    <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
-                      <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
-                      <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
+          <BirthdaysCard clients={clients} onOpenClient={openClientSafe} />
 
           {(() => {
             const upcoming = todaySessions.filter(b => (b.end_time || b.start_time) >= nowTime);
@@ -1281,7 +1295,7 @@ export default function AdminPanel({ user, onLogout }) {
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 
           {loading ? (
-            <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "24px 0" }}>Kraunama...</p>
+            <SkeletonList rows={4} />
           ) : clients.length === 0 ? (
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>
@@ -1434,39 +1448,7 @@ export default function AdminPanel({ user, onLogout }) {
             <div style={{ width:380, flexShrink:0, borderRight:"1px solid rgba(255,255,255,0.1)", overflowY:"auto", WebkitOverflowScrolling:"touch", padding:20, boxSizing:"border-box" }}>
               <PushPermissionPrompt userId={user.id} />
 
-              {(() => {
-                const todayBdays = clients.filter(c => daysUntilBirthday(c.dob) === 0);
-                const weekBdays = clients
-                  .map(c => ({ c, d: daysUntilBirthday(c.dob) }))
-                  .filter(x => x.d != null && x.d >= 1 && x.d <= 7)
-                  .sort((a, b) => a.d - b.d);
-                if (!todayBdays.length && !weekBdays.length) return null;
-                return (
-                  <div style={{ background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,110,180,0.08))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFD700", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <Cake size={12} />Gimtadieniai
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {todayBdays.map(c => (
-                        <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,110,180,0.16))", border: "1px solid rgba(255,215,0,0.45)", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", animation: "bdayCardGlow 2s ease-in-out infinite" }}>
-                          <Cake size={14} color="#FFD700" style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>{c.name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", background: "rgba(255,215,0,0.22)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>ŠIANDIEN</span>
-                          <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
-                        </button>
-                      ))}
-                      {weekBdays.map(({ c, d }) => (
-                        <button key={c.id} onClick={() => openClientSafe(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid transparent", borderRadius: 12, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%" }}>
-                          <Cake size={13} color="rgba(255,215,0,0.7)" style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", flex: 1 }}>{c.name}</span>
-                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>{d === 1 ? "rytoj" : `už ${d} d.`}</span>
-                          <ChevronRight size={13} color="rgba(255,255,255,0.4)" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
+              <BirthdaysCard clients={clients} onOpenClient={openClientSafe} />
 
               {(() => {
                 const upcoming = todaySessions.filter(b => (b.end_time || b.start_time) >= nowTime);
@@ -1569,7 +1551,7 @@ export default function AdminPanel({ user, onLogout }) {
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 10 }}>Klientai</p>
 
               {loading ? (
-                <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "24px 0" }}>Kraunama...</p>
+                <SkeletonList rows={4} />
               ) : clients.length === 0 ? (
                 <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 20px", textAlign: "center", border: "2px dashed rgba(255,255,255,0.2)" }}>
                   <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Dar nėra klientų</p>

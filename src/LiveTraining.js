@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { ExercisePicker, ExerciseEditModal, ExerciseSummary } from "./WorkoutPlanBuilder";
 import { toast } from "./ui/toast";
+import { SkeletonList } from "./ui/kit";
 import { fetchLastPerformanceMap } from "./exerciseStats";
 import ExerciseProgress from "./ExerciseProgress";
 import SetExecution, { DEFAULT_REST_SECONDS } from "./SetExecution";
@@ -31,17 +32,17 @@ function ExerciseRow({ ex, onClick, onRemove, onToggleDone, lastPerf, onMoveUp, 
       opacity: isDone ? 0.6 : 1,
     }}>
       {canReorder && (
-        <div style={{ display:"flex", flexDirection:"column", gap:3, flexShrink:0 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:4, flexShrink:0 }}>
           <button onClick={(e)=>{ e.stopPropagation(); onMoveUp(); }} disabled={!canMoveUp} style={{
-            width:22, height:18, borderRadius:6, border:"none", background:"rgba(255,255,255,0.1)",
+            width:32, height:26, borderRadius:7, border:"none", background:"rgba(255,255,255,0.1)",
             color: canMoveUp ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
             cursor: canMoveUp ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center",
-          }}><ArrowUp size={11} /></button>
+          }}><ArrowUp size={13} /></button>
           <button onClick={(e)=>{ e.stopPropagation(); onMoveDown(); }} disabled={!canMoveDown} style={{
-            width:22, height:18, borderRadius:6, border:"none", background:"rgba(255,255,255,0.1)",
+            width:32, height:26, borderRadius:7, border:"none", background:"rgba(255,255,255,0.1)",
             color: canMoveDown ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
             cursor: canMoveDown ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center",
-          }}><ArrowDown size={11} /></button>
+          }}><ArrowDown size={13} /></button>
         </div>
       )}
       {setsProgress ? (
@@ -162,7 +163,7 @@ function TemplatePickerModal({ clientId, onConfirm, onClose }) {
 
         {!selectedPreset ? (
           loading ? (
-            <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"20px 0" }}>Kraunama...</p>
+            <SkeletonList rows={3} lines={[["60%",13]]} gap={8} />
           ) : (
             <div>
               {clientTemplates.length > 0 && (
@@ -282,7 +283,7 @@ function SaveClientTemplateModal({ clientId, exercises, defaultName, onClose, on
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", margin:"0 0 16px" }}>Šis pratimų sąrašas (su visais svoriais/kiekiais) bus išsaugotas šiai klientei — kitą kartą galėsite jį tiesiog pasirinkti.</p>
 
         {loading ? (
-          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"12px 0" }}>Kraunama...</p>
+          <SkeletonList rows={2} lines={[["55%",13]]} gap={8} />
         ) : (
           <>
             {existing.length > 0 && (
@@ -676,7 +677,7 @@ export default function LiveTraining({ client, onClose }) {
 
       <div style={{ maxWidth:480, margin:"0 auto", padding:16 }}>
         {loading ? (
-          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>
+          <SkeletonList rows={3} />
         ) : (
           <>
             <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:16, padding:"13px 14px", marginBottom:12 }}>

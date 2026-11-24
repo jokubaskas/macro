@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { pb } from "./pb";
 import { RECURRING_DEADLINE_DOW, RECURRING_DEADLINE_TIME, isRecurringHoldActive } from "./constants";
-import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, ChevronRight, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash } from "./ui/icons";
-import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { Timer, CheckCircle, Close, Ban, Calendar, ChevronLeft, ChevronRight, Save, Repeat, Settings, Phone, Check, Sun, MessageCircle, Laptop, AlertTriangle, Trash, Refresh } from "./ui/icons";
+import { SearchInput, ShowMoreButton, ConfirmModal, SkeletonList } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
 import { toast } from "./ui/toast";
+import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 
 const DAYS = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
 const MONTHS = ["Sausis","Vasaris","Kovas","Balandis","Gegužė","Birželis","Liepa","Rugpjūtis","Rugsėjis","Spalis","Lapkritis","Gruodis"];
@@ -874,6 +875,10 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   const [showPast, setShowPast]   = useState(false);
   const [actionError, setActionError] = useState("");
   const [reschedulingBooking, setReschedulingBooking] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingOne, setDeletingOne] = useState(false);
+  const [confirmDeleteAllPast, setConfirmDeleteAllPast] = useState(null); // {toDelete, protectedCount} | null
+  const [deletingAllPast, setDeletingAllPast] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -889,6 +894,10 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handlePullRefresh() { haptic(); await load(); }
+  const scrollRef = useRef(null);
+  const { pull, refreshing: pullRefreshing, handlers: pullHandlers } = usePullToRefresh(scrollRef, handlePullRefresh);
 
 
   // Patvirtinant iškart parsiunčiamas .ics ir pažymima, kad jau įtraukta į
@@ -938,10 +947,14 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     if (failedCount > 0) setActionError(`${failedCount} rezervacijos(-ų) nepavyko pažymėti kaip pridėtos — bandykite dar kartą.`);
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Ištrinti šį rezervacijos įrašą visam laikui?")) return;
-    await pb.collection("bookings").delete(id).catch(()=>{});
-    setBookings(prev => prev.filter(b => b.id !== id));
+  function handleDelete(id) { setConfirmDeleteId(id); }
+
+  async function confirmDeleteOne() {
+    setDeletingOne(true);
+    await pb.collection("bookings").delete(confirmDeleteId).catch(()=>{});
+    setBookings(prev => prev.filter(b => b.id !== confirmDeleteId));
+    setDeletingOne(false);
+    setConfirmDeleteId(null);
   }
 
   function handleRescheduled(updatedBooking) {
@@ -960,14 +973,17 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     return (b.updated || "").slice(0, 7) === monthPrefix;
   }
 
-  async function handleDeleteAllPast() {
+  function handleDeleteAllPast() {
     const allPast = bookings.filter(b => b.date < today);
     const toDelete = allPast.filter(b => !isProtectedCancellation(b));
     const protectedCount = allPast.length - toDelete.length;
     if (toDelete.length === 0) return;
-    const confirmMsg = `Ištrinti ${toDelete.length} praeities rezervacijos(-ų) įrašą(-us) visam laikui?`
-      + (protectedCount > 0 ? `\n\n${protectedCount} šio mėnesio atšaukimo(-ų) su grąžintu kreditu nebus ištrinta(-i) — jie saugomi, kad nesusigadintų šio mėnesio nemokamų atšaukimų skaičius.` : "");
-    if (!window.confirm(confirmMsg)) return;
+    setConfirmDeleteAllPast({ toDelete, protectedCount });
+  }
+
+  async function confirmDeleteAllPastRun() {
+    const { toDelete } = confirmDeleteAllPast;
+    setDeletingAllPast(true);
     setActionError("");
     // Skirtingas requestKey kiekvienam — ta pati priežastis kaip aukščiau.
     const results = await Promise.all(toDelete.map(b => pb.collection("bookings").delete(b.id, { requestKey: `del-booking-${b.id}` }).then(() => b.id).catch(() => null)));
@@ -975,6 +991,8 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
     setBookings(prev => prev.filter(b => !okIds.has(b.id)));
     const failedCount = toDelete.length - okIds.size;
     if (failedCount > 0) setActionError(`${failedCount} rezervacijos(-ų) nepavyko ištrinti — bandykite dar kartą.`);
+    setDeletingAllPast(false);
+    setConfirmDeleteAllPast(null);
   }
 
   if (view === "schedule") return <ScheduleSettings onClose={()=>setView("list")} />;
@@ -989,7 +1007,10 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
   const filtered = q ? pastHidden.filter(b => clients[b.client_id]?.name?.toLowerCase().includes(q)) : pastHidden;
 
   return (
-    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+    <div ref={scrollRef} {...pullHandlers} style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{ height: pull, overflow:"hidden", display:"flex", alignItems:"flex-end", justifyContent:"center", transition: pull === 0 ? "height 0.25s ease" : "none" }}>
+        <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom:8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
+      </div>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:isDesktop?"20px":"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,flex:1,display:"flex",alignItems:"center",gap:6}}><Calendar size={15} />Rezervacijos</h1>
@@ -1005,6 +1026,17 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
           onClose={() => setReschedulingBooking(null)}
           onRescheduled={handleRescheduled}
         />
+      )}
+
+      {confirmDeleteId && (
+        <ConfirmModal title="Ištrinti rezervacijos įrašą?" message="Šis veiksmas negrįžtamas."
+          confirming={deletingOne} onConfirm={confirmDeleteOne} onClose={() => setConfirmDeleteId(null)} />
+      )}
+      {confirmDeleteAllPast && (
+        <ConfirmModal title="Ištrinti praeities rezervacijas?"
+          message={`Ištrinti ${confirmDeleteAllPast.toDelete.length} praeities rezervacijos(-ų) įrašą(-us) visam laikui?`
+            + (confirmDeleteAllPast.protectedCount > 0 ? `\n\n${confirmDeleteAllPast.protectedCount} šio mėnesio atšaukimo(-ų) su grąžintu kreditu nebus ištrinta(-i) — jie saugomi, kad nesusigadintų šio mėnesio nemokamų atšaukimų skaičius.` : "")}
+          confirming={deletingAllPast} onConfirm={confirmDeleteAllPastRun} onClose={() => setConfirmDeleteAllPast(null)} />
       )}
 
       <div style={{maxWidth:480,margin:"0 auto",padding:16}}>
@@ -1046,7 +1078,7 @@ export default function BookingAdmin({ onClose, onOpenClient }) {
           </button>
         )}
 
-        {loading && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Kraunama...</p>}
+        {loading && <SkeletonList rows={4} lines={[["50%",14],["70%",11]]} />}
 
         {!loading && filtered.length===0 && (
           <div style={{background:"rgba(255,255,255,0.06)",borderRadius:16,padding:"28px 16px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>

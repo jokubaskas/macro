@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { pb } from "./pb";
 import { Scale, BarChart, Ruler, Muscle, Save, ChevronLeft, Close, Edit, Calendar, Dumbbell, Heart } from "./ui/icons";
-import { ShowMoreButton } from "./ui/kit";
+import { ShowMoreButton, SkeletonList } from "./ui/kit";
 import { useIsDesktop, useIsWide } from "./ui/responsive";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box", width:"100%" };
@@ -231,7 +231,7 @@ export default function ClientMeasurements({ client, onClose }) {
     <>
       <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>Istorija</p>
 
-      {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center" }}>Kraunama...</p>}
+      {loading && <SkeletonList rows={3} lines={[["40%",13],["60%",11]]} gap={8} />}
 
       {!loading && history.length === 0 && (
         <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"16px 0" }}>Matavimų dar nėra</p>
