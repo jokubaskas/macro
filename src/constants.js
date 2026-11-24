@@ -59,6 +59,14 @@ export const PK = {
   water:  "#5BB8D4",
 };
 
+// Vieninga "statuso" spalvų kalba (patvirtinta/klaida/laukia/info) — naudoti
+// badge'ams, piliulėms, pranešimams, kur reikšmė yra būsena, ne nuotaika ar
+// prekės ženklo akcentas (tiems toliau galioja MOOD / PK atskirai).
+export const SUCCESS = { text: "#7FFFB0", bg: "rgba(127,255,176,0.12)", border: "rgba(127,255,176,0.3)" };
+export const DANGER  = { text: "#FF8888", bg: "rgba(255,100,100,0.12)", border: "rgba(255,100,100,0.3)" };
+export const WARNING = { text: "#FFD700", bg: "rgba(255,215,0,0.12)",  border: "rgba(255,215,0,0.3)" };
+export const INFO    = { text: "#6EC6FF", bg: "rgba(110,198,255,0.12)", border: "rgba(110,198,255,0.3)" };
+
 export const ACTIVITY = [
   { id: 1, label: "Sėdimas",       desc: "Biuras, mažai judama",     mult: 1.2   },
   { id: 2, label: "Lengvas",       desc: "1–2 treniruotės / sav.",   mult: 1.375 },

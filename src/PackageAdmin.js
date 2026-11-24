@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { pb } from "./pb";
 import { computeBaseValidUntil, effectiveDeadline, fetchAllDayVacations, daysUntil } from "./packageDeadline";
-import { ChevronLeft, ChevronRight, Ticket, Close, Check, Calendar, AlertTriangle } from "./ui/icons";
-import { SearchInput, ShowMoreButton } from "./ui/kit";
+import { ChevronLeft, ChevronRight, Ticket, Close, Check, Calendar, AlertTriangle, Refresh } from "./ui/icons";
+import { SearchInput, ShowMoreButton, Skeleton } from "./ui/kit";
 import { useIsDesktop } from "./ui/responsive";
+import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 
 const PACKAGES = {
   "1":  { label:"1 treniruotė",  total:1  },
@@ -46,6 +47,10 @@ export default function PackageAdmin({ onClose, onOpenClient }) {
 
   useEffect(() => { load(); }, [load]);
 
+  async function handlePullRefresh() { haptic(); await load(); }
+  const scrollRef = useRef(null);
+  const { pull, refreshing: pullRefreshing, handlers: pullHandlers } = usePullToRefresh(scrollRef, handlePullRefresh);
+
   async function handleApprove(pkg) {
     await pb.collection("training_packages").update(pkg.id, {
       status: "approved",
@@ -83,7 +88,10 @@ export default function PackageAdmin({ onClose, onOpenClient }) {
   const list = q ? tabList.filter(p => clients[p.client_id]?.name?.toLowerCase().includes(q)) : tabList;
 
   return (
-    <div style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div ref={scrollRef} {...pullHandlers} style={{ position:isDesktop?"absolute":"fixed", inset:0, zIndex:500, paddingBottom:80, background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)", overflowY:"auto", WebkitOverflowScrolling:"touch", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      <div style={{ height: pull, overflow:"hidden", display:"flex", alignItems:"flex-end", justifyContent:"center", transition: pull === 0 ? "height 0.25s ease" : "none" }}>
+        <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom:8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
+      </div>
       <div style={{ background:"rgba(0,0,0,0.2)", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingTop:isDesktop?"20px":"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
         <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:12, padding:"8px 14px", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{ fontSize:15, fontWeight:700, color:"#fff", margin:0, display:"flex", alignItems:"center", gap:6 }}><Ticket size={15} />Paketų valdymas</h1>
@@ -103,10 +111,22 @@ export default function PackageAdmin({ onClose, onOpenClient }) {
           <SearchInput value={search} onChange={v=>{setSearch(v);setVisibleCount(8);}} placeholder="Ieškoti kliento pagal vardą..." />
         )}
 
-        {loading && <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Kraunama...</p>}
+        {loading && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:16, padding:"14px 16px" }}>
+                <Skeleton width="55%" height={14} style={{ marginBottom:8 }} />
+                <Skeleton width="35%" height={11} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {!loading && list.length===0 && (
-          <p style={{ color:"rgba(255,255,255,0.4)", textAlign:"center", padding:"24px 0" }}>Nėra įrašų</p>
+          <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:"28px 16px", textAlign:"center", border:"2px dashed rgba(255,255,255,0.12)" }}>
+            <Ticket size={24} color="rgba(255,255,255,0.3)" style={{ marginBottom:8 }} />
+            <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13, margin:0 }}>{tab==="pending" ? "Nėra laukiančių paketų užklausų" : "Nėra aktyvių paketų"}</p>
+          </div>
         )}
 
         {tab === "pending" && list.slice(0, visibleCount).map(pkg => {

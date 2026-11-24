@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { pb } from "./pb";
 import { ExerciseSummary } from "./WorkoutPlanBuilder";
-import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle } from "./ui/icons";
+import { Close, Muscle, Walk, Save, ChevronLeft, Timer, Clipboard, Edit, Trash, Check, PlayCircle, Eye, MessageCircle, Refresh } from "./ui/icons";
 import { toast } from "./ui/toast";
 import { useIsDesktop } from "./ui/responsive";
 import { matchesSearch } from "./ui/search";
+import { Skeleton, ConfirmModal, SearchInput, LoadingScreen } from "./ui/kit";
+import { usePullToRefresh, haptic } from "./ui/pullToRefresh";
 
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
 const DAY_NAMES = ["Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis","Sekmadienis"];
@@ -427,15 +429,9 @@ function PresetEditor({ preset, onClose, onSaved, readOnly }) {
     setSaving(false);
   }
 
-  if (loading) return (
-    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <p style={{color:"#fff"}}>Kraunama...</p>
-    </div>
-  );
-
-  if (!days[activeDay]) return (
-    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <p style={{color:"#fff"}}>Kraunama...</p>
+  if (loading || !days[activeDay]) return (
+    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:1050}}>
+      <LoadingScreen background="rgba(0,0,0,0.8)" textColor="#fff" minHeight="100%" />
     </div>
   );
 
@@ -548,17 +544,27 @@ export default function WorkoutPresets({ onClose }) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null=uždaryta, false=naujas, objektas=redaguoti
   const [viewing, setViewing] = useState(null); // objektas=peržiūra (be redagavimo)
+  const [search, setSearch] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   function load() {
     setLoading(true);
-    pb.collection("workout_presets").getFullList({ sort:"-created", requestKey:null })
+    return pb.collection("workout_presets").getFullList({ sort:"-created", requestKey:null })
       .then(data => { setPresets(data); setLoading(false); }).catch(()=>setLoading(false));
   }
 
   useEffect(() => { load(); }, []);
 
-  async function handleDelete(id) {
-    if (!window.confirm("Ištrinti šį šabloną?")) return;
+  async function handlePullRefresh() { haptic(); await load(); }
+  const scrollRef = useRef(null);
+  const { pull, refreshing: pullRefreshing, handlers: pullHandlers } = usePullToRefresh(scrollRef, handlePullRefresh);
+
+  function handleDelete(id) { setConfirmDeleteId(id); }
+
+  async function confirmDelete() {
+    const id = confirmDeleteId;
+    setDeleting(true);
     const days = await pb.collection("workout_preset_days").getFullList({ filter:`preset_id="${id}"`, requestKey:null });
     for (const d of days) {
       const exs = await pb.collection("workout_preset_exercises").getFullList({ filter:`day_id="${d.id}"`, requestKey:null });
@@ -566,8 +572,12 @@ export default function WorkoutPresets({ onClose }) {
       await pb.collection("workout_preset_days").delete(d.id).catch(()=>{});
     }
     await pb.collection("workout_presets").delete(id).catch(()=>{});
+    setDeleting(false);
+    setConfirmDeleteId(null);
     load();
   }
+
+  const visiblePresets = presets.filter(p => matchesSearch(p.name, search));
 
   if (viewing) {
     return <PresetEditor preset={viewing} onClose={()=>setViewing(null)} readOnly />;
@@ -578,7 +588,10 @@ export default function WorkoutPresets({ onClose }) {
   }
 
   return (
-    <div style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+    <div ref={scrollRef} {...pullHandlers} style={{position:isDesktop?"absolute":"fixed",inset:0,zIndex:500,background:"linear-gradient(160deg,#2d0a1a 0%,#6D1B3B 40%,#AD1457 100%)",overflowY:"auto",WebkitOverflowScrolling:"touch",paddingBottom:80,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+      <div style={{ height: pull, overflow:"hidden", display:"flex", alignItems:"flex-end", justifyContent:"center", transition: pull === 0 ? "height 0.25s ease" : "none" }}>
+        <Refresh size={18} color="rgba(255,255,255,0.6)" style={{ marginBottom:8, animation: (pullRefreshing || pull >= 70) ? "spin 0.7s linear infinite" : "none", opacity: Math.min(1, pull / 70) }} />
+      </div>
       <div style={{background:"rgba(0,0,0,0.2)",borderBottom:"1px solid rgba(255,255,255,0.1)",paddingTop:"max(env(safe-area-inset-top), 20px)", paddingLeft:"20px", paddingRight:"20px", paddingBottom:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 14px",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={14} />Atgal</button>
         <h1 style={{fontSize:15,fontWeight:700,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:6}}><Clipboard size={15} />Treniruočių šablonai</h1>
@@ -589,14 +602,30 @@ export default function WorkoutPresets({ onClose }) {
           + Naujas šablonas
         </button>
 
-        {loading && <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"24px 0"}}>Kraunama...</p>}
+        {!loading && presets.length > 0 && (
+          <SearchInput value={search} onChange={setSearch} placeholder="Ieškoti šablono..." />
+        )}
+
+        {loading && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ background:"rgba(255,255,255,0.08)", borderRadius:16, padding:"14px 16px", border:"1px solid rgba(255,255,255,0.15)" }}>
+                <Skeleton width="60%" height={14} style={{ marginBottom:8 }} />
+                <Skeleton width="30%" height={11} />
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && presets.length===0 && (
           <div style={{background:"rgba(255,255,255,0.06)",borderRadius:16,padding:"28px 16px",textAlign:"center",border:"2px dashed rgba(255,255,255,0.12)"}}>
             <p style={{color:"rgba(255,255,255,0.4)",fontSize:14}}>Šablonų dar nėra</p>
           </div>
         )}
+        {!loading && presets.length > 0 && visiblePresets.length === 0 && (
+          <p style={{color:"rgba(255,255,255,0.4)",textAlign:"center",padding:"20px 0",fontSize:13}}>Nieko nerasta pagal "{search}"</p>
+        )}
 
-        {presets.map(p => (
+        {visiblePresets.map(p => (
           <div key={p.id} style={{background:"rgba(255,255,255,0.08)",borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid rgba(255,255,255,0.15)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div>
@@ -612,6 +641,11 @@ export default function WorkoutPresets({ onClose }) {
           </div>
         ))}
       </div>
+
+      {confirmDeleteId && (
+        <ConfirmModal title="Ištrinti šabloną?" message="Šis veiksmas negrįžtamas — bus ištrinti ir visų jo dienų pratimai."
+          confirming={deleting} onConfirm={confirmDelete} onClose={() => setConfirmDeleteId(null)} />
+      )}
     </div>
   );
 }

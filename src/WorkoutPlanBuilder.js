@@ -4,6 +4,7 @@ import { Close, Muscle, Walk, Save, ChevronLeft, ChevronRight, Check, Sparkle, C
 import { toast } from "./ui/toast";
 import { useIsDesktop } from "./ui/responsive";
 import { matchesSearch } from "./ui/search";
+import { SkeletonList } from "./ui/kit";
 
 const PK = { dark:"#6D1B3B", mid:"#AD1457" };
 const inp = { padding:"10px 14px", borderRadius:12, border:"1.5px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.07)", color:"#fff", fontSize:14, fontFamily:"inherit", outline:"none", width:"100%", boxSizing:"border-box" };
@@ -684,7 +685,7 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
 
             <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 10px"}}>Arba pasirink šabloną</p>
 
-            {presetsLoading && <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Kraunama...</p>}
+            {presetsLoading && <SkeletonList rows={3} lines={[["50%",14],["25%",11]]} />}
             {!presetsLoading && presets.length===0 && (
               <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Šablonų dar nesukurta. Sukurkite juos "Šablonai" skiltyje.</p>
             )}
@@ -782,9 +783,9 @@ export default function WorkoutPlanBuilder({ client, plan, onClose, onSaved }) {
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
                 {days[activeDay].exercises.map((ex,j)=>(
                   <div key={j} onClick={()=>setEditingExercise({dayIdx:activeDay,exIdx:j,exercise:ex})} style={{background:"rgba(255,255,255,0.08)",borderRadius:12,padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-                    <div style={{display:"flex",flexDirection:"column",gap:3,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-                      <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:10,lineHeight:1}}>▲</button>
-                      <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:5,padding:"2px 6px",color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:10,lineHeight:1}}>▼</button>
+                    <div style={{display:"flex",flexDirection:"column",gap:4,marginRight:10,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                      <button onClick={()=>{ if(j===0)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j-1],exs[j]]=[exs[j],exs[j-1]]; return {...d,exercises:exs}; })); }} style={{width:32,height:26,background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,color:j===0?"rgba(255,255,255,0.2)":"#fff",cursor:j===0?"default":"pointer",fontSize:13,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
+                      <button onClick={()=>{ if(j===days[activeDay].exercises.length-1)return; setDays(prev=>prev.map((d,i)=>{ if(i!==activeDay)return d; const exs=[...d.exercises]; [exs[j],exs[j+1]]=[exs[j+1],exs[j]]; return {...d,exercises:exs}; })); }} style={{width:32,height:26,background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,color:j===days[activeDay].exercises.length-1?"rgba(255,255,255,0.2)":"#fff",cursor:j===days[activeDay].exercises.length-1?"default":"pointer",fontSize:13,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
                     </div>
                     <div style={{flex:1,display:"flex",flexDirection:"column",gap:5}}>
                       <p style={{fontSize:13,fontWeight:600,color:"#fff",margin:0}}>{ex.exercise_name}</p>
